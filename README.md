@@ -70,6 +70,13 @@ Open [http://localhost:3000](http://localhost:3000). You’ll see the quiz list;
 - `npm run start` — run production server
 - `npm run lint` — run ESLint
 
-## Deploy
+## Deploy (Vercel)
 
-You can deploy on [Vercel](https://vercel.com) or any platform that supports Next.js. Set the same environment variables and configure Supabase redirect URLs for your production domain.
+1. Deploy on [Vercel](https://vercel.com); set the same env vars (`NEXT_PUBLIC_SUPABASE_URL`, key).
+2. **Supabase → Authentication → URL Configuration:**
+   - **Site URL:** `https://your-app.vercel.app` (your Vercel URL).
+   - **Redirect URLs:** add `https://your-app.vercel.app/auth/callback` (keep `http://localhost:3000/auth/callback` for local dev).
+3. If after sign-in you are redirected to localhost, set in Vercel **Environment Variables**:
+   - `NEXT_PUBLIC_APP_URL` = `https://your-app.vercel.app` (no trailing slash).
+
+After that, redeploy. The auth callback uses this URL for redirects in production.
