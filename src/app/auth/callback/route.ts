@@ -31,7 +31,10 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${baseUrl}${next}`);
+      // Редирект через промежуточную страницу, чтобы браузер успел применить Set-Cookie
+      // и следующий запрос уже шёл с сессией (иначе первый заход показывает "не авторизован")
+      const completeUrl = `${baseUrl}/auth/complete?next=${encodeURIComponent(next)}`;
+      return NextResponse.redirect(completeUrl);
     }
   }
 

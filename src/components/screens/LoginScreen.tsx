@@ -14,12 +14,12 @@ export function LoginScreen() {
 
   const handleSignInWithGoogle = async () => {
     const supabase = createClient();
-    const origin = window.location.origin;
+    // Явный URL продакшена (NEXT_PUBLIC_APP_URL на Vercel) — иначе редирект может уйти на localhost
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? window.location.origin;
+    const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(next)}`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
+      options: { redirectTo },
     });
   };
 
