@@ -1,9 +1,8 @@
 import { createServerClient, getQuizzes } from "@/lib/supabase";
-import { HomeScreen } from "@/components/screens/HomeScreen";
+import { AdminScreen } from "@/components/screens/AdminScreen";
 
-export default async function HomePage() {
+export default async function AdminPage() {
   const supabase = await createServerClient();
   const quizzes = await getQuizzes(supabase);
-
-  return <HomeScreen quizzes={quizzes} />;
+  return <AdminScreen quizzes={quizzes} />;
 }
