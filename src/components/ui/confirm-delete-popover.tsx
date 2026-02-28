@@ -11,7 +11,8 @@ import {
 interface ConfirmDeletePopoverProps {
   /** Question shown in the popover, e.g. "Delete page?" */
   title: string;
-  onConfirm: () => void;
+  /** Called when user clicks Delete. Can be async; popover closes after it completes. */
+  onConfirm: () => void | Promise<void>;
   disabled?: boolean;
   /** Trigger element (e.g. Button with trash icon). Must accept ref and onClick. */
   children: React.ReactNode;
@@ -24,10 +25,16 @@ export function ConfirmDeletePopover({
   children,
 }: ConfirmDeletePopoverProps) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleConfirm = () => {
-    onConfirm();
-    setOpen(false);
+  const handleConfirm = async () => {
+    setLoading(true);
+    try {
+      await Promise.resolve(onConfirm());
+      setOpen(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,8 +48,8 @@ export function ConfirmDeletePopover({
           <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button type="button" size="sm" variant="destructive" onClick={handleConfirm}>
-            Delete
+          <Button type="button" size="sm" variant="destructive" onClick={handleConfirm} disabled={loading}>
+            {loading ? "Deleting…" : "Delete"}
           </Button>
         </div>
       </PopoverContent>

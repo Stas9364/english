@@ -4,6 +4,7 @@ import type {
   Quiz,
   QuizWithPages,
   QuizPageWithDetails,
+  TheoryBlock,
 } from "./types";
 
 /** Список всех квизов для главной и админки */
@@ -105,4 +106,19 @@ export async function getQuizWithPagesBySlug(
 
   if (quizError || !quiz) return null;
   return getQuizWithPages(supabase, quiz.id);
+}
+
+/** Блоки теории квиза (для админки и отображения) */
+export async function getTheoryBlocks(
+  supabase: SupabaseClient,
+  quizId: string
+): Promise<TheoryBlock[]> {
+  const { data, error } = await supabase
+    .from("theory_blocks")
+    .select("id, quiz_id, type, content, order_index, created_at")
+    .eq("quiz_id", quizId)
+    .order("order_index", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as TheoryBlock[];
 }

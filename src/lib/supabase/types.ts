@@ -51,3 +51,16 @@ export interface QuizPageWithDetails extends QuizPage {
 export interface QuizWithPages extends Quiz {
   pages: QuizPageWithDetails[];
 }
+
+/** Тип блока теории: текст или изображение (URL) */
+export type TheoryBlockType = "text" | "image";
+
+/** Блок теории (привязан к квизу) */
+export interface TheoryBlock {
+  id: string;
+  quiz_id: string;
+  type: TheoryBlockType;
+  content: string;
+  order_index: number;
+  created_at: string;
+}

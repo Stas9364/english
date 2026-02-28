@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createServerClient, getQuizWithPages } from "@/lib/supabase";
+import { createServerClient, getQuizWithPages, getTheoryBlocks } from "@/lib/supabase";
 import { EditQuizScreen } from "@/components/screens/EditQuizScreen";
 
 interface AdminQuizPageProps {
@@ -9,8 +9,11 @@ interface AdminQuizPageProps {
 export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
   const { id } = await params;
   const supabase = await createServerClient();
-  const quiz = await getQuizWithPages(supabase, id);
+  const [quiz, theoryBlocks] = await Promise.all([
+    getQuizWithPages(supabase, id),
+    getTheoryBlocks(supabase, id),
+  ]);
   if (!quiz) notFound();
 
-  return <EditQuizScreen quiz={quiz} />;
+  return <EditQuizScreen quiz={quiz} theoryBlocks={theoryBlocks} />;
 }

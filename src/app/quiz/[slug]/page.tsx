@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createServerClient, getQuizWithPagesBySlug } from "@/lib/supabase";
+import { createServerClient, getQuizWithPagesBySlug, getTheoryBlocks } from "@/lib/supabase";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 
 interface QuizPageProps {
@@ -16,5 +16,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
 
   if (!quiz) notFound();
 
-  return <QuizScreen quiz={quiz} />;
+  const theoryBlocks = await getTheoryBlocks(supabase, quiz.id);
+
+  return <QuizScreen quiz={quiz} theoryBlocks={theoryBlocks} />;
 }

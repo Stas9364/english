@@ -1,8 +1,34 @@
 "use server";
 
 import { createServerClient } from "@/lib/supabase/server";
+import { getIsAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import type { TestType } from "@/lib/supabase";
+import type { TestType, TheoryBlockType } from "@/lib/supabase";
+
+/** Storage bucket for quiz theory images (public read, admin write) */
+const THEORY_IMAGES_BUCKET = "Eanglish";
+
+/** Extract Storage file path from a public URL (e.g. .../object/public/BUCKET/path). Returns null if not our bucket URL. */
+function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
+  const prefix = `/storage/v1/object/public/${bucket}/`;
+  try {
+    const u = new URL(url);
+    const pathname = u.pathname;
+    if (!pathname.includes(prefix)) return null;
+    const after = pathname.split(prefix)[1];
+    if (!after) return null;
+    return decodeURIComponent(after);
+  } catch {
+    return null;
+  }
+}
+
+export type TheoryBlockInput = {
+  id?: string;
+  type: TheoryBlockType;
+  content: string;
+  order_index: number;
+};
 
 export type CreateQuizInput = {
   title: string;
@@ -19,6 +45,7 @@ export type CreateQuizInput = {
       options: { option_text: string; is_correct: boolean }[];
     }[];
   }[];
+  theoryBlocks?: Omit<TheoryBlockInput, "id">[];
 };
 
 export async function createQuiz(data: CreateQuizInput) {
@@ -102,6 +129,19 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
+  if (data.theoryBlocks?.length) {
+    for (let i = 0; i < data.theoryBlocks.length; i++) {
+      const b = data.theoryBlocks[i];
+      const { error: tbError } = await supabase.from("theory_blocks").insert({
+        quiz_id: quiz.id,
+        type: b.type,
+        content: b.content.trim() || " ",
+        order_index: b.order_index,
+      });
+      if (tbError) return { ok: false, error: tbError.message };
+    }
+  }
+
   revalidatePath("/");
   revalidatePath("/admin");
   return { ok: true };
@@ -125,6 +165,7 @@ export type UpdateQuizInput = {
       options: { id?: string; option_text: string; is_correct: boolean }[];
     }[];
   }[];
+  theoryBlocks?: TheoryBlockInput[];
 };
 
 export async function updateQuiz(data: UpdateQuizInput) {
@@ -273,8 +314,200 @@ export async function updateQuiz(data: UpdateQuizInput) {
     if (del) return { ok: false, error: del.message };
   }
 
+  const theoryBlocks = data.theoryBlocks ?? [];
+  const { data: existingBlocks } = await supabase
+    .from("theory_blocks")
+    .select("id, type, content")
+    .eq("quiz_id", data.quizId);
+  const existingBlockIds = new Set((existingBlocks ?? []).map((b) => b.id));
+  const keptBlockIds: string[] = [];
+
+  for (const b of theoryBlocks) {
+    const content = (b.content ?? "").trim() || " ";
+    if (b.id && existingBlockIds.has(b.id)) {
+      keptBlockIds.push(b.id);
+      const { error: up } = await supabase
+        .from("theory_blocks")
+        .update({ type: b.type, content, order_index: b.order_index })
+        .eq("id", b.id);
+      if (up) return { ok: false, error: up.message };
+    } else {
+      const { data: inserted, error: ins } = await supabase
+        .from("theory_blocks")
+        .insert({
+          quiz_id: data.quizId,
+          type: b.type,
+          content,
+          order_index: b.order_index,
+        })
+        .select("id")
+        .single();
+      if (ins || !inserted) return { ok: false, error: ins?.message ?? "Failed to insert theory block" };
+      keptBlockIds.push(inserted.id);
+    }
+  }
+
+  const toDelB = (existingBlocks ?? []).filter((x) => !keptBlockIds.includes(x.id));
+  if (toDelB.length) {
+    const pathsToRemove: string[] = [];
+    for (const row of toDelB) {
+      const block = row as { id: string; type: string; content: string | null };
+      if (block.type === "image" && block.content) {
+        const path = getStoragePathFromPublicUrl(block.content, THEORY_IMAGES_BUCKET);
+        if (path) pathsToRemove.push(path);
+      }
+    }
+    if (pathsToRemove.length > 0) {
+      const { error: storageErr } = await supabase.storage.from(THEORY_IMAGES_BUCKET).remove(pathsToRemove);
+      if (storageErr) return { ok: false, error: storageErr.message };
+    }
+    const { error: del } = await supabase.from("theory_blocks").delete().in("id", toDelB.map((x) => x.id));
+    if (del) return { ok: false, error: del.message };
+  }
+
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/quiz/${data.quizId}`);
+  return { ok: true };
+}
+
+/**
+ * Upload an image to Storage and return its public URL for use in theory_blocks.
+ * FormData must contain: file (File). Optional: quizId (string) for path grouping.
+ */
+export async function uploadTheoryImage(
+  formData: FormData
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const file = formData.get("file") as File | null;
+  if (!file || !(file instanceof File) || file.size === 0)
+    return { ok: false, error: "No file provided" };
+
+  const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (!allowed.includes(file.type))
+    return { ok: false, error: "Allowed types: JPEG, PNG, GIF, WebP" };
+
+  const supabase = await createServerClient();
+  const quizId = (formData.get("quizId") as string)?.trim() || "draft";
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "image";
+  const ext = safeName.includes(".") ? safeName.slice(safeName.lastIndexOf(".")) : ".jpg";
+  const path = `theory/${quizId}/${crypto.randomUUID()}${ext}`;
+
+  const { error } = await supabase.storage.from(THEORY_IMAGES_BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(THEORY_IMAGES_BUCKET).getPublicUrl(path);
+  return { ok: true, url: publicUrl };
+}
+
+/** Delete one theory block (and its Storage file if image). Immediate delete. */
+export async function deleteTheoryBlock(
+  blockId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: block, error: fetchErr } = await supabase
+    .from("theory_blocks")
+    .select("id, quiz_id, type, content")
+    .eq("id", blockId)
+    .single();
+
+  if (fetchErr || !block) return { ok: false, error: fetchErr?.message ?? "Block not found" };
+
+  if (block.type === "image" && block.content) {
+    const path = getStoragePathFromPublicUrl(block.content, THEORY_IMAGES_BUCKET);
+    if (path) {
+      const { error: storageErr } = await supabase.storage.from(THEORY_IMAGES_BUCKET).remove([path]);
+      if (storageErr) return { ok: false, error: storageErr.message };
+    }
+  }
+
+  const { error: del } = await supabase.from("theory_blocks").delete().eq("id", blockId);
+  if (del) return { ok: false, error: del.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath(`/admin/quiz/${block.quiz_id}`);
+  return { ok: true };
+}
+
+/** Delete a quiz page (cascade deletes questions and options). Immediate delete. */
+export async function deleteQuizPage(
+  pageId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: page } = await supabase.from("quiz_pages").select("quiz_id").eq("id", pageId).single();
+  const quizId = page?.quiz_id;
+
+  const { error } = await supabase.from("quiz_pages").delete().eq("id", pageId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  return { ok: true };
+}
+
+/** Delete a question (cascade deletes options). Immediate delete. */
+export async function deleteQuestion(
+  questionId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: q } = await supabase.from("questions").select("page_id").eq("id", questionId).single();
+  let quizId: string | null = null;
+  if (q?.page_id) {
+    const { data: p } = await supabase.from("quiz_pages").select("quiz_id").eq("id", q.page_id).single();
+    quizId = p?.quiz_id ?? null;
+  }
+
+  const { error } = await supabase.from("questions").delete().eq("id", questionId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  return { ok: true };
+}
+
+/** Delete one option. Immediate delete. */
+export async function deleteOption(
+  optionId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: opt } = await supabase.from("options").select("question_id").eq("id", optionId).single();
+  let quizId: string | null = null;
+  if (opt?.question_id) {
+    const { data: q } = await supabase.from("questions").select("page_id").eq("id", opt.question_id).single();
+    if (q?.page_id) {
+      const { data: p } = await supabase.from("quiz_pages").select("quiz_id").eq("id", q.page_id).single();
+      quizId = p?.quiz_id ?? null;
+    }
+  }
+
+  const { error } = await supabase.from("options").delete().eq("id", optionId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
   return { ok: true };
 }

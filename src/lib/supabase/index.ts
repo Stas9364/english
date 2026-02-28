@@ -1,7 +1,7 @@
 export { createClient } from "./client";
 export { createServerClient } from "./server";
 export { getCurrentUser, getIsAdmin } from "./auth";
-export { getQuizzes, getQuizWithPages, getQuizWithPagesBySlug } from "./queries";
+export { getQuizzes, getQuizWithPages, getQuizWithPagesBySlug, getTheoryBlocks } from "./queries";
 export type {
   Quiz,
   QuizPage,
@@ -11,4 +11,6 @@ export type {
   QuizWithPages,
   QuizPageWithDetails,
   TestType,
+  TheoryBlock,
+  TheoryBlockType,
 } from "./types";

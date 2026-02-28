@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions, Option } from "@/lib/supabase";
+import { TheoryImage } from "@/components/theory-image";
+import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions, Option, TheoryBlock } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -12,11 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+type ViewTab = "quiz" | "theory";
+
 interface QuizScreenProps {
   quiz: QuizWithPages;
+  theoryBlocks?: TheoryBlock[];
 }
 
-export function QuizScreen({ quiz }: QuizScreenProps) {
+export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
+  const [viewTab, setViewTab] = useState<ViewTab>("quiz");
   /** Выбранные ID вариантов по вопросу: для single — один элемент, для multiple — несколько */
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   /** Текстовые ответы по question_id */
@@ -24,6 +29,8 @@ export function QuizScreen({ quiz }: QuizScreenProps) {
   /** По какой странице уже нажали «Проверить результаты» (id страницы → true) */
   const [checkedPages, setCheckedPages] = useState<Record<string, boolean>>({});
   const [pageIndex, setPageIndex] = useState(0);
+
+  const hasTheory = theoryBlocks.length > 0;
 
   const pages: QuizPageWithDetails[] = quiz.pages ?? [];
   const totalPages = pages.length || 1;
@@ -101,17 +108,59 @@ export function QuizScreen({ quiz }: QuizScreenProps) {
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{quiz.title}</h1>
-            {totalPages > 1 && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Page {pageIndex + 1} of {totalPages}
-              </p>
-            )}
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">Back to quizzes</Link>
           </Button>
         </div>
 
+        {hasTheory && (
+          <div className="mb-6 flex border-b">
+            <button
+              type="button"
+              onClick={() => setViewTab("quiz")}
+              className={cn(
+                "border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                viewTab === "quiz"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Quiz
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewTab("theory")}
+              className={cn(
+                "border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                viewTab === "theory"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Theory
+            </button>
+          </div>
+        )}
+
+        {viewTab === "theory" ? (
+          <div className="space-y-6">
+            {theoryBlocks.map((block) => (
+              <Card key={block.id}>
+                <CardContent>
+                  {block.type === "text" ? (
+                    <div className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                      {block.content}
+                    </div>
+                  ) : (
+                    <TheoryImage src={block.content} maxHeight="70vh" />
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <>
         {score !== null && (
           <Card className="mb-6 border-primary/30 bg-primary/5">
             <CardContent className="pt-6">
@@ -122,15 +171,22 @@ export function QuizScreen({ quiz }: QuizScreenProps) {
           </Card>
         )}
 
-        {(currentPage.title || quiz.description) && (
+        {(currentPage.title || quiz.description || totalPages > 1) && (
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle className="text-base font-medium">Instruction</CardTitle>
+              {totalPages > 1 && (
+                <span className="text-sm text-muted-foreground shrink-0">
+                  Page {pageIndex + 1} of {totalPages}
+                </span>
+              )}
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">
-                {[currentPage.title, quiz.description].filter(Boolean).join("\n\n")}
-              </p>
+              {(currentPage.title || quiz.description) && (
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {[currentPage.title, quiz.description].filter(Boolean).join("\n\n")}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -211,6 +267,8 @@ export function QuizScreen({ quiz }: QuizScreenProps) {
               Next page
             </Button>
           </nav>
+        )}
+          </>
         )}
       </main>
     </div>

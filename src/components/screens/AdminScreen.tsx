@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createQuiz } from "@/app/admin/actions";
+import { createQuiz, uploadTheoryImage } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +13,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
 import Link from "next/link";
-import { Plus, Trash2, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { TheoryImage } from "@/components/theory-image";
+import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, FileText, ImageIcon, Upload } from "lucide-react";
 import type { Quiz } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import type { TestType } from "@/lib/supabase";
+import type { TestType, TheoryBlockType } from "@/lib/supabase";
+import type { TheoryBlockInput } from "@/app/admin/actions";
 
 const optionSchema = z.object({
   option_text: z.string().min(1, "Required"),
@@ -94,8 +96,15 @@ interface AdminScreenProps {
   quizzes: Quiz[];
 }
 
+type CreateTheoryBlock = Omit<TheoryBlockInput, "id">;
+
 export function AdminScreen({ quizzes }: AdminScreenProps) {
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [theoryBlocks, setTheoryBlocks] = useState<CreateTheoryBlock[]>([]);
+  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetIndexRef = useRef<number | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as any,
@@ -110,6 +119,42 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     control: form.control,
     name: "pages",
   });
+
+  function addTheoryBlock(type: TheoryBlockType) {
+    setTheoryBlocks((prev) => [...prev, { type, content: type === "image" ? "" : "", order_index: prev.length }]);
+  }
+
+  function removeTheoryBlock(index: number) {
+    setTheoryBlocks((prev) => prev.filter((_, i) => i !== index).map((b, i) => ({ ...b, order_index: i })));
+  }
+
+  function moveTheoryBlock(index: number, dir: -1 | 1) {
+    const next = index + dir;
+    if (next < 0 || next >= theoryBlocks.length) return;
+    setTheoryBlocks((prev) => {
+      const arr = [...prev];
+      [arr[index], arr[next]] = [arr[next], arr[index]];
+      return arr.map((b, i) => ({ ...b, order_index: i }));
+    });
+  }
+
+  function updateTheoryBlock(index: number, patch: Partial<CreateTheoryBlock>) {
+    setTheoryBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)));
+  }
+
+  async function handleTheoryImageUpload(index: number, file: File) {
+    setUploadError(null);
+    setUploadingImageIndex(index);
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = await uploadTheoryImage(formData);
+    setUploadingImageIndex(null);
+    if (result.ok) {
+      updateTheoryBlock(index, { content: result.url });
+    } else {
+      setUploadError(result.error);
+    }
+  }
 
   async function onSubmit(data: FormValues) {
     setResult(null);
@@ -128,6 +173,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
           options: p.type === "input" ? (q.options?.filter((o) => o.option_text?.trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true })) ?? []) : q.options,
         })),
       })),
+      theoryBlocks: theoryBlocks.map((b, i) => ({ type: b.type, content: b.content, order_index: i })),
     });
     setResult(res);
     if (res.ok) {
@@ -136,6 +182,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         description: "",
         pages: [defaultPage(0)],
       });
+      setTheoryBlocks([]);
     }
   }
 
@@ -236,6 +283,117 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
               >
                 <Plus className="size-4" /> Add page
               </Button>
+            </div>
+
+            <div className="space-y-4">
+              <Label>Theory (optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Text and image blocks shown before taking the quiz. You can add them after creating the quiz.
+              </p>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const idx = uploadTargetIndexRef.current;
+                  const f = e.target.files?.[0];
+                  if (idx != null && f) {
+                    handleTheoryImageUpload(idx, f);
+                    uploadTargetIndexRef.current = null;
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => addTheoryBlock("text")}>
+                  <FileText className="size-4" /> Text
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => addTheoryBlock("image")}>
+                  <ImageIcon className="size-4" /> Image
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {theoryBlocks.map((block, index) => (
+                  <Card key={`tb-${index}`} className="border-muted">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {block.type === "text" ? "Text" : "Image"} {index + 1}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => moveTheoryBlock(index, -1)}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => moveTheoryBlock(index, 1)}
+                            disabled={index === theoryBlocks.length - 1}
+                          >
+                            <ChevronDown className="size-4" />
+                          </Button>
+                          <ConfirmDeletePopover title="Delete block?" onConfirm={() => removeTheoryBlock(index)}>
+                            <Button type="button" variant="ghost" size="icon-sm">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </ConfirmDeletePopover>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {block.type === "text" ? (
+                        <>
+                          <Label className="text-xs">Text</Label>
+                          <textarea
+                            className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            value={block.content}
+                            onChange={(e) => updateTheoryBlock(index, { content: e.target.value })}
+                            placeholder="Enter theory text…"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Label className="text-xs">Image URL</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={block.content}
+                              onChange={(e) => updateTheoryBlock(index, { content: e.target.value })}
+                              placeholder="Upload or paste URL"
+                              className="min-w-0"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={uploadingImageIndex !== null}
+                              onClick={() => {
+                                uploadTargetIndexRef.current = index;
+                                imageInputRef.current?.click();
+                              }}
+                            >
+                              {uploadingImageIndex === index ? "Uploading…" : <><Upload className="size-4" /> Upload</>}
+                            </Button>
+                          </div>
+                          {uploadError && uploadingImageIndex === null && (
+                            <p className="text-sm text-destructive">{uploadError}</p>
+                          )}
+                          {block.content && (
+                            <TheoryImage src={block.content} />
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
 
             {result && (
