@@ -40,7 +40,7 @@ export function HomeScreen({ quizzes }: HomeScreenProps) {
                   </CardHeader>
                   <CardFooter className="mt-auto">
                     <Button asChild size="sm">
-                      <Link href={`/quiz/${quiz.id}`}>Start quiz</Link>
+                      <Link href={`/quiz/${quiz.slug}`}>Start quiz</Link>
                     </Button>
                   </CardFooter>
                 </Card>
