@@ -229,6 +229,11 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
                   Next page
                 </Button>
               )}
+              {!hasNextPage && hasTheory && (
+                <Button size="lg" variant="outline" onClick={() => setViewTab("theory")}>
+                  Back to theory
+                </Button>
+              )}
             </div>
           )}
         </div>
