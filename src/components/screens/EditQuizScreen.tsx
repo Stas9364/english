@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2 } from "lucide-react";
+import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
+import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const optionSchema = z.object({
@@ -172,7 +173,7 @@ export function EditQuizScreen({ quiz }: EditQuizScreenProps) {
         <CardHeader>
           <CardTitle>Quiz details</CardTitle>
           <CardDescription>
-            Change title, description, slug and pages. Each page has one question type.
+            Change title, description and pages. Each page has one question type.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -197,21 +198,12 @@ export function EditQuizScreen({ quiz }: EditQuizScreenProps) {
                 placeholder="What respondents need to do (shown at the start of the quiz)"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="slug">Slug</Label>
-              <Input
-                id="slug"
-                {...form.register("slug")}
-                placeholder="present-simple"
-                className={cn(form.formState.errors.slug && "border-destructive")}
-              />
-              {form.formState.errors.slug && (
-                <p className="text-sm text-destructive">{form.formState.errors.slug.message}</p>
-              )}
-            </div>
 
             <div className="space-y-4">
-              <Label>Pages</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Pages</Label>
+                <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
+              </div>
               {pagesArray.fields.map((field, pIndex) => (
                 <EditPageBlock
                   key={field.id}
@@ -266,6 +258,7 @@ function EditPageBlock({
   onRemove: () => void;
   canRemove: boolean;
 }) {
+  const [isExpanded, setIsExpanded] = useState(true);
   const pageType = form.watch(`pages.${pageIndex}.type`);
   const questionsArray = useFieldArray({
     control: form.control,
@@ -275,13 +268,28 @@ function EditPageBlock({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} disabled={!canRemove}>
-            <Trash2 className="size-4" />
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-expanded={isExpanded}
+          >
+            <span className="shrink-0">{isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</span>
+            <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
+          </button>
+          <ConfirmDeletePopover
+            title="Delete page?"
+            onConfirm={onRemove}
+            disabled={!canRemove}
+          >
+            <Button type="button" variant="ghost" size="icon-sm">
+              <Trash2 className="size-4" />
+            </Button>
+          </ConfirmDeletePopover>
         </div>
       </CardHeader>
+      {isExpanded && (
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Page type</Label>
@@ -327,21 +335,24 @@ function EditPageBlock({
         </div>
 
         <div className="space-y-4">
-          <Label>Questions</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label>Questions</Label>
+            <span className="text-sm text-muted-foreground">Questions: {questionsArray.fields.length}</span>
+          </div>
           {questionsArray.fields.map((qField, qIndex) => (
             <Card key={qField.id} className="border-muted">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Question {qIndex + 1}</CardTitle>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => questionsArray.remove(qIndex)}
+                  <ConfirmDeletePopover
+                    title="Delete question?"
+                    onConfirm={() => questionsArray.remove(qIndex)}
                     disabled={questionsArray.fields.length <= 1}
                   >
-                    <Trash2 className="size-4" />
-                  </Button>
+                    <Button type="button" variant="ghost" size="icon-sm">
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </ConfirmDeletePopover>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -370,7 +381,12 @@ function EditPageBlock({
 
                 {(pageType === "single" || pageType === "multiple") && (
                   <div className="space-y-2">
-                    <Label>Options</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Options</Label>
+                      <span className="text-sm text-muted-foreground">
+                        Options: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
+                      </span>
+                    </div>
                     {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
                       <div key={oIndex} className="flex items-center gap-2">
                         <Input
@@ -397,11 +413,9 @@ function EditPageBlock({
                           />
                           Correct
                         </label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
+                        <ConfirmDeletePopover
+                          title="Delete option?"
+                          onConfirm={() => {
                             const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
                             if (opts.length > 1) {
                               form.setValue(
@@ -412,8 +426,10 @@ function EditPageBlock({
                           }}
                           disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
                         >
-                          <Trash2 className="size-4" />
-                        </Button>
+                          <Button type="button" variant="ghost" size="icon">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </ConfirmDeletePopover>
                       </div>
                     ))}
                     <Button
@@ -432,18 +448,21 @@ function EditPageBlock({
 
                 {pageType === "input" && (
                   <div className="space-y-2">
-                    <Label>Correct answers (any match counts)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Correct answers (any match counts)</Label>
+                      <span className="text-sm text-muted-foreground">
+                        Answers: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
+                      </span>
+                    </div>
                     {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
                       <div key={oIndex} className="flex items-center gap-2">
                         <Input
                           {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
                           placeholder="Acceptable answer"
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
+                        <ConfirmDeletePopover
+                          title="Delete correct answer?"
+                          onConfirm={() => {
                             const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
                             if (opts.length > 1) {
                               form.setValue(
@@ -454,8 +473,10 @@ function EditPageBlock({
                           }}
                           disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
                         >
-                          <Trash2 className="size-4" />
-                        </Button>
+                          <Button type="button" variant="ghost" size="icon">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </ConfirmDeletePopover>
                       </div>
                     ))}
                     <Button
@@ -474,16 +495,27 @@ function EditPageBlock({
               </CardContent>
             </Card>
           ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => questionsArray.append(defaultQuestion(undefined, questionsArray.fields.length))}
-          >
-            <Plus className="size-4" /> Add question
-          </Button>
+          <div className="flex justify-between items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => questionsArray.append(defaultQuestion(undefined, questionsArray.fields.length))}
+            >
+              <Plus className="size-4" /> Add question
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(false)}
+            >
+              Collapse
+            </Button>
+          </div>
         </div>
       </CardContent>
+      )}
     </Card>
   );
 }
