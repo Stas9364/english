@@ -263,7 +263,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
               type="button"
               onClick={() => setActiveTab("details")}
               className={cn(
-                "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                "cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === "details"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -275,7 +275,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
               type="button"
               onClick={() => setActiveTab("theory")}
               className={cn(
-                "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                "cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === "theory"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"

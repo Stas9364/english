@@ -120,7 +120,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
               type="button"
               onClick={() => setViewTab("quiz")}
               className={cn(
-                "border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
                 viewTab === "quiz"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -132,7 +132,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
               type="button"
               onClick={() => setViewTab("theory")}
               className={cn(
-                "border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
                 viewTab === "theory"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
