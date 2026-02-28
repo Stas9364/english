@@ -35,7 +35,6 @@ create table public.questions (
   page_id uuid not null references public.quiz_pages(id) on delete cascade,
   question_title text not null,
   explanation text,
-  correct_answer_text text,
   order_index int not null default 0,
   created_at timestamptz not null default now()
 );

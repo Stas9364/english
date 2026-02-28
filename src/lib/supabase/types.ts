@@ -25,7 +25,6 @@ export interface Question {
   page_id: string;
   question_title: string;
   explanation: string | null;
-  correct_answer_text: string | null;
   order_index: number;
   created_at: string;
 }

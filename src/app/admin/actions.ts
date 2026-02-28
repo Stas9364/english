@@ -15,7 +15,6 @@ export type CreateQuizInput = {
     questions: {
       question_title: string;
       explanation?: string | null;
-      correct_answer_text?: string | null;
       order_index: number;
       options: { option_text: string; is_correct: boolean }[];
     }[];
@@ -80,7 +79,6 @@ export async function createQuiz(data: CreateQuizInput) {
           page_id: quizPage.id,
           question_title: q.question_title,
           explanation: q.explanation || null,
-          correct_answer_text: null,
           order_index: q.order_index,
         })
         .select("id")
@@ -123,7 +121,6 @@ export type UpdateQuizInput = {
       id?: string;
       question_title: string;
       explanation?: string | null;
-      correct_answer_text?: string | null;
       order_index: number;
       options: { id?: string; option_text: string; is_correct: boolean }[];
     }[];
@@ -198,7 +195,6 @@ export async function updateQuiz(data: UpdateQuizInput) {
           .update({
             question_title: q.question_title,
             explanation: q.explanation || null,
-            correct_answer_text: null,
             order_index: q.order_index,
           })
           .eq("id", questionId);
@@ -210,7 +206,6 @@ export async function updateQuiz(data: UpdateQuizInput) {
             page_id: pageId,
             question_title: q.question_title,
             explanation: q.explanation || null,
-            correct_answer_text: null,
             order_index: q.order_index,
           })
           .select("id")

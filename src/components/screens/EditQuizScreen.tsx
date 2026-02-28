@@ -26,7 +26,6 @@ const questionSchema = z.object({
   id: z.string().uuid().optional(),
   question_title: z.string().min(1, "Required"),
   explanation: z.string(),
-  correct_answer_text: z.string().optional(),
   order_index: z.number(),
   options: z.array(optionSchema),
 });
@@ -76,14 +75,12 @@ function defaultQuestion(q?: {
   id?: string;
   question_title: string;
   explanation?: string | null;
-  correct_answer_text?: string | null;
   options: { id?: string; option_text: string; is_correct: boolean }[];
 }, orderIndex?: number) {
   return {
     id: q?.id,
     question_title: q?.question_title ?? "",
     explanation: q?.explanation ?? "",
-    correct_answer_text: "",
     order_index: orderIndex ?? 0,
     options: (q?.options?.length ? q.options : [{ option_text: "", is_correct: true }]).map((o) =>
       defaultOption({ id: o.id, option_text: o.option_text, is_correct: o.is_correct ?? true })
@@ -91,14 +88,14 @@ function defaultQuestion(q?: {
   };
 }
 
-function defaultPage(p?: { id?: string; type: TestType; title?: string | null; questions: { id?: string; question_title: string; explanation?: string | null; correct_answer_text?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
+function defaultPage(p?: { id?: string; type: TestType; title?: string | null; questions: { id?: string; question_title: string; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
   const type = p?.type ?? "single";
   return {
     id: p?.id,
     type,
     title: p?.title ?? "",
     order_index: pageIndex ?? 0,
-    questions: (p?.questions?.length ? p.questions : [{ question_title: "", explanation: "", correct_answer_text: "", options: [defaultOption()] }]).map((q, i) =>
+    questions: (p?.questions?.length ? p.questions : [{ question_title: "", explanation: "", options: [defaultOption()] }]).map((q, i) =>
       defaultQuestion(q, i)
     ),
   };
@@ -144,9 +141,11 @@ export function EditQuizScreen({ quiz }: EditQuizScreenProps) {
           id: q.id,
           question_title: q.question_title,
           explanation: q.explanation || null,
-          correct_answer_text: p.type === "input" ? (q.correct_answer_text || null) : null,
           order_index: qi,
-          options: p.type === "input" ? [] : q.options.map((o) => ({ id: o.id, option_text: o.option_text, is_correct: o.is_correct })),
+          options:
+            p.type === "input"
+              ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: true })) ?? [])
+              : q.options.map((o) => ({ id: o.id, option_text: o.option_text, is_correct: o.is_correct })),
         })),
       })),
     });

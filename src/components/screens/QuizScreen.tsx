@@ -221,6 +221,12 @@ export function QuizScreen({ quiz }: QuizScreenProps) {
   );
 }
 
+function isTextAnswerCorrect(question: QuestionWithOptions, textAnswer: string): boolean {
+  const user = (textAnswer ?? "").trim().toLowerCase();
+  const correctTexts = (question.options ?? []).map((o) => (o.option_text ?? "").trim().toLowerCase()).filter(Boolean);
+  return !!user && correctTexts.length > 0 && correctTexts.includes(user);
+}
+
 function QuestionBlock({
   question,
   pageType,
@@ -242,6 +248,8 @@ function QuestionBlock({
 }) {
   const isMultiple = pageType === "multiple";
   const isText = pageType === "input";
+  const textCorrect = isText && checked ? isTextAnswerCorrect(question, textAnswer) : null;
+  const textIncorrect = isText && checked && textCorrect === false;
 
   return (
     <li>
@@ -255,12 +263,25 @@ function QuestionBlock({
           {isText ? (
             <div className="space-y-2">
               <Label>Your answer</Label>
-              <Input
-                value={textAnswer}
-                onChange={(e) => onChangeText?.(e.target.value)}
-                disabled={checked}
-                placeholder="Type your answer"
-              />
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
+                  textCorrect === true && "border-green-600 bg-green-50 dark:bg-green-950/30",
+                  textIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30"
+                )}
+              >
+                <Input
+                  value={textAnswer}
+                  onChange={(e) => onChangeText?.(e.target.value)}
+                  disabled={checked}
+                  placeholder="Type your answer"
+                  className={cn(
+                    "min-w-0 flex-1 border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    textCorrect === true && "text-green-800 dark:text-green-200",
+                    textIncorrect && "text-red-800 dark:text-red-200"
+                  )}
+                />
+              </div>
             </div>
           ) : isMultiple ? (
             <div className="grid gap-2">

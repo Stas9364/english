@@ -25,7 +25,6 @@ const optionSchema = z.object({
 const questionSchema = z.object({
   question_title: z.string().min(1, "Required"),
   explanation: z.string(),
-  correct_answer_text: z.string().optional(),
   order_index: z.number(),
   options: z.array(optionSchema),
 });
@@ -77,7 +76,6 @@ function defaultQuestion(orderIndex: number) {
   return {
     question_title: "",
     explanation: "",
-    correct_answer_text: "",
     order_index: orderIndex,
     options: [defaultOption()],
   };
@@ -125,7 +123,6 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         questions: p.questions.map((q, qi) => ({
           question_title: q.question_title,
           explanation: q.explanation || null,
-          correct_answer_text: null,
           order_index: qi,
           options: p.type === "input" ? (q.options?.filter((o) => o.option_text?.trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true })) ?? []) : q.options,
         })),
