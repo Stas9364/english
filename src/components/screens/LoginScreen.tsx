@@ -48,7 +48,7 @@ export function LoginScreen() {
             Sign in with Google
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/" className="underline hover:no-underline">
+            <Link href="/" className="cursor-pointer underline hover:no-underline">
               Back to quizzes
             </Link>
           </p>

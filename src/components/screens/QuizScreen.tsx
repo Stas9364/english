@@ -361,7 +361,7 @@ function OptionRow({
     "flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
     showCorrect && "border-green-600 bg-green-50 dark:bg-green-950/30",
     showIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30",
-    multiple && !checked && "cursor-pointer"
+    !checked && "cursor-pointer"
   );
 
   if (multiple) {

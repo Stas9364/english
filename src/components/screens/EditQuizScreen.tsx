@@ -211,18 +211,7 @@ export function EditQuizScreen({ quiz }: EditQuizScreenProps) {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Pages</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => pagesArray.append(defaultPage(undefined, pagesArray.fields.length))}
-                >
-                  <Plus className="size-4" /> Add page
-                </Button>
-              </div>
-
+              <Label>Pages</Label>
               {pagesArray.fields.map((field, pIndex) => (
                 <EditPageBlock
                   key={field.id}
@@ -234,6 +223,14 @@ export function EditQuizScreen({ quiz }: EditQuizScreenProps) {
                   canRemove={pagesArray.fields.length > 1}
                 />
               ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => pagesArray.append(defaultPage(undefined, pagesArray.fields.length))}
+              >
+                <Plus className="size-4" /> Add page
+              </Button>
             </div>
 
             {result && (
@@ -289,7 +286,7 @@ function EditPageBlock({
         <div className="space-y-2">
           <Label>Page type</Label>
           <select
-            className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:[color-scheme:dark]"
+            className="cursor-pointer h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:[color-scheme:dark]"
             value={form.watch(`pages.${pageIndex}.type`)}
             onChange={(e) => {
               const value = e.target.value as TestType;
@@ -330,18 +327,7 @@ function EditPageBlock({
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Questions</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => questionsArray.append(defaultQuestion(undefined, questionsArray.fields.length))}
-            >
-              <Plus className="size-4" /> Add question
-            </Button>
-          </div>
-
+          <Label>Questions</Label>
           {questionsArray.fields.map((qField, qIndex) => (
             <Card key={qField.id} className="border-muted">
               <CardHeader className="pb-2">
@@ -391,7 +377,7 @@ function EditPageBlock({
                           {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
                           placeholder={`Option ${oIndex + 1}`}
                         />
-                        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+                        <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
                           <Checkbox
                             checked={form.watch(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.is_correct`)}
                             onCheckedChange={(checked) => {
@@ -488,6 +474,14 @@ function EditPageBlock({
               </CardContent>
             </Card>
           ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => questionsArray.append(defaultQuestion(undefined, questionsArray.fields.length))}
+          >
+            <Plus className="size-4" /> Add question
+          </Button>
         </div>
       </CardContent>
     </Card>
