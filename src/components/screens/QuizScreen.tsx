@@ -431,6 +431,19 @@ function MatchingBlock({
           </ul>
         </div>
       </div>
+      {checked &&
+        questions.some((q) => (q.explanation ?? "").trim()) && (
+          <div className="mt-6 space-y-4">
+            {questions
+              .filter((q) => (q.explanation ?? "").trim())
+              .map((q) => (
+                <Alert key={q.id} variant="default" className="mt-4">
+                  <AlertTitle>{q.question_title}</AlertTitle>
+                  <AlertDescription>{q.explanation}</AlertDescription>
+                </Alert>
+              ))}
+          </div>
+        )}
     </DndContext>
   );
 }
