@@ -1,5 +1,5 @@
-/** Тип страницы квиза: один правильный, несколько, ввод текста или выбор в пропусках */
-export type TestType = "single" | "multiple" | "input" | "select_gaps";
+/** Тип страницы квиза: один правильный, несколько, ввод текста, выбор в пропусках или соответствие */
+export type TestType = "single" | "multiple" | "input" | "select_gaps" | "matching";
 
 /** Квиз (общее задание) */
 export interface Quiz {

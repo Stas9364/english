@@ -43,7 +43,7 @@ const questionSchema = z.object({
 
 const pageSchema = z.object({
   id: z.string().uuid().optional(),
-  type: z.enum(["single", "multiple", "input", "select_gaps"]),
+  type: z.enum(["single", "multiple", "input", "select_gaps", "matching"]),
   title: z.string().optional(),
   order_index: z.number(),
   questions: z.array(questionSchema).min(1, "At least one question"),
@@ -97,6 +97,18 @@ const pageSchema = z.object({
             gapCount > 1
               ? `Mark at least one correct option for gap${missingCorrect.length > 1 ? "s" : ""} ${missingCorrect.join(", ")}`
               : "Mark at least one correct option",
+          path: ["questions", i, "root"],
+        });
+      }
+    }
+  } else if (p.type === "matching") {
+    for (let i = 0; i < p.questions.length; i++) {
+      const q = p.questions[i];
+      const correctOpt = (q.options ?? []).find((o) => o.is_correct && (o.option_text ?? "").trim());
+      if (!correctOpt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add a matching item (left column) for this row",
           path: ["questions", i, "root"],
         });
       }
@@ -634,6 +646,18 @@ function EditPageBlock({
                     options: [{ option_text: "", is_correct: true, gap_index: 0 }],
                   }))
                 );
+              } else if (value === "matching") {
+                form.setValue(
+                  `pages.${pageIndex}.questions`,
+                  questions.map((q, i) => {
+                    const one = q.options?.find((o) => o.is_correct) ?? q.options?.[0];
+                    return {
+                      ...q,
+                      order_index: i,
+                      options: [{ option_text: one?.option_text ?? "", is_correct: true }],
+                    };
+                  })
+                );
               } else {
                 form.setValue(
                   `pages.${pageIndex}.questions`,
@@ -650,6 +674,7 @@ function EditPageBlock({
             <option value="multiple">Multiple choice</option>
             <option value="input">Text input</option>
             <option value="select_gaps">Dropdown in gaps</option>
+            <option value="matching">Matching</option>
           </select>
         </div>
         <div className="space-y-2">
@@ -686,10 +711,22 @@ function EditPageBlock({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{(pageType === "input" || pageType === "select_gaps") ? "Sentence (use [[]] for the gap)" : "Question text"}</Label>
+                  <Label>
+                  {(pageType === "input" || pageType === "select_gaps")
+                    ? "Sentence (use [[]] for the gap)"
+                    : pageType === "matching"
+                      ? "Right column (question)"
+                      : "Question text"}
+                </Label>
                   <Input
                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                    placeholder={(pageType === "input" || pageType === "select_gaps") ? "Use [[]] where the user should type or choose" : "Enter the question"}
+                    placeholder={
+                      pageType === "matching"
+                        ? "Text shown on the right"
+                        : (pageType === "input" || pageType === "select_gaps")
+                          ? "Use [[]] where the user should type or choose"
+                          : "Enter the question"
+                    }
                     className={cn(
                       form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
                     )}
@@ -934,6 +971,46 @@ function EditPageBlock({
                             </div>
                           );
                         })}
+                      </div>
+                    );
+                  })()}
+
+                {pageType === "matching" && (() => {
+                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
+                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
+                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
+                    const opt = options[0];
+                    return (
+                      <div className="space-y-4">
+                        {questionErrorMessage && (
+                          <Alert variant="destructive">
+                            <AlertDescription>{questionErrorMessage}</AlertDescription>
+                          </Alert>
+                        )}
+                        <div className="space-y-2">
+                          <Label>Left column (matching item)</Label>
+                          {opt ? (
+                            <Input
+                              {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.0.option_text`)}
+                              placeholder="Item to drag to the right"
+                            />
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                                form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
+                                  ...opts,
+                                  { option_text: "", is_correct: true },
+                                ]);
+                              }}
+                            >
+                              <Plus className="size-4" /> Add matching item
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })()}

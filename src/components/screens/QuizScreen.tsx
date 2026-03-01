@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { TheoryImage } from "@/components/theory-image";
 import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions, Option, TheoryBlock } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -115,6 +124,11 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
         const optionById = new Map((q.options ?? []).map((o) => [o.id, o]));
         const allCorrect = chosen.every((optId) => optionById.get(optId)?.is_correct === true);
         if (allCorrect) correct++;
+      } else if (pageType === "matching") {
+        const chosen = selected[q.id]?.[0];
+        if (!chosen) return;
+        const opt = (q.options ?? []).find((o) => o.id === chosen);
+        if (opt?.is_correct) correct++;
       }
     });
     return { correct, total: currentPage.questions.length };
@@ -144,6 +158,11 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
       const arr = selected[q.id] ?? [];
       return arr.length >= gapCount && Array.from({ length: gapCount }, (_, i) => arr[i] ?? "").every((id) => id.length > 0);
     });
+
+  const matchingQuestions = currentPage.questions.filter(() => pageType === "matching");
+  const allMatchingAnswered =
+    matchingQuestions.length === 0 ||
+    matchingQuestions.every((q) => (selected[q.id]?.[0] ?? "").length > 0);
 
   const score = isCurrentPageChecked ? getScore() : null;
   const hasNextPage = pageIndex < totalPages - 1;
@@ -238,38 +257,49 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
           </Card>
         )}
 
-        <ul className="space-y-8">
-          {currentPage.questions.map((q, index) => (
-            <QuestionBlock
-              key={q.id}
-              question={q}
-              pageType={pageType}
-              index={index + 1}
-              selectedOptionIds={selected[q.id] ?? []}
-              checked={isCurrentPageChecked}
-              textAnswers={textAnswers[q.id] ?? Array(getEffectiveGapCount(q.question_title)).fill("")}
-              onInputChange={(gapIndex, value) => {
-                if (isCurrentPageChecked) return;
-                const gapCount = getEffectiveGapCount(q.question_title);
-                setTextAnswers((prev) => {
-                  const prevArr = prev[q.id] ?? Array(gapCount).fill("");
-                  const next = [...prevArr.slice(0, gapCount)];
-                  if (gapIndex >= 0 && gapIndex < next.length) next[gapIndex] = value;
-                  return { ...prev, [q.id]: next };
-                });
-              }}
-              onSelect={(optionId) => handleSelect(q.id, optionId, pageType)}
-              onSelectGap={pageType === "select_gaps" ? (gapIndex, optionId) => handleSelectGap(q.id, gapIndex, optionId) : undefined}
-            />
-          ))}
-        </ul>
+        {pageType === "matching" ? (
+          <MatchingBlock
+            questions={currentPage.questions}
+            selected={selected}
+            checked={isCurrentPageChecked}
+            onMatch={(questionId, optionId) => {
+              setSelected((prev) => ({ ...prev, [questionId]: [optionId] }));
+            }}
+          />
+        ) : (
+          <ul className="space-y-8">
+            {currentPage.questions.map((q, index) => (
+              <QuestionBlock
+                key={q.id}
+                question={q}
+                pageType={pageType}
+                index={index + 1}
+                selectedOptionIds={selected[q.id] ?? []}
+                checked={isCurrentPageChecked}
+                textAnswers={textAnswers[q.id] ?? Array(getEffectiveGapCount(q.question_title)).fill("")}
+                onInputChange={(gapIndex, value) => {
+                  if (isCurrentPageChecked) return;
+                  const gapCount = getEffectiveGapCount(q.question_title);
+                  setTextAnswers((prev) => {
+                    const prevArr = prev[q.id] ?? Array(gapCount).fill("");
+                    const next = [...prevArr.slice(0, gapCount)];
+                    if (gapIndex >= 0 && gapIndex < next.length) next[gapIndex] = value;
+                    return { ...prev, [q.id]: next };
+                  });
+                }}
+                onSelect={(optionId) => handleSelect(q.id, optionId, pageType)}
+                onSelectGap={pageType === "select_gaps" ? (gapIndex, optionId) => handleSelectGap(q.id, gapIndex, optionId) : undefined}
+              />
+            ))}
+          </ul>
+        )}
 
         <div className="mt-8 flex flex-col items-center gap-4">
           {!isCurrentPageChecked ? (
             <Button
               size="lg"
               onClick={handleCheck}
-              disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered}
+              disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered || !allMatchingAnswered}
             >
               Check results
             </Button>
@@ -331,6 +361,143 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
         )}
       </main>
     </div>
+  );
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function MatchingBlock({
+  questions,
+  selected,
+  checked,
+  onMatch,
+}: {
+  questions: QuestionWithOptions[];
+  selected: Record<string, string[]>;
+  checked: boolean;
+  onMatch: (questionId: string, optionId: string) => void;
+}) {
+  const questionIds = useMemo(() => questions.map((q) => q.id).join(","), [questions]);
+  const shuffledOptions = useMemo(
+    () => shuffle(questions.flatMap((q) => q.options ?? [])),
+    [questionIds]
+  );
+  const optionById = useMemo(
+    () => new Map(questions.flatMap((q) => (q.options ?? []).map((o) => [o.id, o]))),
+    [questions]
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id && typeof over.id === "string" && typeof active.id === "string") {
+      onMatch(over.id, active.id);
+    }
+  }
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label className="text-muted-foreground">Drag from here</Label>
+          <ul className="flex flex-col gap-2">
+            {shuffledOptions.map((option) => (
+              <DraggableOption key={option.id} option={option} disabled={checked} />
+            ))}
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-muted-foreground">Drop here</Label>
+          <ul className="flex flex-col gap-2">
+            {questions.map((q) => (
+              <DroppableQuestionSlot
+                key={q.id}
+                question={q}
+                selectedOptionId={selected[q.id]?.[0]}
+                optionById={optionById}
+                checked={checked}
+              />
+            ))}
+          </ul>
+        </div>
+      </div>
+    </DndContext>
+  );
+}
+
+function DraggableOption({ option, disabled }: { option: Option; disabled: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: option.id,
+    disabled,
+  });
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-xs transition-opacity",
+        isDragging && "opacity-50 z-10",
+        !disabled && "cursor-grab active:cursor-grabbing"
+      )}
+    >
+      {option.option_text}
+    </li>
+  );
+}
+
+function DroppableQuestionSlot({
+  question,
+  selectedOptionId,
+  optionById,
+  checked,
+}: {
+  question: QuestionWithOptions;
+  selectedOptionId?: string;
+  optionById: Map<string, Option>;
+  checked: boolean;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: question.id });
+  const selectedOpt = selectedOptionId ? optionById.get(selectedOptionId) : null;
+  const isCorrect = selectedOpt ? (question.options ?? []).find((o) => o.id === selectedOptionId)?.is_correct === true : null;
+
+  return (
+    <li
+      ref={setNodeRef}
+      className={cn(
+        "min-h-[2.75rem] rounded-lg border px-3 py-2 text-sm transition-[background-color,border-color] duration-300",
+        isOver && "border-primary bg-primary/10",
+        checked && isCorrect === true && "animate-quiz-result-reveal border-green-600 bg-green-50 dark:bg-green-950/30",
+        checked && isCorrect === false && "animate-quiz-result-reveal border-red-600 bg-red-50 dark:bg-red-950/30"
+      )}
+    >
+      <span className="font-medium text-muted-foreground">{question.question_title}</span>
+      {selectedOpt && (
+        <span className="ml-2">
+          — {selectedOpt.option_text}
+          {checked && isCorrect !== null && (
+            <span className={cn("ml-1", isCorrect ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300")}>
+              {isCorrect ? " ✓" : " ✗"}
+            </span>
+          )}
+        </span>
+      )}
+    </li>
   );
 }
 

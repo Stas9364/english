@@ -115,6 +115,7 @@ export async function createQuiz(data: CreateQuizInput) {
         return { ok: false, error: questionError?.message ?? "Failed to create question" };
       }
 
+      // single, multiple, matching: require at least one option per question
       if (page.type !== "input" && page.type !== "select_gaps" && q.options.length === 0) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
@@ -267,6 +268,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
       const isInput = page.type === "input";
       const isSelectGaps = page.type === "select_gaps";
       const isGapBased = isInput || isSelectGaps;
+      // matching: same as single/multiple — options with is_correct, no gap_index
       const optionsToSync = isInput
         ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: true as boolean, gap_index: o.gap_index ?? 0 }))
         : isSelectGaps
