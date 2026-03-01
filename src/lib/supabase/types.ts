@@ -1,5 +1,5 @@
-/** Тип страницы квиза: один правильный, несколько или ввод текста */
-export type TestType = "single" | "multiple" | "input";
+/** Тип страницы квиза: один правильный, несколько, ввод текста или выбор в пропусках */
+export type TestType = "single" | "multiple" | "input" | "select_gaps";
 
 /** Квиз (общее задание) */
 export interface Quiz {
@@ -35,7 +35,7 @@ export interface Option {
   question_id: string;
   option_text: string;
   is_correct: boolean;
-  /** Для input с несколькими [[]]: индекс пропуска (0-based). null/0 = один пропуск. */
+  /** Для input и select_gaps с несколькими [[]]: индекс пропуска (0-based). null/0 = один пропуск. */
   gap_index?: number | null;
 }
 

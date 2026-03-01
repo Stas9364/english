@@ -52,7 +52,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
   const pageType = currentPage.type;
   const isCurrentPageChecked = currentPage.id ? !!checkedPages[currentPage.id] : false;
 
-  const handleSelect = (questionId: string, optionId: string, type: "single" | "multiple" | "input") => {
+  const handleSelect = (questionId: string, optionId: string, type: "single" | "multiple" | "input" | "select_gaps") => {
     if (isCurrentPageChecked) return;
     if (type === "single") {
       setSelected((prev) => ({ ...prev, [questionId]: [optionId] }));
@@ -67,6 +67,16 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
         return { ...prev, [questionId]: next };
       });
     }
+  };
+
+  const handleSelectGap = (questionId: string, gapIndex: number, optionId: string) => {
+    if (isCurrentPageChecked) return;
+    setSelected((prev) => {
+      const arr = [...(prev[questionId] ?? [])];
+      while (arr.length <= gapIndex) arr.push("");
+      arr[gapIndex] = optionId;
+      return { ...prev, [questionId]: arr };
+    });
   };
 
   const handleCheck = () => {
@@ -98,6 +108,13 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
           return correctTexts.has(userArr[i] ?? "");
         }).every(Boolean);
         if (allGapsCorrect) correct++;
+      } else if (pageType === "select_gaps") {
+        const gapCount = getEffectiveGapCount(q.question_title);
+        const chosen = (selected[q.id] ?? []).slice(0, gapCount);
+        if (chosen.length !== gapCount || chosen.some((id) => !id)) return;
+        const optionById = new Map((q.options ?? []).map((o) => [o.id, o]));
+        const allCorrect = chosen.every((optId) => optionById.get(optId)?.is_correct === true);
+        if (allCorrect) correct++;
       }
     });
     return { correct, total: currentPage.questions.length };
@@ -117,6 +134,15 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
       const gapCount = getEffectiveGapCount(q.question_title);
       const arr = textAnswers[q.id] ?? [];
       return arr.length >= gapCount && Array.from({ length: gapCount }, (_, i) => (arr[i] ?? "").trim()).every((s) => s.length > 0);
+    });
+
+  const selectGapsQuestions = currentPage.questions.filter(() => pageType === "select_gaps");
+  const allSelectGapsAnswered =
+    selectGapsQuestions.length === 0 ||
+    selectGapsQuestions.every((q) => {
+      const gapCount = getEffectiveGapCount(q.question_title);
+      const arr = selected[q.id] ?? [];
+      return arr.length >= gapCount && Array.from({ length: gapCount }, (_, i) => arr[i] ?? "").every((id) => id.length > 0);
     });
 
   const score = isCurrentPageChecked ? getScore() : null;
@@ -233,6 +259,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
                 });
               }}
               onSelect={(optionId) => handleSelect(q.id, optionId, pageType)}
+              onSelectGap={pageType === "select_gaps" ? (gapIndex, optionId) => handleSelectGap(q.id, gapIndex, optionId) : undefined}
             />
           ))}
         </ul>
@@ -242,7 +269,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
             <Button
               size="lg"
               onClick={handleCheck}
-              disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered}
+              disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered}
             >
               Check results
             </Button>
@@ -335,6 +362,18 @@ function getPerGapCorrectness(question: QuestionWithOptions, textAnswers: string
   });
 }
 
+/** For select_gaps: returns whether each gap's selected option is correct. */
+function getPerGapCorrectnessSelectGaps(question: QuestionWithOptions, selectedOptionIds: string[]): (boolean | null)[] {
+  const gapCount = getEffectiveGapCount(question.question_title);
+  const optionById = new Map((question.options ?? []).map((o) => [o.id, o]));
+  return Array.from({ length: gapCount }, (_, i) => {
+    const optId = selectedOptionIds[i];
+    if (!optId) return null;
+    const opt = optionById.get(optId);
+    return opt ? opt.is_correct : null;
+  });
+}
+
 function QuestionBlock({
   question,
   pageType,
@@ -344,18 +383,21 @@ function QuestionBlock({
   textAnswers,
   onInputChange,
   onSelect,
+  onSelectGap,
 }: {
   question: QuestionWithOptions;
-  pageType: "single" | "multiple" | "input";
+  pageType: "single" | "multiple" | "input" | "select_gaps";
   index: number;
   selectedOptionIds: string[];
   checked: boolean;
   textAnswers: string[];
   onInputChange?: (gapIndex: number, value: string) => void;
   onSelect: (optionId: string) => void;
+  onSelectGap?: (gapIndex: number, optionId: string) => void;
 }) {
   const isMultiple = pageType === "multiple";
   const isText = pageType === "input";
+  const isSelectGaps = pageType === "select_gaps";
   const textCorrect = isText && checked ? isTextAnswerCorrect(question, textAnswers) : null;
   const textIncorrect = isText && checked && textCorrect === false;
 
@@ -364,17 +406,56 @@ function QuestionBlock({
   const hasInlineGaps = gapCount >= 1 && title.includes("[[]]");
   const parts = hasInlineGaps ? title.split("[[]]") : [];
   const perGapCorrectness = isText && checked && hasInlineGaps ? getPerGapCorrectness(question, textAnswers) : null;
+  const perGapCorrectnessSelect = isSelectGaps && checked && hasInlineGaps ? getPerGapCorrectnessSelectGaps(question, selectedOptionIds) : null;
 
   return (
     <li>
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-medium">
-            {index}. {hasInlineGaps ? "" : title}
+            {index}. {hasInlineGaps && (isText || isSelectGaps) ? "" : title}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isText ? (
+          {isSelectGaps && hasInlineGaps ? (
+            <div className="space-y-2">
+              <div
+                className={cn(
+                  "flex flex-wrap items-baseline gap-x-2 gap-y-2 rounded-lg border border-input px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
+                  perGapCorrectnessSelect && "animate-quiz-result-reveal"
+                )}
+              >
+                {parts.map((part, i) => (
+                  <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {part}
+                    {i < parts.length - 1 && (
+                      <select
+                        value={selectedOptionIds[i] ?? ""}
+                        onChange={(e) => onSelectGap?.(i, e.target.value)}
+                        disabled={checked}
+                        className={cn(
+                          "inline-flex min-w-0 rounded border bg-background px-2 py-1.5 text-sm shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
+                          perGapCorrectnessSelect?.[i] === true &&
+                            "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
+                          perGapCorrectnessSelect?.[i] === false &&
+                            "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                        )}
+                      >
+                        <option value="">—</option>
+                        {(question.options ?? [])
+                          .filter((o) => (o.gap_index ?? 0) === i)
+                          .map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.option_text}
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : isText ? (
             hasInlineGaps ? (
               <div className="space-y-2">
                 <div

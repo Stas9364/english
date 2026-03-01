@@ -115,13 +115,15 @@ export async function createQuiz(data: CreateQuizInput) {
         return { ok: false, error: questionError?.message ?? "Failed to create question" };
       }
 
-      if (page.type !== "input" && q.options.length === 0) {
+      if (page.type !== "input" && page.type !== "select_gaps" && q.options.length === 0) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
-      const optionsToInsert = (page.type === "input"
-        ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ question_id: question.id, option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 }))
-        : q.options.map((o) => ({ question_id: question.id, option_text: o.option_text, is_correct: o.is_correct }))
-      );
+      const optionsToInsert =
+        page.type === "input"
+          ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ question_id: question.id, option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 }))
+          : page.type === "select_gaps"
+            ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ question_id: question.id, option_text: o.option_text.trim(), is_correct: o.is_correct, gap_index: o.gap_index ?? 0 }))
+            : q.options.map((o) => ({ question_id: question.id, option_text: o.option_text, is_correct: o.is_correct }));
       if (optionsToInsert.length > 0) {
         const { error: optionsError } = await supabase.from("options").insert(optionsToInsert);
         if (optionsError) return { ok: false, error: optionsError.message };
@@ -263,11 +265,15 @@ export async function updateQuiz(data: UpdateQuizInput) {
       const existingOptIds = new Set((existingOpts ?? []).map((o) => o.id));
 
       const isInput = page.type === "input";
+      const isSelectGaps = page.type === "select_gaps";
+      const isGapBased = isInput || isSelectGaps;
       const optionsToSync = isInput
         ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: true as boolean, gap_index: o.gap_index ?? 0 }))
-        : q.options;
+        : isSelectGaps
+          ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: o.is_correct, gap_index: o.gap_index ?? 0 }))
+          : q.options;
 
-      if (!isInput && optionsToSync.length === 0) {
+      if (!isGapBased && optionsToSync.length === 0) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
 
@@ -280,7 +286,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
             .update({
               option_text: o.option_text,
               is_correct: isInput ? true : o.is_correct,
-              ...(isInput ? { gap_index: o.gap_index ?? 0 } : {}),
+              ...(isGapBased ? { gap_index: "gap_index" in o ? (o.gap_index ?? 0) : 0 } : {}),
             })
             .eq("id", o.id);
           if (up) return { ok: false, error: up.message };
@@ -291,7 +297,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
               question_id: questionId,
               option_text: o.option_text,
               is_correct: isInput ? true : o.is_correct,
-              ...(isInput ? { gap_index: o.gap_index ?? 0 } : {}),
+              ...(isGapBased ? { gap_index: "gap_index" in o ? (o.gap_index ?? 0) : 0 } : {}),
             })
             .select("id")
             .single();

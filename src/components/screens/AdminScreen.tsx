@@ -21,8 +21,9 @@ import type { TestType, TheoryBlockType } from "@/lib/supabase";
 import type { TheoryBlockInput } from "@/app/admin/actions";
 
 const optionSchema = z.object({
-  option_text: z.string().min(1, "Required"),
+  option_text: z.string(),
   is_correct: z.boolean(),
+  gap_index: z.number().optional(),
 });
 
 const questionSchema = z.object({
@@ -33,7 +34,7 @@ const questionSchema = z.object({
 });
 
 const pageSchema = z.object({
-  type: z.enum(["single", "multiple", "input"]),
+  type: z.enum(["single", "multiple", "input", "select_gaps"]),
   title: z.string().optional(),
   order_index: z.number(),
   questions: z.array(questionSchema).min(1, "At least one question"),
@@ -41,23 +42,44 @@ const pageSchema = z.object({
   if (p.type === "input") {
     for (let i = 0; i < p.questions.length; i++) {
       const q = p.questions[i];
-      const opts = q.options?.filter((o) => o.option_text?.trim()) ?? [];
-      if (opts.length === 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Add at least one correct answer", path: ["questions", i] });
-        continue;
+      const gapCount = Math.max(1, Math.max(0, (q.question_title || "").split("[[]]").length - 1));
+      const missingGaps: number[] = [];
+      for (let g = 0; g < gapCount; g++) {
+        const hasAnswer = (q.options ?? []).some((o) => (o.gap_index ?? 0) === g && (o.option_text ?? "").trim());
+        if (!hasAnswer) missingGaps.push(g + 1);
       }
-      const gapCount = Math.max(0, (q.question_title || "").split("[[]]").length - 1);
-      if (gapCount > 1) {
-        for (let oi = 0; oi < opts.length; oi++) {
-          const parts = opts[oi].option_text.split(";").map((s) => s.trim()).filter(Boolean);
-          if (parts.length !== gapCount) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `With ${gapCount} gaps use semicolons: answer1; answer2 (got ${parts.length} part(s))`,
-              path: ["questions", i, "options", oi, "option_text"],
-            });
-          }
-        }
+      if (missingGaps.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: gapCount > 1 ? `Add at least one correct answer for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one correct answer",
+          path: ["questions", i, "root"],
+        });
+      }
+    }
+  } else if (p.type === "select_gaps") {
+    for (let i = 0; i < p.questions.length; i++) {
+      const q = p.questions[i];
+      const gapCount = Math.max(1, Math.max(0, (q.question_title || "").split("[[]]").length - 1));
+      const missingGaps: number[] = [];
+      const missingCorrect: number[] = [];
+      for (let g = 0; g < gapCount; g++) {
+        const optsAtGap = (q.options ?? []).filter((o) => (o.gap_index ?? 0) === g && (o.option_text ?? "").trim());
+        if (optsAtGap.length === 0) missingGaps.push(g + 1);
+        else if (!optsAtGap.some((o) => o.is_correct)) missingCorrect.push(g + 1);
+      }
+      if (missingGaps.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: gapCount > 1 ? `Add at least one option for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one option",
+          path: ["questions", i, "root"],
+        });
+      }
+      if (missingCorrect.length > 0 && missingGaps.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: gapCount > 1 ? `Mark at least one correct option for gap${missingCorrect.length > 1 ? "s" : ""} ${missingCorrect.join(", ")}` : "Mark at least one correct option",
+          path: ["questions", i, "root"],
+        });
       }
     }
   } else {
@@ -89,7 +111,7 @@ function slugify(title: string): string {
 
 type FormValues = z.infer<typeof formSchema>;
 
-const defaultOption = () => ({ option_text: "", is_correct: false });
+const defaultOption = (gapIndex?: number) => ({ option_text: "", is_correct: false, gap_index: gapIndex ?? 0 });
 function defaultQuestion(orderIndex: number) {
   return {
     question_title: "",
@@ -185,7 +207,12 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
           question_title: q.question_title,
           explanation: q.explanation || null,
           order_index: qi,
-          options: p.type === "input" ? (q.options?.filter((o) => o.option_text?.trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true })) ?? []) : q.options,
+          options:
+          p.type === "input"
+            ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 })) ?? [])
+            : p.type === "select_gaps"
+              ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: o.is_correct, gap_index: o.gap_index ?? 0 })) ?? [])
+              : q.options,
         })),
       })),
       theoryBlocks: theoryBlocks.map((b, i) => ({ type: b.type, content: b.content, order_index: i })),
@@ -249,7 +276,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         <CardHeader>
           <CardTitle>Create quiz</CardTitle>
           <CardDescription>
-            Add title, description (general task), then add one or more pages. Each page has one question type (single choice, multiple choice, or text input).
+            Add title, description (general task), then add one or more pages. Each page has one question type (single choice, multiple choice, text input, or dropdown in gaps).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -492,7 +519,16 @@ function PageFormBlock({
                   questions.map((q, i) => ({
                     ...q,
                     order_index: i,
-                    options: [{ option_text: "", is_correct: true }],
+                    options: [{ option_text: "", is_correct: true, gap_index: 0 }],
+                  }))
+                );
+              } else if (value === "select_gaps") {
+                form.setValue(
+                  `pages.${pageIndex}.questions`,
+                  questions.map((q, i) => ({
+                    ...q,
+                    order_index: i,
+                    options: [{ option_text: "", is_correct: true, gap_index: 0 }],
                   }))
                 );
               } else {
@@ -510,6 +546,7 @@ function PageFormBlock({
             <option value="single">Single choice</option>
             <option value="multiple">Multiple choice</option>
             <option value="input">Text input</option>
+            <option value="select_gaps">Dropdown in gaps</option>
           </select>
         </div>
         <div className="space-y-2">
@@ -543,10 +580,10 @@ function PageFormBlock({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{pageType === "input" ? "Sentence (use [[]] for the gap)" : "Question text"}</Label>
+                  <Label>{(pageType === "input" || pageType === "select_gaps") ? "Sentence (use [[]] for the gap)" : "Question text"}</Label>
                   <Input
                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                    placeholder={pageType === "input" ? "Use [[]] where the user should type" : "Enter the question"}
+                    placeholder={(pageType === "input" || pageType === "select_gaps") ? "Use [[]] where the user should type or choose" : "Enter the question"}
                     className={cn(
                       form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
                     )}
@@ -632,75 +669,142 @@ function PageFormBlock({
                   </div>
                 )}
 
-                {pageType === "input" && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label>Correct answers (any match counts)</Label>
-                      <span className="text-sm text-muted-foreground">
-                        Answers: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
-                      </span>
-                    </div>
-                    {(() => {
-                      const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-                      const gapCount = Math.max(0, title.split("[[]]").length - 1);
-                      return gapCount > 1 ? (
-                        <p className="text-sm text-muted-foreground">
-                          One variant = all gaps separated by semicolon (e.g. answer1; answer2)
-                        </p>
-                      ) : null;
-                    })()}
-                    {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
-                      <div key={oIndex} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
-                            placeholder={(() => {
-                              const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-                              const gapCount = Math.max(0, title.split("[[]]").length - 1);
-                              return gapCount > 1 ? "answer1; answer2" : "Acceptable answer";
-                            })()}
-                            className={cn(
-                              form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.options?.[oIndex]?.option_text && "border-destructive"
-                            )}
-                          />
-                          <ConfirmDeletePopover
-                            title="Delete correct answer?"
-                            onConfirm={() => {
-                              const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                              if (opts.length > 1) {
-                                form.setValue(
-                                  `pages.${pageIndex}.questions.${qIndex}.options`,
-                                  opts.filter((_, i) => i !== oIndex)
-                                );
-                              }
-                            }}
-                            disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
-                          >
-                            <Button type="button" variant="ghost" size="icon">
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </ConfirmDeletePopover>
-                        </div>
-                        {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.options?.[oIndex]?.option_text && (
-                          <p className="text-sm text-destructive">
-                            {form.formState.errors.pages[pageIndex].questions[qIndex].options[oIndex].option_text.message}
-                          </p>
+                {pageType === "input" && (() => {
+                    const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
+                    const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
+                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
+                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
+                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
+                    return (
+                      <div className="space-y-4">
+                        {questionErrorMessage && (
+                          <Alert variant="destructive">
+                            <AlertDescription>{questionErrorMessage}</AlertDescription>
+                          </Alert>
                         )}
+                        {Array.from({ length: gapCount }, (_, gapIndex) => {
+                          const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
+                          return (
+                            <div key={gapIndex} className="space-y-2">
+                              <Label>{gapCount > 1 ? `Correct answers for gap ${gapIndex + 1}` : "Correct answers (any match counts)"}</Label>
+                              {indices.map((optIdx) => (
+                                <div key={optIdx} className="flex items-center gap-2">
+                                  <Input
+                                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.option_text`)}
+                                    placeholder="Acceptable answer"
+                                  />
+                                  <ConfirmDeletePopover
+                                    title="Delete correct answer?"
+                                    onConfirm={() => {
+                                      const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                                      if (opts.length > 1) {
+                                        form.setValue(
+                                          `pages.${pageIndex}.questions.${qIndex}.options`,
+                                          opts.filter((_, i) => i !== optIdx)
+                                        );
+                                      }
+                                    }}
+                                    disabled={indices.length <= 1}
+                                  >
+                                    <Button type="button" variant="ghost" size="icon">
+                                      <Trash2 className="size-4" />
+                                    </Button>
+                                  </ConfirmDeletePopover>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                                  form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
+                                    ...opts,
+                                    { option_text: "", is_correct: true, gap_index: gapIndex },
+                                  ]);
+                                }}
+                              >
+                                <Plus className="size-4" /> Add correct answer{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                        form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [...opts, { option_text: "", is_correct: true }]);
-                      }}
-                    >
-                      <Plus className="size-4" /> Add correct answer
-                    </Button>
-                  </div>
-                )}
+                    );
+                  })()}
+
+                {pageType === "select_gaps" && (() => {
+                    const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
+                    const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
+                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
+                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
+                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
+                    return (
+                      <div className="space-y-4">
+                        {questionErrorMessage && (
+                          <Alert variant="destructive">
+                            <AlertDescription>{questionErrorMessage}</AlertDescription>
+                          </Alert>
+                        )}
+                        {Array.from({ length: gapCount }, (_, gapIndex) => {
+                          const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
+                          return (
+                            <div key={gapIndex} className="space-y-2">
+                              <Label>{gapCount > 1 ? `Options for gap ${gapIndex + 1}` : "Options (mark correct)"}</Label>
+                              {indices.map((optIdx) => (
+                                <div key={optIdx} className="flex items-center gap-2">
+                                  <Input
+                                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.option_text`)}
+                                    placeholder="Option text"
+                                  />
+                                  <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+                                    <Checkbox
+                                      checked={form.watch(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.is_correct`)}
+                                      onCheckedChange={(checked) =>
+                                        form.setValue(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.is_correct`, checked === true)
+                                      }
+                                    />
+                                    Correct
+                                  </label>
+                                  <ConfirmDeletePopover
+                                    title="Delete option?"
+                                    onConfirm={() => {
+                                      const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                                      if (opts.length > 1) {
+                                        form.setValue(
+                                          `pages.${pageIndex}.questions.${qIndex}.options`,
+                                          opts.filter((_, i) => i !== optIdx)
+                                        );
+                                      }
+                                    }}
+                                    disabled={indices.length <= 1}
+                                  >
+                                    <Button type="button" variant="ghost" size="icon">
+                                      <Trash2 className="size-4" />
+                                    </Button>
+                                  </ConfirmDeletePopover>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                                  form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
+                                    ...opts,
+                                    { option_text: "", is_correct: false, gap_index: gapIndex },
+                                  ]);
+                                }}
+                              >
+                                <Plus className="size-4" /> Add option{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
               </CardContent>
             </Card>
           ))}
