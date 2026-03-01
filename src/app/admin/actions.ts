@@ -42,7 +42,7 @@ export type CreateQuizInput = {
       question_title: string;
       explanation?: string | null;
       order_index: number;
-      options: { option_text: string; is_correct: boolean }[];
+      options: { option_text: string; is_correct: boolean; gap_index?: number }[];
     }[];
   }[];
   theoryBlocks?: Omit<TheoryBlockInput, "id">[];
@@ -119,7 +119,7 @@ export async function createQuiz(data: CreateQuizInput) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
       const optionsToInsert = (page.type === "input"
-        ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ question_id: question.id, option_text: o.option_text.trim(), is_correct: true }))
+        ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ question_id: question.id, option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 }))
         : q.options.map((o) => ({ question_id: question.id, option_text: o.option_text, is_correct: o.is_correct }))
       );
       if (optionsToInsert.length > 0) {
@@ -162,7 +162,7 @@ export type UpdateQuizInput = {
       question_title: string;
       explanation?: string | null;
       order_index: number;
-      options: { id?: string; option_text: string; is_correct: boolean }[];
+      options: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }[];
     }[];
   }[];
   theoryBlocks?: TheoryBlockInput[];
@@ -264,7 +264,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
 
       const isInput = page.type === "input";
       const optionsToSync = isInput
-        ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: true as boolean }))
+        ? q.options.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ id: o.id, option_text: o.option_text.trim(), is_correct: true as boolean, gap_index: o.gap_index ?? 0 }))
         : q.options;
 
       if (!isInput && optionsToSync.length === 0) {
@@ -277,7 +277,11 @@ export async function updateQuiz(data: UpdateQuizInput) {
           keptOptIds.push(o.id);
           const { error: up } = await supabase
             .from("options")
-            .update({ option_text: o.option_text, is_correct: isInput ? true : o.is_correct })
+            .update({
+              option_text: o.option_text,
+              is_correct: isInput ? true : o.is_correct,
+              ...(isInput ? { gap_index: o.gap_index ?? 0 } : {}),
+            })
             .eq("id", o.id);
           if (up) return { ok: false, error: up.message };
         } else {
@@ -287,6 +291,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
               question_id: questionId,
               option_text: o.option_text,
               is_correct: isInput ? true : o.is_correct,
+              ...(isInput ? { gap_index: o.gap_index ?? 0 } : {}),
             })
             .select("id")
             .single();

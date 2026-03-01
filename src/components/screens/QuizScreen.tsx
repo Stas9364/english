@@ -15,6 +15,17 @@ import { cn } from "@/lib/utils";
 
 type ViewTab = "quiz" | "theory";
 
+/** Number of [[]] gaps in the question title. 0 if none. */
+function getGapCount(title: string): number {
+  if (!title?.includes("[[]]")) return 0;
+  return Math.max(0, title.split("[[]]").length - 1);
+}
+
+/** For input questions: stored answers length = Math.max(1, getGapCount). */
+function getEffectiveGapCount(title: string): number {
+  return Math.max(1, getGapCount(title));
+}
+
 interface QuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
@@ -24,8 +35,8 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
   const [viewTab, setViewTab] = useState<ViewTab>("quiz");
   /** Выбранные ID вариантов по вопросу: для single — один элемент, для multiple — несколько */
   const [selected, setSelected] = useState<Record<string, string[]>>({});
-  /** Текстовые ответы по question_id */
-  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
+  /** Текстовые ответы по question_id (массив по одному элементу на каждый пропуск) */
+  const [textAnswers, setTextAnswers] = useState<Record<string, string[]>>({});
   /** По какой странице уже нажали «Проверить результаты» (id страницы → true) */
   const [checkedPages, setCheckedPages] = useState<Record<string, boolean>>({});
   const [pageIndex, setPageIndex] = useState(0);
@@ -76,11 +87,17 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
         const chosenIds = [...chosen].sort();
         if (correctIds.length === chosenIds.length && correctIds.every((id, i) => id === chosenIds[i])) correct++;
       } else if (pageType === "input") {
-        const user = (textAnswers[q.id] ?? "").trim().toLowerCase();
-        const correctTexts = (q.options ?? []).map((o) => (o.option_text ?? "").trim().toLowerCase()).filter(Boolean);
-        if (user && correctTexts.length > 0 && correctTexts.includes(user)) {
-          correct++;
-        }
+        const gapCount = getEffectiveGapCount(q.question_title);
+        const userArr = (textAnswers[q.id] ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+        if (userArr.length !== gapCount || userArr.some((s) => !s)) return;
+        const options = (q.options ?? []).filter((o) => (o.option_text ?? "").trim());
+        const allGapsCorrect = Array.from({ length: gapCount }, (_, i) => {
+          const correctTexts = new Set(
+            options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+          );
+          return correctTexts.has(userArr[i] ?? "");
+        }).every(Boolean);
+        if (allGapsCorrect) correct++;
       }
     });
     return { correct, total: currentPage.questions.length };
@@ -96,7 +113,11 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
   const textQuestions = currentPage.questions.filter(() => pageType === "input");
   const allTextAnswered =
     textQuestions.length === 0 ||
-    textQuestions.every((q) => (textAnswers[q.id] ?? "").trim().length > 0);
+    textQuestions.every((q) => {
+      const gapCount = getEffectiveGapCount(q.question_title);
+      const arr = textAnswers[q.id] ?? [];
+      return arr.length >= gapCount && Array.from({ length: gapCount }, (_, i) => (arr[i] ?? "").trim()).every((s) => s.length > 0);
+    });
 
   const score = isCurrentPageChecked ? getScore() : null;
   const hasNextPage = pageIndex < totalPages - 1;
@@ -184,7 +205,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
             <CardContent>
               {(currentPage.title || quiz.description) && (
                 <p className="text-sm text-muted-foreground whitespace-pre-line">
-                  {[currentPage.title, quiz.description].filter(Boolean).join("\n\n")}
+                  {[quiz.description, currentPage.title].filter(Boolean).join("\n\n")}
                 </p>
               )}
             </CardContent>
@@ -200,10 +221,16 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
               index={index + 1}
               selectedOptionIds={selected[q.id] ?? []}
               checked={isCurrentPageChecked}
-              textAnswer={textAnswers[q.id] ?? ""}
-              onChangeText={(value) => {
+              textAnswers={textAnswers[q.id] ?? Array(getEffectiveGapCount(q.question_title)).fill("")}
+              onInputChange={(gapIndex, value) => {
                 if (isCurrentPageChecked) return;
-                setTextAnswers((prev) => ({ ...prev, [q.id]: value }));
+                const gapCount = getEffectiveGapCount(q.question_title);
+                setTextAnswers((prev) => {
+                  const prevArr = prev[q.id] ?? Array(gapCount).fill("");
+                  const next = [...prevArr.slice(0, gapCount)];
+                  if (gapIndex >= 0 && gapIndex < next.length) next[gapIndex] = value;
+                  return { ...prev, [q.id]: next };
+                });
               }}
               onSelect={(optionId) => handleSelect(q.id, optionId, pageType)}
             />
@@ -280,10 +307,32 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
   );
 }
 
-function isTextAnswerCorrect(question: QuestionWithOptions, textAnswer: string): boolean {
-  const user = (textAnswer ?? "").trim().toLowerCase();
-  const correctTexts = (question.options ?? []).map((o) => (o.option_text ?? "").trim().toLowerCase()).filter(Boolean);
-  return !!user && correctTexts.length > 0 && correctTexts.includes(user);
+function isTextAnswerCorrect(question: QuestionWithOptions, textAnswers: string[]): boolean {
+  const gapCount = getEffectiveGapCount(question.question_title);
+  const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+  if (userArr.length !== gapCount || userArr.some((s) => !s)) return false;
+  const options = (question.options ?? []).filter((o) => (o.option_text ?? "").trim());
+  return Array.from({ length: gapCount }, (_, i) => {
+    const correctTexts = new Set(
+      options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+    );
+    return correctTexts.has(userArr[i] ?? "");
+  }).every(Boolean);
+}
+
+/** For inline [[]] gaps: returns whether each gap's answer is correct (matches at least one option for that gap_index). */
+function getPerGapCorrectness(question: QuestionWithOptions, textAnswers: string[]): (boolean | null)[] {
+  const gapCount = getEffectiveGapCount(question.question_title);
+  const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+  const options = (question.options ?? []).filter((o) => (o.option_text ?? "").trim());
+  return Array.from({ length: gapCount }, (_, i) => {
+    const userVal = userArr[i] ?? "";
+    if (!userVal) return null;
+    const correctAtI = new Set(
+      options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+    );
+    return correctAtI.has(userVal);
+  });
 }
 
 function QuestionBlock({
@@ -292,8 +341,8 @@ function QuestionBlock({
   index,
   selectedOptionIds,
   checked,
-  textAnswer,
-  onChangeText,
+  textAnswers,
+  onInputChange,
   onSelect,
 }: {
   question: QuestionWithOptions;
@@ -301,48 +350,86 @@ function QuestionBlock({
   index: number;
   selectedOptionIds: string[];
   checked: boolean;
-  textAnswer: string;
-  onChangeText?: (value: string) => void;
+  textAnswers: string[];
+  onInputChange?: (gapIndex: number, value: string) => void;
   onSelect: (optionId: string) => void;
 }) {
   const isMultiple = pageType === "multiple";
   const isText = pageType === "input";
-  const textCorrect = isText && checked ? isTextAnswerCorrect(question, textAnswer) : null;
+  const textCorrect = isText && checked ? isTextAnswerCorrect(question, textAnswers) : null;
   const textIncorrect = isText && checked && textCorrect === false;
+
+  const title = question.question_title ?? "";
+  const gapCount = getGapCount(title);
+  const hasInlineGaps = gapCount >= 1 && title.includes("[[]]");
+  const parts = hasInlineGaps ? title.split("[[]]") : [];
+  const perGapCorrectness = isText && checked && hasInlineGaps ? getPerGapCorrectness(question, textAnswers) : null;
 
   return (
     <li>
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-medium">
-            {index}. {question.question_title}
+            {index}. {hasInlineGaps ? "" : title}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {isText ? (
-            <div className="space-y-2">
-              <Label>Your answer</Label>
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
-                  (textCorrect === true || textIncorrect) && "animate-quiz-result-reveal",
-                  textCorrect === true && "border-green-600 bg-green-50 dark:bg-green-950/30",
-                  textIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30"
-                )}
-              >
-                <Input
-                  value={textAnswer}
-                  onChange={(e) => onChangeText?.(e.target.value)}
-                  disabled={checked}
-                  placeholder="Type your answer"
+            hasInlineGaps ? (
+              <div className="space-y-2">
+                <div
                   className={cn(
-                    "min-w-0 flex-1 border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-300 ease-out",
-                    textCorrect === true && "text-green-800 dark:text-green-200",
-                    textIncorrect && "text-red-800 dark:text-red-200"
+                    "flex flex-wrap items-baseline gap-x-2 gap-y-2 rounded-lg border border-input px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
+                    perGapCorrectness && "animate-quiz-result-reveal"
                   )}
-                />
+                >
+                  {parts.map((part, i) => (
+                    <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {part}
+                      {i < parts.length - 1 && (
+                        <Input
+                          value={textAnswers[i] ?? ""}
+                          onChange={(e) => onInputChange?.(i, e.target.value)}
+                          disabled={checked}
+                          placeholder="…"
+                          className={cn(
+                            "inline-flex w-32 min-w-0 rounded border px-2 py-1.5 shadow-none outline-none transition-colors duration-300 ease-out sm:w-40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                            perGapCorrectness?.[i] === true &&
+                              "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
+                            perGapCorrectness?.[i] === false &&
+                              "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                          )}
+                        />
+                      )}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Your answer</Label>
+                <div
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
+                    (textCorrect === true || textIncorrect) && "animate-quiz-result-reveal",
+                    textCorrect === true && "border-green-600 bg-green-50 dark:bg-green-950/30",
+                    textIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30"
+                  )}
+                >
+                  <Input
+                    value={textAnswers[0] ?? ""}
+                    onChange={(e) => onInputChange?.(0, e.target.value)}
+                    disabled={checked}
+                    placeholder="Type your answer"
+                    className={cn(
+                      "min-w-0 flex-1 border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-300 ease-out",
+                      textCorrect === true && "text-green-800 dark:text-green-200",
+                      textIncorrect && "text-red-800 dark:text-red-200"
+                    )}
+                  />
+                </div>
+              </div>
+            )
           ) : isMultiple ? (
             <div className="grid gap-2">
               {question.options.map((option) => (

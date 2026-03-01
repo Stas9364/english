@@ -57,9 +57,10 @@ export async function getQuizWithPages(
   const questionIds = (questions ?? []).map((q) => q.id);
   const { data: options, error: optionsError } = await supabase
     .from("options")
-    .select("id, question_id, option_text, is_correct")
+    .select("id, question_id, option_text, is_correct, gap_index")
     .in("question_id", questionIds.length ? questionIds : [""])
-    .order("question_id");
+    .order("question_id")
+    .order("gap_index", { ascending: true, nullsFirst: true });
 
   if (optionsError) throw optionsError;
 

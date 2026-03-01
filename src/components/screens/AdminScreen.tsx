@@ -40,9 +40,24 @@ const pageSchema = z.object({
 }).superRefine((p, ctx) => {
   if (p.type === "input") {
     for (let i = 0; i < p.questions.length; i++) {
-      const opts = p.questions[i].options?.filter((o) => o.option_text?.trim()) ?? [];
+      const q = p.questions[i];
+      const opts = q.options?.filter((o) => o.option_text?.trim()) ?? [];
       if (opts.length === 0) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Add at least one correct answer", path: ["questions", i] });
+        continue;
+      }
+      const gapCount = Math.max(0, (q.question_title || "").split("[[]]").length - 1);
+      if (gapCount > 1) {
+        for (let oi = 0; oi < opts.length; oi++) {
+          const parts = opts[oi].option_text.split(";").map((s) => s.trim()).filter(Boolean);
+          if (parts.length !== gapCount) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `With ${gapCount} gaps use semicolons: answer1; answer2 (got ${parts.length} part(s))`,
+              path: ["questions", i, "options", oi, "option_text"],
+            });
+          }
+        }
       }
     }
   } else {
@@ -528,10 +543,10 @@ function PageFormBlock({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Question text</Label>
+                  <Label>{pageType === "input" ? "Sentence (use [[]] for the gap)" : "Question text"}</Label>
                   <Input
                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                    placeholder="Enter the question"
+                    placeholder={pageType === "input" ? "Use [[]] where the user should type" : "Enter the question"}
                     className={cn(
                       form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
                     )}
@@ -625,29 +640,52 @@ function PageFormBlock({
                         Answers: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
                       </span>
                     </div>
+                    {(() => {
+                      const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
+                      const gapCount = Math.max(0, title.split("[[]]").length - 1);
+                      return gapCount > 1 ? (
+                        <p className="text-sm text-muted-foreground">
+                          One variant = all gaps separated by semicolon (e.g. answer1; answer2)
+                        </p>
+                      ) : null;
+                    })()}
                     {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
-                      <div key={oIndex} className="flex items-center gap-2">
-                        <Input
-                          {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
-                          placeholder="Acceptable answer"
-                        />
-                        <ConfirmDeletePopover
-                          title="Delete correct answer?"
-                          onConfirm={() => {
-                            const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                            if (opts.length > 1) {
-                              form.setValue(
-                                `pages.${pageIndex}.questions.${qIndex}.options`,
-                                opts.filter((_, i) => i !== oIndex)
-                              );
-                            }
-                          }}
-                          disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
-                        >
-                          <Button type="button" variant="ghost" size="icon">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </ConfirmDeletePopover>
+                      <div key={oIndex} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
+                            placeholder={(() => {
+                              const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
+                              const gapCount = Math.max(0, title.split("[[]]").length - 1);
+                              return gapCount > 1 ? "answer1; answer2" : "Acceptable answer";
+                            })()}
+                            className={cn(
+                              form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.options?.[oIndex]?.option_text && "border-destructive"
+                            )}
+                          />
+                          <ConfirmDeletePopover
+                            title="Delete correct answer?"
+                            onConfirm={() => {
+                              const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
+                              if (opts.length > 1) {
+                                form.setValue(
+                                  `pages.${pageIndex}.questions.${qIndex}.options`,
+                                  opts.filter((_, i) => i !== oIndex)
+                                );
+                              }
+                            }}
+                            disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
+                          >
+                            <Button type="button" variant="ghost" size="icon">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </ConfirmDeletePopover>
+                        </div>
+                        {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.options?.[oIndex]?.option_text && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.pages[pageIndex].questions[qIndex].options[oIndex].option_text.message}
+                          </p>
+                        )}
                       </div>
                     ))}
                     <Button

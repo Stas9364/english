@@ -35,6 +35,8 @@ export interface Option {
   question_id: string;
   option_text: string;
   is_correct: boolean;
+  /** Для input с несколькими [[]]: индекс пропуска (0-based). null/0 = один пропуск. */
+  gap_index?: number | null;
 }
 
 /** Вопрос с вариантами ответов */
