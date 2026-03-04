@@ -70,14 +70,14 @@ const pageSchema = z.object({
       if (missingGaps.length > 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: gapCount > 1 ? `Add at least one option for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one option",
+          message: gapCount > 1 ? `Add at least one answer for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one answer",
           path: ["questions", i, "root"],
         });
       }
       if (missingCorrect.length > 0 && missingGaps.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: gapCount > 1 ? `Mark at least one correct option for gap${missingCorrect.length > 1 ? "s" : ""} ${missingCorrect.join(", ")}` : "Mark at least one correct option",
+          message: gapCount > 1 ? `Mark at least one correct answer for gap${missingCorrect.length > 1 ? "s" : ""} ${missingCorrect.join(", ")}` : "Mark at least one correct answer",
           path: ["questions", i, "root"],
         });
       }
@@ -97,7 +97,7 @@ const pageSchema = z.object({
   } else {
     for (const q of p.questions) {
       if (q.options.length === 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least one option", path: ["questions"] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least one answer", path: ["questions"] });
         break;
       }
     }
@@ -609,7 +609,7 @@ function PageFormBlock({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>
+                  <Label className="text-sm font-semibold text-foreground">
                   {(pageType === "input" || pageType === "select_gaps")
                     ? "Sentence (use [[]] for the gap)"
                     : pageType === "matching"
@@ -648,8 +648,8 @@ function PageFormBlock({
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label>Explanation (optional){(pageType === "input" || pageType === "select_gaps") ? " — use 1:, 2:, … for each gap" : ""}</Label>
+                <div className="space-y-2 border-t border-border/60 pt-4">
+                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Explanation (optional){(pageType === "input" || pageType === "select_gaps") ? " — use 1:, 2:, … for each gap" : ""}</Label>
                   <textarea
                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.explanation`)}
                     placeholder={(pageType === "input" || pageType === "select_gaps") ? "e.g. 1: correct form; 2: synonym of …" : "Shown after answer"}
@@ -659,18 +659,18 @@ function PageFormBlock({
                 </div>
 
                 {(pageType === "single" || pageType === "multiple") && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 border-t border-border/60 pt-4">
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Options</Label>
+                      <Label className="text-sm font-semibold text-foreground">Answers</Label>
                       <span className="text-sm text-muted-foreground">
-                        Options: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
+                        Answers: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
                       </span>
                     </div>
                     {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
                       <div key={oIndex} className="flex items-center gap-2">
                         <Input
                           {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
-                          placeholder={`Option ${oIndex + 1}`}
+                          placeholder={`Answer ${oIndex + 1}`}
                         />
                         <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
                           <Checkbox
@@ -693,7 +693,7 @@ function PageFormBlock({
                           Correct
                         </label>
                         <ConfirmDeletePopover
-                          title="Delete option?"
+                          title="Delete answer?"
                           onConfirm={() => {
                             const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
                             if (opts.length > 1) {
@@ -720,7 +720,7 @@ function PageFormBlock({
                         form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [...opts, defaultOption()]);
                       }}
                     >
-                      <Plus className="size-4" /> Add option
+                      <Plus className="size-4" /> Add answer
                     </Button>
                   </div>
                 )}
@@ -732,7 +732,7 @@ function PageFormBlock({
                     const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
                     const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
                     return (
-                      <div className="space-y-4">
+                      <div className="space-y-4 border-t border-border/60 pt-4">
                         {questionErrorMessage && (
                           <Alert variant="destructive">
                             <AlertDescription>{questionErrorMessage}</AlertDescription>
@@ -742,7 +742,7 @@ function PageFormBlock({
                           const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
                           return (
                             <div key={gapIndex} className="space-y-2">
-                              <Label>{gapCount > 1 ? `Correct answers for gap ${gapIndex + 1}` : "Correct answers (any match counts)"}</Label>
+                              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{gapCount > 1 ? `Correct answers for gap ${gapIndex + 1}` : "Correct answers (any match counts)"}</Label>
                               {indices.map((optIdx) => (
                                 <div key={optIdx} className="flex items-center gap-2">
                                   <Input
@@ -796,7 +796,7 @@ function PageFormBlock({
                     const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
                     const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
                     return (
-                      <div className="space-y-4">
+                      <div className="space-y-4 border-t border-border/60 pt-4">
                         {questionErrorMessage && (
                           <Alert variant="destructive">
                             <AlertDescription>{questionErrorMessage}</AlertDescription>
@@ -806,12 +806,12 @@ function PageFormBlock({
                           const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
                           return (
                             <div key={gapIndex} className="space-y-2">
-                              <Label>{gapCount > 1 ? `Options for gap ${gapIndex + 1}` : "Options (mark correct)"}</Label>
+                              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{gapCount > 1 ? `Answers for gap ${gapIndex + 1}` : "Answers (mark correct)"}</Label>
                               {indices.map((optIdx) => (
                                 <div key={optIdx} className="flex items-center gap-2">
                                   <Input
                                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.option_text`)}
-                                    placeholder="Option text"
+                                    placeholder="Answer text"
                                   />
                                   <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
                                     <Checkbox
@@ -823,7 +823,7 @@ function PageFormBlock({
                                     Correct
                                   </label>
                                   <ConfirmDeletePopover
-                                    title="Delete option?"
+                                    title="Delete answer?"
                                     onConfirm={() => {
                                       const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
                                       if (opts.length > 1) {
@@ -853,7 +853,7 @@ function PageFormBlock({
                                   ]);
                                 }}
                               >
-                                <Plus className="size-4" /> Add option{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
+                                <Plus className="size-4" /> Add answer{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
                               </Button>
                             </div>
                           );
@@ -868,14 +868,14 @@ function PageFormBlock({
                     const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
                     const opt = options[0];
                     return (
-                      <div className="space-y-4">
+                      <div className="space-y-4 border-t border-border/60 pt-4">
                         {questionErrorMessage && (
                           <Alert variant="destructive">
                             <AlertDescription>{questionErrorMessage}</AlertDescription>
                           </Alert>
                         )}
                         <div className="space-y-2">
-                          <Label>Left column (matching item)</Label>
+                          <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Left column (matching item)</Label>
                           {opt ? (
                             <Input
                               {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.0.option_text`)}
