@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <Skeleton className="mb-8 h-8 w-64" />
         <ul className="grid gap-4 sm:grid-cols-2">
           {[1, 2, 3].map((i) => (
