@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -170,7 +170,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{quiz.title}</h1>
@@ -387,7 +387,7 @@ function MatchingBlock({
   const questionIds = useMemo(() => questions.map((q) => q.id).join(","), [questions]);
   const shuffledOptions = useMemo(
     () => shuffle(questions.flatMap((q) => q.options ?? [])),
-    [questionIds]
+    [questionIds, questions]
   );
   const optionById = useMemo(
     () => new Map(questions.flatMap((q) => (q.options ?? []).map((o) => [o.id, o]))),
@@ -605,16 +605,20 @@ function QuestionBlock({
                   perGapCorrectnessSelect && "animate-quiz-result-reveal"
                 )}
               >
-                {parts.map((part, i) => (
-                  <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {part}
-                    {i < parts.length - 1 && (
+                {parts.flatMap((part, i) => {
+                  const nodes: ReactNode[] = [
+                    <span key={`t-${i}`} className="min-w-0 break-words">{part}</span>,
+                  ];
+                  if (i < parts.length - 1) {
+                    nodes.push(
+                      <span key={`n-${i}`} className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded bg-muted px-1 text-xs font-medium text-muted-foreground" aria-label={`Gap ${i + 1}`}>{i + 1}</span>,
                       <select
+                        key={`s-${i}`}
                         value={selectedOptionIds[i] ?? ""}
                         onChange={(e) => onSelectGap?.(i, e.target.value)}
                         disabled={checked}
                         className={cn(
-                          "inline-flex min-w-0 rounded border bg-background px-2 py-1.5 text-sm shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
+                          "inline-flex min-w-0 shrink-0 rounded border bg-background px-2 py-1.5 text-sm shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
                           perGapCorrectnessSelect?.[i] === true &&
                             "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                           perGapCorrectnessSelect?.[i] === false &&
@@ -630,9 +634,10 @@ function QuestionBlock({
                             </option>
                           ))}
                       </select>
-                    )}
-                  </span>
-                ))}
+                    );
+                  }
+                  return nodes;
+                })}
               </div>
             </div>
           ) : isText ? (
@@ -644,12 +649,14 @@ function QuestionBlock({
                     perGapCorrectness && "animate-quiz-result-reveal"
                   )}
                 >
-                  {parts.map((part, i) => (
-                    <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                      {part}
-                      {i < parts.length - 1 && (
+                {parts.map((part, i) => (
+                  <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {part}
+                    {i < parts.length - 1 && (
+                      <>
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1 text-xs font-medium text-muted-foreground" aria-label={`Gap ${i + 1}`}>{i + 1}</span>
                         <Input
-                          value={textAnswers[i] ?? ""}
+                        value={textAnswers[i] ?? ""}
                           onChange={(e) => onInputChange?.(i, e.target.value)}
                           disabled={checked}
                           placeholder="…"
@@ -661,6 +668,7 @@ function QuestionBlock({
                               "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
                           )}
                         />
+                      </>
                       )}
                     </span>
                   ))}

@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function QuizLoading() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-9 w-32" />

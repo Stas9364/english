@@ -303,7 +303,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Edit quiz</h2>
         <div className="flex gap-2">
@@ -718,19 +718,32 @@ function EditPageBlock({
                       ? "Right column (question)"
                       : "Question text"}
                 </Label>
-                  <Input
-                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                    placeholder={
-                      pageType === "matching"
-                        ? "Text shown on the right"
-                        : (pageType === "input" || pageType === "select_gaps")
-                          ? "Use [[]] where the user should type or choose"
+                  {(pageType === "input" || pageType === "select_gaps") ? (
+                    <textarea
+                      {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                      placeholder="Use [[]] where the user should type or choose"
+                      rows={4}
+                      className={cn(
+                        "placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px]",
+                        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+                        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                        form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
+                      )}
+                    />
+                  ) : (
+                    <Input
+                      {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                      placeholder={
+                        pageType === "matching"
+                          ? "Text shown on the right"
                           : "Enter the question"
-                    }
-                    className={cn(
-                      form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
-                    )}
-                  />
+                      }
+                      className={cn(
+                        form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
+                      )}
+                    />
+                  )}
                   {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && (
                     <p className="text-sm text-destructive">
                       {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title?.message}
@@ -738,10 +751,12 @@ function EditPageBlock({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Explanation (optional)</Label>
-                  <Input
+                  <Label>Explanation (optional){(pageType === "input" || pageType === "select_gaps") ? " — use 1:, 2:, … for each gap" : ""}</Label>
+                  <textarea
                     {...form.register(`pages.${pageIndex}.questions.${qIndex}.explanation`)}
-                    placeholder="Shown after answer"
+                    placeholder={(pageType === "input" || pageType === "select_gaps") ? "e.g. 1: correct form; 2: synonym of …" : "Shown after answer"}
+                    rows={3}
+                    className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[72px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                   />
                 </div>
 
