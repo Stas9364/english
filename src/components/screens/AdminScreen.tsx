@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createQuiz, uploadTheoryImage } from "@/app/admin/actions";
+import { createQuiz, uploadTheoryImage, deleteQuiz } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TheoryImage } from "@/components/theory-image";
 import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, FileText, ImageIcon, Upload } from "lucide-react";
 import type { Quiz } from "@/lib/supabase";
@@ -152,6 +153,7 @@ interface AdminScreenProps {
 type CreateTheoryBlock = Omit<TheoryBlockInput, "id">;
 
 export function AdminScreen({ quizzes }: AdminScreenProps) {
+  const router = useRouter();
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [theoryBlocks, setTheoryBlocks] = useState<CreateTheoryBlock[]>([]);
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
@@ -280,6 +282,21 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
                         <Pencil className="size-4" />
                       </Link>
                     </Button>
+                    <ConfirmDeletePopover
+                      title="Delete this quiz? All pages, questions and theory will be removed."
+                      onConfirm={async () => {
+                        const res = await deleteQuiz(quiz.id);
+                        if (!res.ok) {
+                          setResult(res);
+                          return;
+                        }
+                        router.refresh();
+                      }}
+                    >
+                      <Button type="button" variant="ghost" size="icon-sm" title="Delete quiz">
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </ConfirmDeletePopover>
                   </div>
                 </li>
               ))}

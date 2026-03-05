@@ -454,6 +454,22 @@ export async function deleteTheoryBlock(
   return { ok: true };
 }
 
+/** Delete a quiz (cascade deletes pages, questions, options, theory blocks). Immediate delete. */
+export async function deleteQuiz(
+  quizId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 /** Delete a quiz page (cascade deletes questions and options). Immediate delete. */
 export async function deleteQuizPage(
   pageId: string

@@ -38,9 +38,10 @@ function getEffectiveGapCount(title: string): number {
 interface QuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
+  isAdmin?: boolean;
 }
 
-export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
+export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScreenProps) {
   const [viewTab, setViewTab] = useState<ViewTab>("quiz");
   /** Выбранные ID вариантов по вопросу: для single — один элемент, для multiple — несколько */
   const [selected, setSelected] = useState<Record<string, string[]>>({});
@@ -175,37 +176,50 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{quiz.title}</h1>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/">Back to quizzes</Link>
-          </Button>
+          {isAdmin && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/">Back to quizzes</Link>
+            </Button>
+          )}
         </div>
 
-        {hasTheory && (
-          <div className="mb-6 flex border-b">
-            <button
-              type="button"
-              onClick={() => setViewTab("quiz")}
-              className={cn(
-                "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-                viewTab === "quiz"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+        {(hasTheory || totalPages > 1) && (
+          <div className="mb-6 flex items-center justify-between gap-4 border-b">
+            <div className="flex">
+              {hasTheory && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setViewTab("quiz")}
+                    className={cn(
+                      "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                      viewTab === "quiz"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Quiz
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewTab("theory")}
+                    className={cn(
+                      "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                      viewTab === "theory"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Theory
+                  </button>
+                </>
               )}
-            >
-              Quiz
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewTab("theory")}
-              className={cn(
-                "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-                viewTab === "theory"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Theory
-            </button>
+            </div>
+            {totalPages > 1 && (
+              <span className="text-sm text-muted-foreground shrink-0">
+                Page {pageIndex + 1} of {totalPages}
+              </span>
+            )}
           </div>
         )}
 
@@ -237,20 +251,13 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
           </Card>
         )}
 
-        {(currentPage.title || quiz.description || totalPages > 1) && (
+        {(currentPage.title || totalPages > 1) && (
           <Card className="mb-6">
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
-              <CardTitle className="text-base font-medium">Instruction</CardTitle>
-              {totalPages > 1 && (
-                <span className="text-sm text-muted-foreground shrink-0">
-                  Page {pageIndex + 1} of {totalPages}
-                </span>
-              )}
-            </CardHeader>
             <CardContent>
-              {(currentPage.title || quiz.description) && (
-                <p className="text-sm text-muted-foreground whitespace-pre-line">
-                  {[quiz.description, currentPage.title].filter(Boolean).join("\n\n")}
+              {(currentPage.title) && (
+                <p className="text-2xl font-semibold whitespace-pre-line">
+                  {currentPage.title}
+                  {/* {[quiz.description, currentPage.title].filter(Boolean).join("\n\n")} */}
                 </p>
               )}
             </CardContent>
@@ -274,6 +281,7 @@ export function QuizScreen({ quiz, theoryBlocks = [] }: QuizScreenProps) {
                 question={q}
                 pageType={pageType}
                 index={index + 1}
+                totalQuestionsOnPage={currentPage.questions.length}
                 selectedOptionIds={selected[q.id] ?? []}
                 checked={isCurrentPageChecked}
                 textAnswers={textAnswers[q.id] ?? Array(getEffectiveGapCount(q.question_title)).fill("")}
@@ -493,15 +501,15 @@ function DroppableQuestionSlot({
     <li
       ref={setNodeRef}
       className={cn(
-        "min-h-[2.75rem] rounded-lg border px-3 py-2 text-sm transition-[background-color,border-color] duration-300",
+        "min-h-[2.75rem] rounded-lg border px-3 py-2 text-lg transition-[background-color,border-color] duration-300",
         isOver && "border-primary bg-primary/10",
         checked && isCorrect === true && "animate-quiz-result-reveal border-green-600 bg-green-50 dark:bg-green-950/30",
         checked && isCorrect === false && "animate-quiz-result-reveal border-red-600 bg-red-50 dark:bg-red-950/30"
       )}
     >
-      <span className="font-medium text-muted-foreground">{question.question_title}</span>
+      <span className="text-lg font-medium text-muted-foreground">{question.question_title}</span>
       {selectedOpt && (
-        <span className="ml-2">
+        <span className="ml-2 text-lg">
           — {selectedOpt.option_text}
           {checked && isCorrect !== null && (
             <span className={cn("ml-1", isCorrect ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300")}>
@@ -558,6 +566,7 @@ function QuestionBlock({
   question,
   pageType,
   index,
+  totalQuestionsOnPage,
   selectedOptionIds,
   checked,
   textAnswers,
@@ -568,6 +577,7 @@ function QuestionBlock({
   question: QuestionWithOptions;
   pageType: "single" | "multiple" | "input" | "select_gaps";
   index: number;
+  totalQuestionsOnPage: number;
   selectedOptionIds: string[];
   checked: boolean;
   textAnswers: string[];
@@ -588,12 +598,14 @@ function QuestionBlock({
   const perGapCorrectness = isText && checked && hasInlineGaps ? getPerGapCorrectness(question, textAnswers) : null;
   const perGapCorrectnessSelect = isSelectGaps && checked && hasInlineGaps ? getPerGapCorrectnessSelectGaps(question, selectedOptionIds) : null;
 
+  const showQuestionNumber = !(isText && totalQuestionsOnPage === 1);
+
   return (
     <li>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-medium">
-            {index}. {hasInlineGaps && (isText || isSelectGaps) ? "" : title}
+          <CardTitle className="text-lg font-medium">
+            {showQuestionNumber ? `${index}. ` : ""}{hasInlineGaps && (isText || isSelectGaps) ? "" : title}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -601,24 +613,21 @@ function QuestionBlock({
             <div className="space-y-2">
               <div
                 className={cn(
-                  "flex flex-wrap items-baseline gap-x-2 gap-y-2 rounded-lg border border-input px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
+                  "rounded-lg border border-input px-3 py-2 text-lg leading-relaxed transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
                   perGapCorrectnessSelect && "animate-quiz-result-reveal"
                 )}
               >
                 {parts.flatMap((part, i) => {
-                  const nodes: ReactNode[] = [
-                    <span key={`t-${i}`} className="min-w-0 break-words">{part}</span>,
-                  ];
+                  const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
                   if (i < parts.length - 1) {
                     nodes.push(
-                      <span key={`n-${i}`} className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded bg-muted px-1 text-xs font-medium text-muted-foreground" aria-label={`Gap ${i + 1}`}>{i + 1}</span>,
                       <select
                         key={`s-${i}`}
                         value={selectedOptionIds[i] ?? ""}
                         onChange={(e) => onSelectGap?.(i, e.target.value)}
                         disabled={checked}
                         className={cn(
-                          "inline-flex min-w-0 shrink-0 rounded border bg-background px-2 py-1.5 text-sm shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
+                          "gap-control inline-block min-w-0 align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
                           perGapCorrectnessSelect?.[i] === true &&
                             "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                           perGapCorrectnessSelect?.[i] === false &&
@@ -645,33 +654,32 @@ function QuestionBlock({
               <div className="space-y-2">
                 <div
                   className={cn(
-                    "flex flex-wrap items-baseline gap-x-2 gap-y-2 rounded-lg border border-input px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
+                    "rounded-lg border border-input px-3 py-2 text-lg leading-relaxed transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
                     perGapCorrectness && "animate-quiz-result-reveal"
                   )}
                 >
-                {parts.map((part, i) => (
-                  <span key={i} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {part}
-                    {i < parts.length - 1 && (
-                      <>
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1 text-xs font-medium text-muted-foreground" aria-label={`Gap ${i + 1}`}>{i + 1}</span>
-                        <Input
+                {parts.flatMap((part, i) => {
+                  const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
+                  if (i < parts.length - 1) {
+                    nodes.push(
+                      <Input
+                        key={`i-${i}`}
                         value={textAnswers[i] ?? ""}
-                          onChange={(e) => onInputChange?.(i, e.target.value)}
-                          disabled={checked}
-                          placeholder="…"
-                          className={cn(
-                            "inline-flex w-32 min-w-0 rounded border px-2 py-1.5 shadow-none outline-none transition-colors duration-300 ease-out sm:w-40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                            perGapCorrectness?.[i] === true &&
-                              "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
-                            perGapCorrectness?.[i] === false &&
-                              "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
-                          )}
-                        />
-                      </>
-                      )}
-                    </span>
-                  ))}
+                        onChange={(e) => onInputChange?.(i, e.target.value)}
+                        disabled={checked}
+                        placeholder="…"
+                        className={cn(
+                          "gap-control inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
+                          perGapCorrectness?.[i] === true &&
+                            "border-b-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
+                          perGapCorrectness?.[i] === false &&
+                            "border-b-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                        )}
+                      />
+                    );
+                  }
+                  return nodes;
+                })}
                 </div>
               </div>
             ) : (
@@ -691,7 +699,7 @@ function QuestionBlock({
                     disabled={checked}
                     placeholder="Type your answer"
                     className={cn(
-                      "min-w-0 flex-1 border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-300 ease-out",
+                      "min-w-0 flex-1 text-lg border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-300 ease-out",
                       textCorrect === true && "text-green-800 dark:text-green-200",
                       textIncorrect && "text-red-800 dark:text-red-200"
                     )}
@@ -763,7 +771,7 @@ function OptionRow({
   const content = (
     <span
       className={cn(
-        "flex-1 font-normal transition-colors duration-300 ease-out",
+        "flex-1 text-lg font-normal transition-colors duration-300 ease-out",
         !multiple && "cursor-pointer",
         showCorrect && "text-green-800 dark:text-green-200",
         showIncorrect && "text-red-800 dark:text-red-200"
