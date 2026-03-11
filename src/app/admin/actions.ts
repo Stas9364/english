@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getIsAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
+import { z } from "zod";
 
 /** Storage bucket for quiz theory images (public read, admin write) */
 const THEORY_IMAGES_BUCKET = "Eanglish";
@@ -539,4 +540,402 @@ export async function deleteOption(
   revalidatePath("/admin");
   if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
   return { ok: true };
+}
+
+export type GenerateQuizPagesParams = {
+  topic: string;
+  level?: string;
+  language?: "RU" | "EN";
+  pageCount: number;
+  questionsPerPage: number;
+  allowedTypes: TestType[];
+  style?: string;
+  constraints?: string;
+  lexicon?: string;
+  bannedTopics?: string;
+};
+
+type GeneratedOption = { option_text: string; is_correct: boolean; gap_index?: number };
+type GeneratedQuestion = { question_title: string; explanation?: string | null; options?: GeneratedOption[] };
+type GeneratedPage = { type: TestType; title?: string | null; questions: GeneratedQuestion[] };
+
+const GeneratedDraftSchema = z.object({
+  pages: z.array(
+    z.object({
+      type: z.enum(["single", "multiple", "input", "select_gaps", "matching"]),
+      title: z.string().optional().nullable(),
+      questions: z.array(
+        z.object({
+          question_title: z.string(),
+          explanation: z.string().optional().nullable(),
+          options: z
+            .array(
+              z.object({
+                option_text: z.string(),
+                is_correct: z.boolean(),
+                gap_index: z.number().int().min(0).optional(),
+              })
+            )
+            .optional(),
+        })
+      ),
+    })
+  ),
+  theoryBlocks: z
+    .array(
+      z.object({
+        type: z.enum(["text", "image"]),
+        content: z.string(),
+        order_index: z.number().int().min(0).optional(),
+      })
+    )
+    .optional(),
+});
+
+function extractFirstJsonObject(text: string): string | null {
+  const s = (text ?? "").trim();
+  const firstBrace = s.indexOf("{");
+  if (firstBrace === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = firstBrace; i < s.length; i++) {
+    const ch = s[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) return s.slice(firstBrace, i + 1);
+    }
+  }
+  return null;
+}
+
+function gapCountFromTitle(title: string): number {
+  const count = Math.max(0, (title ?? "").split("[[]]").length - 1);
+  return Math.max(1, count);
+}
+
+function normalizeGeneratedDraft(draft: z.infer<typeof GeneratedDraftSchema>): {
+  pages: CreateQuizInput["pages"];
+  theoryBlocks?: CreateQuizInput["theoryBlocks"];
+} {
+  const pages: CreateQuizInput["pages"] = [];
+
+  for (let pi = 0; pi < draft.pages.length; pi++) {
+    const p = draft.pages[pi] as GeneratedPage;
+    const type = p.type;
+    const pageTitle = (p.title ?? "")?.toString().trim();
+
+    const questions: CreateQuizInput["pages"][number]["questions"] = [];
+    const qs = Array.isArray(p.questions) ? p.questions : [];
+
+    for (let qi = 0; qi < qs.length; qi++) {
+      const q = qs[qi] as GeneratedQuestion;
+      const question_title = (q.question_title ?? "").toString().trim();
+      if (!question_title) continue;
+
+      const explanation = (q.explanation ?? "")?.toString().trim();
+
+      const rawOptions = Array.isArray(q.options) ? q.options : [];
+      const optionsTrimmed = rawOptions
+        .map((o) => ({
+          option_text: (o.option_text ?? "").toString().trim(),
+          is_correct: !!o.is_correct,
+          gap_index: Number.isFinite(o.gap_index as number) ? Math.max(0, Math.trunc(o.gap_index as number)) : undefined,
+        }))
+        .filter((o) => o.option_text.length > 0);
+
+      const isInput = type === "input";
+      const isSelectGaps = type === "select_gaps";
+      const isGapBased = isInput || isSelectGaps;
+
+      let normalizedOptions: { option_text: string; is_correct: boolean; gap_index?: number }[] = [];
+
+      if (isGapBased) {
+        const gaps = gapCountFromTitle(question_title);
+        const byGap = new Map<number, { option_text: string; is_correct: boolean; gap_index?: number }[]>();
+        for (let g = 0; g < gaps; g++) byGap.set(g, []);
+        for (const o of optionsTrimmed) {
+          const gi = o.gap_index ?? 0;
+          if (!byGap.has(gi)) continue;
+          byGap.get(gi)!.push({ option_text: o.option_text, is_correct: isInput ? true : o.is_correct, gap_index: gi });
+        }
+        for (let g = 0; g < gaps; g++) {
+          const list = byGap.get(g) ?? [];
+          if (list.length === 0) {
+            throw new Error(
+              type === "input"
+                ? `Missing at least one correct answer for gap ${g + 1}`
+                : `Missing at least one answer option for gap ${g + 1}`
+            );
+          }
+          if (isSelectGaps && !list.some((x) => x.is_correct)) {
+            throw new Error(`Mark at least one correct answer for gap ${g + 1}`);
+          }
+          normalizedOptions.push(...list);
+        }
+      } else {
+        if (optionsTrimmed.length === 0) {
+          throw new Error("Choice page must have at least one option per question");
+        }
+        normalizedOptions = optionsTrimmed.map((o) => ({ option_text: o.option_text, is_correct: o.is_correct }));
+      }
+
+      questions.push({
+        question_title,
+        explanation: explanation || null,
+        order_index: questions.length,
+        options: normalizedOptions,
+      });
+    }
+
+    if (questions.length === 0) continue;
+
+    pages.push({
+      type,
+      title: pageTitle ? pageTitle : null,
+      order_index: pages.length,
+      questions,
+    });
+  }
+
+  if (pages.length === 0) {
+    throw new Error("Model returned no valid pages/questions");
+  }
+
+  const theoryBlocks = (draft.theoryBlocks ?? [])
+    .map((b, i) => ({
+      type: b.type as TheoryBlockType,
+      content: (b.content ?? "").toString().trim() || " ",
+      order_index: i,
+    }))
+    .filter((b) => !!b.content);
+
+  return { pages, ...(theoryBlocks.length ? { theoryBlocks } : {}) };
+}
+
+function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
+  const allowed = params.allowedTypes.join(", ");
+  const lang = params.language ?? "EN";
+  const level = (params.level ?? "").trim();
+  const style = (params.style ?? "").trim();
+  const constraints = (params.constraints ?? "").trim();
+  const lexicon = (params.lexicon ?? "").trim();
+  const banned = (params.bannedTopics ?? "").trim();
+
+  return [
+    `You are generating quiz pages for an English-learning app.`,
+    `Return ONLY valid JSON. No markdown. No extra text.`,
+    ``,
+    `Output schema:`,
+    `{`,
+    `  "pages": [`,
+    `    {`,
+    `      "type": "single" | "multiple" | "input" | "select_gaps" | "matching",`,
+    `      "title": string | null,`,
+    `      "questions": [`,
+    `        {`,
+    `          "question_title": string,`,
+    `          "explanation": string | null,`,
+    `          "options": [ { "option_text": string, "is_correct": boolean, "gap_index"?: number } ]`,
+    `        }`,
+    `      ]`,
+    `    }`,
+    `  ]`,
+    `}`,
+    ``,
+    `Rules:`,
+    `- "type" must be one of: ${allowed}`,
+    `- Create exactly ${params.pageCount} pages, each with exactly ${params.questionsPerPage} questions.`,
+    `- question_title must be concise and must NOT contain HTML.`,
+    `- For type "single": options length 3-5, exactly one is_correct=true.`,
+    `- For type "multiple": options length 4-7, at least one is_correct=true.`,
+    `- For type "matching": each question is one row; options should include at least one item with is_correct=true representing the LEFT column prompt; keep it short.`,
+    `- For type "input":`,
+    `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
+    `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
+    `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options.`,
+    `- For type "select_gaps": question_title must include one or more "[[]]" gaps. options are choices; set gap_index (0-based). For each gap, provide 3-5 options and at least one is_correct=true.`,
+    `- If there are N gaps in the title, you MUST provide at least one option for each gap_index from 0..N-1.`,
+    ``,
+    `Content requirements:`,
+    `- Topic: ${params.topic}`,
+    level ? `- CEFR level: ${level}` : `- CEFR level: (unspecified)`,
+    `- UI language for explanations: ${lang} (question_title and options stay in English unless the topic requires otherwise).`,
+    style ? `- Style: ${style}` : null,
+    constraints ? `- Constraints: ${constraints}` : null,
+    lexicon ? `- Must include lexicon: ${lexicon}` : null,
+    banned ? `- Avoid topics: ${banned}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export async function generateQuizPages(
+  params: GenerateQuizPagesParams
+): Promise<
+  | { ok: true; pages: CreateQuizInput["pages"]; theoryBlocks?: CreateQuizInput["theoryBlocks"] }
+  | { ok: false; error: string }
+> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const MAX_PAGES = 20;
+  const MAX_QUESTIONS_PER_PAGE = 20;
+  const MAX_TOTAL_QUESTIONS = 200;
+  const MAX_FIELD_LEN_TOPIC = 200;
+  const MAX_FIELD_LEN_GENERIC = 2000;
+
+  const trimOrUndef = (v: unknown): string | undefined => {
+    if (typeof v !== "string") return undefined;
+    const t = v.trim();
+    return t.length ? t : undefined;
+  };
+
+  const ParamsSchema = z
+    .object({
+      topic: z
+        .string()
+        .transform((s) => s.trim())
+        .refine((s) => s.length > 0, "Topic is required")
+        .refine((s) => s.length <= MAX_FIELD_LEN_TOPIC, `Topic is too long (max ${MAX_FIELD_LEN_TOPIC})`),
+      level: z.string().optional().transform(trimOrUndef),
+      language: z.enum(["RU", "EN"]).optional(),
+      pageCount: z.number().int().min(1).max(MAX_PAGES),
+      questionsPerPage: z.number().int().min(1).max(MAX_QUESTIONS_PER_PAGE),
+      allowedTypes: z
+        .array(z.enum(["single", "multiple", "input", "select_gaps", "matching"]))
+        .min(1)
+        .max(5),
+      style: z.string().optional().transform(trimOrUndef).refine((s) => !s || s.length <= MAX_FIELD_LEN_GENERIC, `Style is too long (max ${MAX_FIELD_LEN_GENERIC})`),
+      constraints: z
+        .string()
+        .optional()
+        .transform(trimOrUndef)
+        .refine((s) => !s || s.length <= MAX_FIELD_LEN_GENERIC, `Constraints is too long (max ${MAX_FIELD_LEN_GENERIC})`),
+      lexicon: z.string().optional().transform(trimOrUndef).refine((s) => !s || s.length <= MAX_FIELD_LEN_GENERIC, `Lexicon is too long (max ${MAX_FIELD_LEN_GENERIC})`),
+      bannedTopics: z
+        .string()
+        .optional()
+        .transform(trimOrUndef)
+        .refine((s) => !s || s.length <= MAX_FIELD_LEN_GENERIC, `Banned topics is too long (max ${MAX_FIELD_LEN_GENERIC})`),
+    })
+    .superRefine((p, ctx) => {
+      const total = p.pageCount * p.questionsPerPage;
+      if (total > MAX_TOTAL_QUESTIONS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Too many questions requested (${total}). Max is ${MAX_TOTAL_QUESTIONS}.`,
+          path: ["questionsPerPage"],
+        });
+      }
+    });
+
+  let parsedParams: GenerateQuizPagesParams;
+  try {
+    parsedParams = {
+      ...ParamsSchema.parse(params),
+      // Страницы добавляем только по одной — жёстко фиксируем это на сервере.
+      pageCount: 1,
+    };
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const first = e.issues?.[0];
+      return { ok: false, error: first?.message ?? "Invalid generation parameters" };
+    }
+    return { ok: false, error: "Invalid generation parameters" };
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { ok: false, error: "GEMINI_API_KEY is not configured" };
+
+  const prompt = buildGeneratePrompt(parsedParams);
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // Node/Next supports AbortSignal.timeout in modern runtimes; if not, we proceed without a hard timeout.
+    const signal =
+      typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (AbortSignal as any).timeout(45_000)
+        : undefined;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal,
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        },
+      }),
+    });
+
+    if (!resp.ok) {
+      // Не прокидываем body наружу: там могут быть внутренние детали/квоты/трассировки.
+      if (resp.status === 401 || resp.status === 403) {
+        return { ok: false, error: "Gemini authorization failed. Check GEMINI_API_KEY." };
+      }
+      if (resp.status === 429) {
+        return { ok: false, error: "Gemini rate limit exceeded. Try again later." };
+      }
+      return { ok: false, error: `Gemini request failed (${resp.status}). Try again later.` };
+    }
+
+    const json = (await resp.json()) as any;
+    const textParts: string[] =
+      json?.candidates?.[0]?.content?.parts?.map((p: any) => (typeof p?.text === "string" ? p.text : "")).filter(Boolean) ??
+      [];
+    const text = textParts.join("\n").trim();
+    const jsonStr = extractFirstJsonObject(text) ?? text;
+
+    let draftUnknown: unknown;
+    try {
+      draftUnknown = JSON.parse(jsonStr);
+    } catch {
+      return { ok: false, error: "Model did not return valid JSON" };
+    }
+
+    const draft = GeneratedDraftSchema.parse(draftUnknown);
+    const allowed = new Set(parsedParams.allowedTypes);
+    if (draft.pages.length !== parsedParams.pageCount) {
+      return { ok: false, error: `Model returned ${draft.pages.length} pages, expected ${parsedParams.pageCount}` };
+    }
+    for (let i = 0; i < draft.pages.length; i++) {
+      const p = draft.pages[i];
+      if (!allowed.has(p.type as TestType)) {
+        return { ok: false, error: `Model returned disallowed page type: ${p.type}` };
+      }
+      if (p.questions.length !== parsedParams.questionsPerPage) {
+        return {
+          ok: false,
+          error: `Model returned ${p.questions.length} questions on page ${i + 1}, expected ${parsedParams.questionsPerPage}`,
+        };
+      }
+    }
+    const normalized = normalizeGeneratedDraft(draft);
+    return { ok: true, pages: normalized.pages, ...(normalized.theoryBlocks ? { theoryBlocks: normalized.theoryBlocks } : {}) };
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return { ok: false, error: "Model returned JSON in an unexpected format" };
+    }
+    const message = e instanceof Error ? e.message : "Unknown error";
+    // Безопасно отдаём только короткие сообщения.
+    if (/abort/i.test(message) || /timeout/i.test(message)) {
+      return { ok: false, error: "Gemini request timed out. Try again." };
+    }
+    return { ok: false, error: message || "Unknown error" };
+  }
 }

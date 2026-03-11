@@ -1,115 +1,28 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { createQuiz, uploadTheoryImage, deleteQuiz } from "@/app/admin/actions";
+import { createQuiz, uploadTheoryImage } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TheoryImage } from "@/components/theory-image";
-import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, FileText, ImageIcon, Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Quiz } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
 import type { TheoryBlockInput } from "@/app/admin/actions";
-
-const optionSchema = z.object({
-  option_text: z.string(),
-  is_correct: z.boolean(),
-  gap_index: z.number().optional(),
-});
-
-const questionSchema = z.object({
-  question_title: z.string().min(1, "Required"),
-  explanation: z.string(),
-  order_index: z.number(),
-  options: z.array(optionSchema),
-});
-
-const pageSchema = z.object({
-  type: z.enum(["single", "multiple", "input", "select_gaps", "matching"]),
-  title: z.string().optional(),
-  order_index: z.number(),
-  questions: z.array(questionSchema).min(1, "At least one question"),
-}).superRefine((p, ctx) => {
-  if (p.type === "input") {
-    for (let i = 0; i < p.questions.length; i++) {
-      const q = p.questions[i];
-      const gapCount = Math.max(1, Math.max(0, (q.question_title || "").split("[[]]").length - 1));
-      const missingGaps: number[] = [];
-      for (let g = 0; g < gapCount; g++) {
-        const hasAnswer = (q.options ?? []).some((o) => (o.gap_index ?? 0) === g && (o.option_text ?? "").trim());
-        if (!hasAnswer) missingGaps.push(g + 1);
-      }
-      if (missingGaps.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: gapCount > 1 ? `Add at least one correct answer for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one correct answer",
-          path: ["questions", i, "root"],
-        });
-      }
-    }
-  } else if (p.type === "select_gaps") {
-    for (let i = 0; i < p.questions.length; i++) {
-      const q = p.questions[i];
-      const gapCount = Math.max(1, Math.max(0, (q.question_title || "").split("[[]]").length - 1));
-      const missingGaps: number[] = [];
-      const missingCorrect: number[] = [];
-      for (let g = 0; g < gapCount; g++) {
-        const optsAtGap = (q.options ?? []).filter((o) => (o.gap_index ?? 0) === g && (o.option_text ?? "").trim());
-        if (optsAtGap.length === 0) missingGaps.push(g + 1);
-        else if (!optsAtGap.some((o) => o.is_correct)) missingCorrect.push(g + 1);
-      }
-      if (missingGaps.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: gapCount > 1 ? `Add at least one answer for gap${missingGaps.length > 1 ? "s" : ""} ${missingGaps.join(", ")}` : "Add at least one answer",
-          path: ["questions", i, "root"],
-        });
-      }
-      if (missingCorrect.length > 0 && missingGaps.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: gapCount > 1 ? `Mark at least one correct answer for gap${missingCorrect.length > 1 ? "s" : ""} ${missingCorrect.join(", ")}` : "Mark at least one correct answer",
-          path: ["questions", i, "root"],
-        });
-      }
-    }
-  } else if (p.type === "matching") {
-    for (let i = 0; i < p.questions.length; i++) {
-      const q = p.questions[i];
-      const correctOpt = (q.options ?? []).find((o) => o.is_correct && (o.option_text ?? "").trim());
-      if (!correctOpt) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Add a matching item (left column) for this row",
-          path: ["questions", i, "root"],
-        });
-      }
-    }
-  } else {
-    for (const q of p.questions) {
-      if (q.options.length === 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least one answer", path: ["questions"] });
-        break;
-      }
-    }
-  }
-});
-
-const formSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string(),
-  pages: z.array(pageSchema).min(1, "Add at least one page"),
-});
+import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
+import { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
+import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
+import { PageFormBlock } from "@/components/page-form-block";
+import type { PageFormBlockFormValues } from "@/components/page-form-block";
+import type { UseFormReturn } from "react-hook-form";
+import { createQuizFormSchema, type CreateQuizFormValues } from "@/lib/quiz-page-schema";
+import { AdminQuizListCard } from "@/components/admin-quiz-list-card";
 
 function slugify(title: string): string {
   const s = title
@@ -121,8 +34,6 @@ function slugify(title: string): string {
     .replace(/^-|-$/g, "");
   return s || "quiz";
 }
-
-type FormValues = z.infer<typeof formSchema>;
 
 const defaultOption = (gapIndex?: number) => ({ option_text: "", is_correct: false, gap_index: gapIndex ?? 0 });
 function defaultQuestion(orderIndex: number, pageType?: TestType) {
@@ -146,6 +57,20 @@ function defaultPage(pageIndex: number) {
   };
 }
 
+function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefined): boolean {
+  if (!page) return false;
+  if (page.type !== "single") return false;
+  if ((page.title ?? "").trim() !== "") return false;
+  if (!page.questions || page.questions.length !== 1) return false;
+  const q = page.questions[0];
+  if ((q.question_title ?? "").trim() !== "") return false;
+  if ((q.explanation ?? "").trim() !== "") return false;
+  if (!q.options || q.options.length !== 1) return false;
+  const o = q.options[0];
+  if ((o.option_text ?? "").trim() !== "") return false;
+  return true;
+}
+
 interface AdminScreenProps {
   quizzes: Quiz[];
 }
@@ -158,11 +83,18 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
   const [theoryBlocks, setTheoryBlocks] = useState<CreateTheoryBlock[]>([]);
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const uploadTargetIndexRef = useRef<number | null>(null);
+  const [genStatus, setGenStatus] = useState<
+    | { state: "idle" }
+    | { state: "loading" }
+    | { state: "error"; message: string }
+    | { state: "success"; message: string }
+  >({ state: "idle" });
+  const ai = useQuizAiGeneration();
+  // Первая удачная генерация заменяет страницы, последующие — добавляют в конец.
+  const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as any,
+  const form = useForm<CreateQuizFormValues>({
+    resolver: zodResolver(createQuizFormSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -174,6 +106,61 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     control: form.control,
     name: "pages",
   });
+
+  function mapGeneratedPagesToForm(pages: { type: TestType; title?: string | null; questions: { question_title: string; explanation?: string | null; options: { option_text: string; is_correct: boolean; gap_index?: number }[] }[] }[]) {
+    return pages.map((p, pi) => ({
+      type: p.type,
+      title: p.title ?? "",
+      order_index: pi,
+      questions: (p.questions ?? []).map((q, qi) => ({
+        question_title: q.question_title ?? "",
+        explanation: (q.explanation ?? "")?.toString?.() ?? "",
+        order_index: qi,
+        options: (q.options ?? []).map((o) => ({
+          option_text: o.option_text ?? "",
+          is_correct: !!o.is_correct,
+          ...(typeof o.gap_index === "number" ? { gap_index: o.gap_index } : {}),
+        })),
+      })),
+    })) satisfies CreateQuizFormValues["pages"];
+  }
+
+  async function handleGeneratePages() {
+    setGenStatus({ state: "loading" });
+    try {
+      const res = await ai.generate({ topicFallback: form.getValues("title") });
+      if (!res.ok) {
+        setGenStatus({ state: "error", message: res.error });
+        return;
+      }
+
+      const mapped = mapGeneratedPagesToForm(res.pages);
+      const current = form.getValues("pages") ?? [];
+      const shouldReplaceFirst =
+        !hasGeneratedOnce && current.length === 1 && isDefaultEmptyPage(current[0] as CreateQuizFormValues["pages"][number]);
+
+      if (shouldReplaceFirst) {
+        // Первая генерация и форма ещё в дефолтном пустом состоянии — заменяем.
+        pagesArray.replace(mapped);
+      } else {
+        // Если страница уже заполнена ИЛИ генерация не первая — всегда добавляем в конец.
+        const appended = [
+          ...current.map((p, i) => ({ ...p, order_index: i })),
+          ...mapped.map((p, i) => ({ ...p, order_index: current.length + i })),
+        ] as CreateQuizFormValues["pages"];
+        pagesArray.replace(appended);
+      }
+      setHasGeneratedOnce(true);
+
+      setGenStatus({
+        state: "success",
+        message: `Сгенерировано страниц: ${res.pages.length}. Проверьте/отредактируйте вопросы ниже перед сохранением квиза.`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setGenStatus({ state: "error", message: msg });
+    }
+  }
 
   function addTheoryBlock(type: TheoryBlockType) {
     setTheoryBlocks((prev) => [...prev, { type, content: type === "image" ? "" : "", order_index: prev.length }]);
@@ -211,7 +198,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     }
   }
 
-  async function onSubmit(data: FormValues) {
+  async function onSubmit(data: CreateQuizFormValues) {
     setResult(null);
     const res = await createQuiz({
       title: data.title,
@@ -248,62 +235,11 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
 
   return (
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Your quizzes</CardTitle>
-          <CardDescription>
-            All quizzes. Click the pencil icon to edit, or View to open the quiz.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {quizzes.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No quizzes yet. Create one below.</p>
-          ) : (
-            <ul className="space-y-2">
-              {quizzes.map((quiz) => (
-                <li
-                  key={quiz.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{quiz.title}</p>
-                    {quiz.description && (
-                      <p className="text-muted-foreground text-sm truncate">{quiz.description}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/quiz/${quiz.slug}`} target="_blank" rel="noopener noreferrer">
-                        View
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="icon-sm" asChild title="Edit quiz">
-                      <Link href={`/admin/quiz/${quiz.id}`}>
-                        <Pencil className="size-4" />
-                      </Link>
-                    </Button>
-                    <ConfirmDeletePopover
-                      title="Delete this quiz? All pages, questions and theory will be removed."
-                      onConfirm={async () => {
-                        const res = await deleteQuiz(quiz.id);
-                        if (!res.ok) {
-                          setResult(res);
-                          return;
-                        }
-                        router.refresh();
-                      }}
-                    >
-                      <Button type="button" variant="ghost" size="icon-sm" title="Delete quiz">
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </ConfirmDeletePopover>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <AdminQuizListCard
+        quizzes={quizzes}
+        onDeleteError={setResult}
+        onDeleteSuccess={() => router.refresh()}
+      />
 
       <Card>
         <CardHeader>
@@ -313,7 +249,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-2">
               <Label htmlFor="title">Quiz title</Label>
               <Input
@@ -334,6 +270,34 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
                 placeholder="What respondents need to do (shown at the start of the quiz)"
               />
             </div>
+
+            <QuizAiGenerationBlock
+              topic={ai.topic}
+              level={ai.level}
+              language={ai.language}
+              questionsPerPage={String(ai.questionsPerPage)}
+              selectedType={ai.selectedType as TestType}
+              style={ai.style}
+              constraints={ai.constraints}
+              lexicon={ai.lexicon}
+              bannedTopics={ai.bannedTopics}
+              onTopicChange={ai.setTopic}
+              onLevelChange={ai.setLevel}
+              onLanguageChange={ai.setLanguage}
+              onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
+              onSelectedTypeChange={ai.setSelectedType}
+              onStyleChange={ai.setStyle}
+              onConstraintsChange={ai.setConstraints}
+              onLexiconChange={ai.setLexicon}
+              onBannedTopicsChange={ai.setBannedTopics}
+              generateLabel="Generate page"
+              helperText="The first successful generation replaces the current pages; all subsequent generations append new pages to the end."
+              isGenerating={ai.isGenerating}
+              onGenerate={handleGeneratePages}
+              generatedSummary={genStatus.state === "success" ? genStatus.message : null}
+              errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
+            />
+
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <Label>Pages</Label>
@@ -342,7 +306,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
               {pagesArray.fields.map((field, pIndex) => (
                 <PageFormBlock
                   key={field.id}
-                  form={form}
+                  form={form as unknown as UseFormReturn<PageFormBlockFormValues>}
                   pageIndex={pIndex}
                   defaultOption={defaultOption}
                   defaultQuestion={defaultQuestion}
@@ -360,116 +324,16 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              <Label>Theory (optional)</Label>
-              <p className="text-sm text-muted-foreground">
-                Text and image blocks shown before taking the quiz. You can add them after creating the quiz.
-              </p>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const idx = uploadTargetIndexRef.current;
-                  const f = e.target.files?.[0];
-                  if (idx != null && f) {
-                    handleTheoryImageUpload(idx, f);
-                    uploadTargetIndexRef.current = null;
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => addTheoryBlock("text")}>
-                  <FileText className="size-4" /> Text
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => addTheoryBlock("image")}>
-                  <ImageIcon className="size-4" /> Image
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {theoryBlocks.map((block, index) => (
-                  <Card key={`tb-${index}`} className="border-muted">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">
-                          {block.type === "text" ? "Text" : "Image"} {index + 1}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => moveTheoryBlock(index, -1)}
-                            disabled={index === 0}
-                          >
-                            <ChevronUp className="size-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => moveTheoryBlock(index, 1)}
-                            disabled={index === theoryBlocks.length - 1}
-                          >
-                            <ChevronDown className="size-4" />
-                          </Button>
-                          <ConfirmDeletePopover title="Delete block?" onConfirm={() => removeTheoryBlock(index)}>
-                            <Button type="button" variant="ghost" size="icon-sm">
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </ConfirmDeletePopover>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {block.type === "text" ? (
-                        <>
-                          <Label className="text-xs">Text</Label>
-                          <textarea
-                            className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            value={block.content}
-                            onChange={(e) => updateTheoryBlock(index, { content: e.target.value })}
-                            placeholder="Enter theory text…"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Label className="text-xs">Image URL</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              value={block.content}
-                              onChange={(e) => updateTheoryBlock(index, { content: e.target.value })}
-                              placeholder="Upload or paste URL"
-                              className="min-w-0"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={uploadingImageIndex !== null}
-                              onClick={() => {
-                                uploadTargetIndexRef.current = index;
-                                imageInputRef.current?.click();
-                              }}
-                            >
-                              {uploadingImageIndex === index ? "Uploading…" : <><Upload className="size-4" /> Upload</>}
-                            </Button>
-                          </div>
-                          {uploadError && uploadingImageIndex === null && (
-                            <p className="text-sm text-destructive">{uploadError}</p>
-                          )}
-                          {block.content && (
-                            <TheoryImage src={block.content} />
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <QuizTheoryBlocksEditor
+              blocks={theoryBlocks}
+              uploadingImageIndex={uploadingImageIndex}
+              uploadError={uploadError}
+              onAddBlock={(type) => addTheoryBlock(type)}
+              onRemoveBlock={(index) => removeTheoryBlock(index)}
+              onMoveBlock={(index, dir) => moveTheoryBlock(index, dir)}
+              onUpdateBlock={(index, patch) => updateTheoryBlock(index, patch)}
+              onUploadImage={handleTheoryImageUpload}
+            />
 
             {result && (
               <Alert variant={result.ok ? "default" : "destructive"}>
@@ -486,466 +350,5 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         </CardContent>
       </Card>
     </main>
-  );
-}
-
-function PageFormBlock({
-  form,
-  pageIndex,
-  defaultOption,
-  defaultQuestion,
-  onRemove,
-  canRemove,
-}: {
-  form: ReturnType<typeof useForm<FormValues>>;
-  pageIndex: number;
-  defaultOption: () => { option_text: string; is_correct: boolean };
-  defaultQuestion: (orderIndex: number, pageType?: TestType) => FormValues["pages"][0]["questions"][0];
-  onRemove: () => void;
-  canRemove: boolean;
-}) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const pageType = form.watch(`pages.${pageIndex}.type`);
-  const questionsArray = useFieldArray({
-    control: form.control,
-    name: `pages.${pageIndex}.questions`,
-  });
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setIsExpanded((v) => !v)}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-expanded={isExpanded}
-          >
-            <span className="shrink-0">{isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</span>
-            <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
-          </button>
-          <ConfirmDeletePopover
-            title="Delete page?"
-            onConfirm={onRemove}
-            disabled={!canRemove}
-          >
-            <Button type="button" variant="ghost" size="icon-sm">
-              <Trash2 className="size-4" />
-            </Button>
-          </ConfirmDeletePopover>
-        </div>
-      </CardHeader>
-      {isExpanded && (
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Page type</Label>
-          <select
-            className="cursor-pointer h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:[color-scheme:dark]"
-            value={form.watch(`pages.${pageIndex}.type`)}
-            onChange={(e) => {
-              const value = e.target.value as TestType;
-              form.setValue(`pages.${pageIndex}.type`, value);
-              const questions = form.getValues(`pages.${pageIndex}.questions`);
-              if (value === "input") {
-                form.setValue(
-                  `pages.${pageIndex}.questions`,
-                  questions.map((q, i) => ({
-                    ...q,
-                    order_index: i,
-                    options: [{ option_text: "", is_correct: true, gap_index: 0 }],
-                  }))
-                );
-              } else if (value === "select_gaps") {
-                form.setValue(
-                  `pages.${pageIndex}.questions`,
-                  questions.map((q, i) => ({
-                    ...q,
-                    order_index: i,
-                    options: [{ option_text: "", is_correct: true, gap_index: 0 }],
-                  }))
-                );
-              } else if (value === "matching") {
-                form.setValue(
-                  `pages.${pageIndex}.questions`,
-                  questions.map((q, i) => {
-                    const one = q.options?.find((o) => o.is_correct) ?? q.options?.[0];
-                    return {
-                      ...q,
-                      order_index: i,
-                      options: [{ option_text: one?.option_text ?? "", is_correct: true }],
-                    };
-                  })
-                );
-              } else {
-                form.setValue(
-                  `pages.${pageIndex}.questions`,
-                  questions.map((q, i) => ({
-                    ...q,
-                    order_index: i,
-                    options: q.options?.length ? q.options : [defaultOption()],
-                  }))
-                );
-              }
-            }}
-          >
-            <option value="single">Single choice</option>
-            <option value="multiple">Multiple choice</option>
-            <option value="input">Text input</option>
-            <option value="select_gaps">Dropdown in gaps</option>
-            <option value="matching">Matching</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label>Page title (optional)</Label>
-          <Input
-            {...form.register(`pages.${pageIndex}.title`)}
-            placeholder="e.g. Choose the right form"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <Label>Questions</Label>
-            <span className="text-sm text-muted-foreground">Questions: {questionsArray.fields.length}</span>
-          </div>
-          {questionsArray.fields.map((qField, qIndex) => (
-            <Card key={qField.id} className="border-muted">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Question {qIndex + 1}</CardTitle>
-                  <ConfirmDeletePopover
-                    title="Delete question?"
-                    onConfirm={() => questionsArray.remove(qIndex)}
-                    disabled={questionsArray.fields.length <= 1}
-                  >
-                    <Button type="button" variant="ghost" size="icon-sm">
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </ConfirmDeletePopover>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">
-                  {(pageType === "input" || pageType === "select_gaps")
-                    ? "Sentence (use [[]] for the gap)"
-                    : pageType === "matching"
-                      ? "Right column (question)"
-                      : "Question text"}
-                </Label>
-                  {(pageType === "input" || pageType === "select_gaps") ? (
-                    <textarea
-                      {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                      placeholder="Use [[]] where the user should type or choose"
-                      rows={4}
-                      className={cn(
-                        "placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px]",
-                        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-                        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                        form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
-                      )}
-                    />
-                  ) : (
-                    <Input
-                      {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                      placeholder={
-                        pageType === "matching"
-                          ? "Text shown on the right"
-                          : "Enter the question"
-                      }
-                      className={cn(
-                        form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && "border-destructive"
-                      )}
-                    />
-                  )}
-                  {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title?.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2 border-t border-border/60 pt-4">
-                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Explanation (optional){(pageType === "input" || pageType === "select_gaps") ? " — use 1:, 2:, … for each gap" : ""}</Label>
-                  <textarea
-                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.explanation`)}
-                    placeholder={(pageType === "input" || pageType === "select_gaps") ? "e.g. 1: correct form; 2: synonym of …" : "Shown after answer"}
-                    rows={3}
-                    className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[72px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                  />
-                </div>
-
-                {(pageType === "single" || pageType === "multiple") && (
-                  <div className="space-y-2 border-t border-border/60 pt-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-sm font-semibold text-foreground">Answers</Label>
-                      <span className="text-sm text-muted-foreground">
-                        Answers: {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length}
-                      </span>
-                    </div>
-                    {form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).map((_, oIndex) => (
-                      <div key={oIndex} className="flex items-center gap-2">
-                        <Input
-                          {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.option_text`)}
-                          placeholder={`Answer ${oIndex + 1}`}
-                        />
-                        <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-                          <Checkbox
-                            checked={form.watch(`pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.is_correct`)}
-                            onCheckedChange={(checked) => {
-                              if (pageType === "single" && checked === true) {
-                                const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                form.setValue(
-                                  `pages.${pageIndex}.questions.${qIndex}.options`,
-                                  opts.map((o, i) => ({ ...o, is_correct: i === oIndex }))
-                                );
-                              } else {
-                                form.setValue(
-                                  `pages.${pageIndex}.questions.${qIndex}.options.${oIndex}.is_correct`,
-                                  checked === true
-                                );
-                              }
-                            }}
-                          />
-                          Correct
-                        </label>
-                        <ConfirmDeletePopover
-                          title="Delete answer?"
-                          onConfirm={() => {
-                            const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                            if (opts.length > 1) {
-                              form.setValue(
-                                `pages.${pageIndex}.questions.${qIndex}.options`,
-                                opts.filter((_, i) => i !== oIndex)
-                              );
-                            }
-                          }}
-                          disabled={form.watch(`pages.${pageIndex}.questions.${qIndex}.options`).length <= 1}
-                        >
-                          <Button type="button" variant="ghost" size="icon">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </ConfirmDeletePopover>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                        form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [...opts, defaultOption()]);
-                      }}
-                    >
-                      <Plus className="size-4" /> Add answer
-                    </Button>
-                  </div>
-                )}
-
-                {pageType === "input" && (() => {
-                    const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-                    const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
-                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
-                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
-                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
-                    return (
-                      <div className="space-y-4 border-t border-border/60 pt-4">
-                        {questionErrorMessage && (
-                          <Alert variant="destructive">
-                            <AlertDescription>{questionErrorMessage}</AlertDescription>
-                          </Alert>
-                        )}
-                        {Array.from({ length: gapCount }, (_, gapIndex) => {
-                          const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
-                          return (
-                            <div key={gapIndex} className="space-y-2">
-                              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{gapCount > 1 ? `Correct answers for gap ${gapIndex + 1}` : "Correct answers (any match counts)"}</Label>
-                              {indices.map((optIdx) => (
-                                <div key={optIdx} className="flex items-center gap-2">
-                                  <Input
-                                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.option_text`)}
-                                    placeholder="Acceptable answer"
-                                  />
-                                  <ConfirmDeletePopover
-                                    title="Delete correct answer?"
-                                    onConfirm={() => {
-                                      const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                      if (opts.length > 1) {
-                                        form.setValue(
-                                          `pages.${pageIndex}.questions.${qIndex}.options`,
-                                          opts.filter((_, i) => i !== optIdx)
-                                        );
-                                      }
-                                    }}
-                                    disabled={indices.length <= 1}
-                                  >
-                                    <Button type="button" variant="ghost" size="icon">
-                                      <Trash2 className="size-4" />
-                                    </Button>
-                                  </ConfirmDeletePopover>
-                                </div>
-                              ))}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                  form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
-                                    ...opts,
-                                    { option_text: "", is_correct: true, gap_index: gapIndex },
-                                  ]);
-                                }}
-                              >
-                                <Plus className="size-4" /> Add correct answer{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-
-                {pageType === "select_gaps" && (() => {
-                    const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-                    const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
-                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
-                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
-                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
-                    return (
-                      <div className="space-y-4 border-t border-border/60 pt-4">
-                        {questionErrorMessage && (
-                          <Alert variant="destructive">
-                            <AlertDescription>{questionErrorMessage}</AlertDescription>
-                          </Alert>
-                        )}
-                        {Array.from({ length: gapCount }, (_, gapIndex) => {
-                          const indices = options.map((o, i) => ({ o, i })).filter(({ o }) => (o.gap_index ?? 0) === gapIndex).map(({ i }) => i);
-                          return (
-                            <div key={gapIndex} className="space-y-2">
-                              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{gapCount > 1 ? `Answers for gap ${gapIndex + 1}` : "Answers (mark correct)"}</Label>
-                              {indices.map((optIdx) => (
-                                <div key={optIdx} className="flex items-center gap-2">
-                                  <Input
-                                    {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.option_text`)}
-                                    placeholder="Answer text"
-                                  />
-                                  <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-                                    <Checkbox
-                                      checked={form.watch(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.is_correct`)}
-                                      onCheckedChange={(checked) =>
-                                        form.setValue(`pages.${pageIndex}.questions.${qIndex}.options.${optIdx}.is_correct`, checked === true)
-                                      }
-                                    />
-                                    Correct
-                                  </label>
-                                  <ConfirmDeletePopover
-                                    title="Delete answer?"
-                                    onConfirm={() => {
-                                      const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                      if (opts.length > 1) {
-                                        form.setValue(
-                                          `pages.${pageIndex}.questions.${qIndex}.options`,
-                                          opts.filter((_, i) => i !== optIdx)
-                                        );
-                                      }
-                                    }}
-                                    disabled={indices.length <= 1}
-                                  >
-                                    <Button type="button" variant="ghost" size="icon">
-                                      <Trash2 className="size-4" />
-                                    </Button>
-                                  </ConfirmDeletePopover>
-                                </div>
-                              ))}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                  form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
-                                    ...opts,
-                                    { option_text: "", is_correct: false, gap_index: gapIndex },
-                                  ]);
-                                }}
-                              >
-                                <Plus className="size-4" /> Add answer{gapCount > 1 ? ` for gap ${gapIndex + 1}` : ""}
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-
-                {pageType === "matching" && (() => {
-                    const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
-                    const questionError = form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.root?.message;
-                    const questionErrorMessage = typeof questionError === "string" ? questionError : (questionError as unknown as { message?: string })?.message;
-                    const opt = options[0];
-                    return (
-                      <div className="space-y-4 border-t border-border/60 pt-4">
-                        {questionErrorMessage && (
-                          <Alert variant="destructive">
-                            <AlertDescription>{questionErrorMessage}</AlertDescription>
-                          </Alert>
-                        )}
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Left column (matching item)</Label>
-                          {opt ? (
-                            <Input
-                              {...form.register(`pages.${pageIndex}.questions.${qIndex}.options.0.option_text`)}
-                              placeholder="Item to drag to the right"
-                            />
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const opts = form.getValues(`pages.${pageIndex}.questions.${qIndex}.options`);
-                                form.setValue(`pages.${pageIndex}.questions.${qIndex}.options`, [
-                                  ...opts,
-                                  { option_text: "", is_correct: true },
-                                ]);
-                              }}
-                            >
-                              <Plus className="size-4" /> Add matching item
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-              </CardContent>
-            </Card>
-          ))}
-          <div className="flex justify-between items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                questionsArray.append(
-                  defaultQuestion(questionsArray.fields.length, form.getValues(`pages.${pageIndex}.type`))
-                )
-              }
-            >
-              <Plus className="size-4" /> Add question
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(false)}
-            >
-              Collapse
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-      )}
-    </Card>
   );
 }
