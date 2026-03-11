@@ -114,7 +114,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
 
   async function handleGenerate() {
     setGeneratedDraft(null);
-    const res = await ai.generate({ topicFallback: form.getValues("title") });
+    const res = await ai.generate();
     if (!res.ok) return;
     setGeneratedDraft(res as GenerateOk);
   }

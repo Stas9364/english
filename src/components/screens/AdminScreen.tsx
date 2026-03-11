@@ -128,7 +128,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
   async function handleGeneratePages() {
     setGenStatus({ state: "loading" });
     try {
-      const res = await ai.generate({ topicFallback: form.getValues("title") });
+      const res = await ai.generate();
       if (!res.ok) {
         setGenStatus({ state: "error", message: res.error });
         return;
