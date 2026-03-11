@@ -4,6 +4,9 @@ import { getCurrentUser, getIsAdmin } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
+/** Avoid cached layout so auth is read on every request (fixes "login works on second try" in prod). */
+export const dynamic = "force-dynamic";
+
 const skipAdminAuth = process.env.NEXT_PUBLIC_SKIP_ADMIN_AUTH === "true";
 
 export default async function AdminLayout({
