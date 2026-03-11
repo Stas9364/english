@@ -2,16 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 function getBaseUrl(request: Request): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (appUrl) return appUrl.replace(/\/$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  if (forwardedHost) {
-    const proto = request.headers.get("x-forwarded-proto") ?? "https";
-    return `${proto}://${forwardedHost}`;
-  }
-  return new URL(request.url).origin;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (appUrl) return appUrl;
+  return new URL(request.url).origin.replace(/\/$/, "");
 }
 
 function normalizeNext(next: string | null): string {
