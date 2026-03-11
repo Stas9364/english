@@ -14,11 +14,7 @@ export function LoginScreen() {
 
   const handleSignInWithGoogle = async () => {
     const supabase = createClient();
-    // В dev редиректим на текущий origin (localhost), в prod — на явный домен (Vercel) если задан.
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? window.location.origin)
-        : window.location.origin;
+    const baseUrl = window.location.origin.replace(/\/$/, "");
     const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(next)}`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
