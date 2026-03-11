@@ -862,7 +862,7 @@ export async function generateQuizPages(
   const prompt = buildGeneratePrompt(parsedParams);
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
     // Node/Next supports AbortSignal.timeout in modern runtimes; if not, we proceed without a hard timeout.
     const signal =
       typeof AbortSignal !== "undefined" && "timeout" in AbortSignal

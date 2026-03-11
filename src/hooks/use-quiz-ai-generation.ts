@@ -55,6 +55,10 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
         bannedTopics: bannedTopics.trim() || undefined,
       });
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Quiz AI] generateQuizPages response:", res);
+      }
+
       if (!res.ok) {
         setErrorMessage(res.error);
       }

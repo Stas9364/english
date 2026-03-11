@@ -90,7 +90,6 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const ai = useQuizAiGeneration({
-    initialTopic: quiz.title ?? "",
     initialQuestionsPerPage: 3,
   });
   const [generatedDraft, setGeneratedDraft] = useState<GenerateOk | null>(null);
@@ -116,6 +115,36 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     setGeneratedDraft(null);
     const res = await ai.generate();
     if (!res.ok) return;
+    if (res.pages?.length) {
+      const startIndex = pagesArray.fields.length;
+      res.pages.forEach((p, i) => {
+        pagesArray.append(
+          defaultPage(
+            {
+              type: p.type,
+              title: p.title ?? null,
+              questions: p.questions.map((q) => ({
+                question_title: q.question_title,
+                explanation: q.explanation ?? null,
+                options: q.options.map((o) => ({
+                  option_text: o.option_text,
+                  is_correct: o.is_correct,
+                  gap_index: o.gap_index ?? 0,
+                })),
+              })),
+            },
+            startIndex + i
+          )
+        );
+      });
+    }
+    if (res.theoryBlocks?.length) {
+      const blocks = res.theoryBlocks;
+      setTheoryBlocks((prev) => [
+        ...prev,
+        ...blocks.map((b, i) => ({ ...b, order_index: prev.length + i })),
+      ]);
+    }
     setGeneratedDraft(res as GenerateOk);
   }
 
@@ -146,6 +175,9 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
       })),
       theoryBlocks: theoryBlocks.map((b, i) => ({ ...b, order_index: i })),
     });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[EditQuiz] updateQuiz response:", res);
+    }
     setResult(res);
   }
 

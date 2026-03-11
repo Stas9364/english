@@ -222,6 +222,9 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
       })),
       theoryBlocks: theoryBlocks.map((b, i) => ({ type: b.type, content: b.content, order_index: i })),
     });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Admin] createQuiz response:", res);
+    }
     setResult(res);
     if (res.ok) {
       form.reset({
