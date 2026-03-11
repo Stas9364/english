@@ -760,7 +760,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     `- question_title must be concise and must NOT contain HTML.`,
     `- For type "single": options length 3-5, exactly one is_correct=true.`,
     `- For type "multiple": options length 4-7, at least one is_correct=true.`,
-    `- For type "matching": each question is one row; options should include at least one item with is_correct=true representing the LEFT column prompt; keep it short.`,
+    `- For type "matching": each question is one row (left column); options are the draggable answers (right column). Each question must have exactly one option with is_correct=true (its correct pair). Give each question enough CONTEXT so the learner can tell which answer fits: use a short sentence or phrase (e.g. "He ___ at the office" or "My sister ___ the guitar") rather than a single word. The context must make the correct match obvious. CRITICAL: avoid ambiguity — each correct answer must belong to exactly one question; ensure every question has a unique correct match so the task has a single correct solution. Keep options short.`,
     `- For type "input":`,
     `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
     `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,

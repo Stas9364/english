@@ -110,28 +110,29 @@ export function QuizAiGenerationBlock({
             </div>
           </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2 w-full sm:max-w-[182px]">
-            <Label>Pages per request</Label>
-            <Input value="1" readOnly disabled />
+        <div className="grid gap-4 sm:grid-cols-[7rem_8rem_1fr] sm:items-start">
+          <div className="space-y-2">
+            <Label className="text-muted-foreground whitespace-nowrap text-xs font-medium">Pages per request</Label>
+            <Input value="1" readOnly disabled className="h-9 w-full" />
           </div>
-          <div className="space-y-2 w-full sm:max-w-[182px]">
-            <Label>Questions per page</Label>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground whitespace-nowrap text-xs font-medium">Questions per page</Label>
             <Input
               inputMode="numeric"
               value={questionsValue}
               onChange={(e) => onQuestionsPerPageChange(Number(e.target.value))}
               placeholder="5"
+              className="h-9 w-full"
             />
           </div>
-          <div className="space-y-2 w-full sm:flex-1">
-            <Label>Page type to generate</Label>
-            <div className="flex flex-wrap gap-3 h-9">
-              {(["single", "multiple", "input", "select_gaps"] as TestType[]).map((t) => (
-                <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
+          <div className="space-y-2 min-w-0">
+            <Label className="text-muted-foreground text-xs font-medium mb-4">Page type to generate</Label>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {(["single", "multiple", "input", "select_gaps", "matching"] as TestType[]).map((t) => (
+                <label key={t} className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                   <input
                     type="radio"
-                    className="h-4 w-4 cursor-pointer accent-primary"
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
                     checked={selectedType === t}
                     onChange={() => onSelectedTypeChange(t)}
                   />
