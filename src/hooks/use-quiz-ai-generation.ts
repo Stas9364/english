@@ -15,13 +15,9 @@ interface UseQuizAiGenerationOptions {
   initialType?: TestType;
 }
 
-interface GenerateOptions {
-  topicFallback?: string;
-}
-
 export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [topic, setTopic] = useState(options.initialTopic ?? "");
-  const [level, setLevel] = useState(options.initialLevel ?? "");
+  const [level, setLevel] = useState(options.initialLevel ?? "B1");
   const [language, setLanguage] = useState<"RU" | "EN">(options.initialLanguage ?? "EN");
   const [questionsPerPage, setQuestionsPerPage] = useState<number>(options.initialQuestionsPerPage ?? 3);
   const [selectedType, setSelectedType] = useState<TestType>(options.initialType ?? "single");
@@ -33,16 +29,19 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function generate(opts: GenerateOptions = {}): Promise<GenerateQuizResult> {
-    const effectiveTopic =
-      topic.trim() || (opts.topicFallback ?? "").trim() || "English quiz";
+  async function generate(): Promise<GenerateQuizResult> {
+    const topicTrimmed = topic.trim();
+    if (!topicTrimmed) {
+      setErrorMessage("Topic is required for generation.");
+      return { ok: false, error: "Topic is required for generation." };
+    }
 
     setIsGenerating(true);
     setErrorMessage(null);
     try {
       const res = await generateQuizPages({
-        topic: effectiveTopic,
-        level: level.trim() || undefined,
+        topic: topicTrimmed,
+        level: level.trim(),
         language,
         pageCount: 1,
         questionsPerPage: Number.isFinite(questionsPerPage)

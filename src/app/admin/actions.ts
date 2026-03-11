@@ -544,7 +544,7 @@ export async function deleteOption(
 
 export type GenerateQuizPagesParams = {
   topic: string;
-  level?: string;
+  level: string;
   language?: "RU" | "EN";
   pageCount: number;
   questionsPerPage: number;
@@ -727,7 +727,7 @@ function normalizeGeneratedDraft(draft: z.infer<typeof GeneratedDraftSchema>): {
 function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
   const allowed = params.allowedTypes.join(", ");
   const lang = params.language ?? "EN";
-  const level = (params.level ?? "").trim();
+  const level = params.level.trim() || "B1";
   const style = (params.style ?? "").trim();
   const constraints = (params.constraints ?? "").trim();
   const lexicon = (params.lexicon ?? "").trim();
@@ -770,7 +770,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     ``,
     `Content requirements:`,
     `- Topic: ${params.topic}`,
-    level ? `- CEFR level: ${level}` : `- CEFR level: (unspecified)`,
+    `- CEFR level: ${level}`,
     `- UI language for explanations: ${lang} (question_title and options stay in English unless the topic requires otherwise).`,
     style ? `- Style: ${style}` : null,
     constraints ? `- Constraints: ${constraints}` : null,
@@ -809,7 +809,7 @@ export async function generateQuizPages(
         .transform((s) => s.trim())
         .refine((s) => s.length > 0, "Topic is required")
         .refine((s) => s.length <= MAX_FIELD_LEN_TOPIC, `Topic is too long (max ${MAX_FIELD_LEN_TOPIC})`),
-      level: z.string().optional().transform(trimOrUndef),
+      level: z.string().default("B1").transform((s) => (s ?? "").trim() || "B1"),
       language: z.enum(["RU", "EN"]).optional(),
       pageCount: z.number().int().min(1).max(MAX_PAGES),
       questionsPerPage: z.number().int().min(1).max(MAX_QUESTIONS_PER_PAGE),
@@ -894,9 +894,11 @@ export async function generateQuizPages(
       return { ok: false, error: `Gemini request failed (${resp.status}). Try again later.` };
     }
 
-    const json = (await resp.json()) as any;
+    type GeminiPart = { text?: string };
+    type GeminiResponse = { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> };
+    const json = (await resp.json()) as GeminiResponse;
     const textParts: string[] =
-      json?.candidates?.[0]?.content?.parts?.map((p: any) => (typeof p?.text === "string" ? p.text : "")).filter(Boolean) ??
+      json?.candidates?.[0]?.content?.parts?.map((p: GeminiPart) => (typeof p?.text === "string" ? p.text : "")).filter(Boolean) ??
       [];
     const text = textParts.join("\n").trim();
     const jsonStr = extractFirstJsonObject(text) ?? text;

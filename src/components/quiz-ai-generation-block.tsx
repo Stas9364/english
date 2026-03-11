@@ -82,18 +82,15 @@ export function QuizAiGenerationBlock({
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label>Topic</Label>
+              <Label>Topic (required)</Label>
               <Input
                 value={topic}
                 onChange={(e) => onTopicChange(e.target.value)}
                 placeholder="e.g. Present Simple (routine)"
               />
-              <p className="text-xs text-muted-foreground">
-                If empty, the quiz title will be used.
-              </p>
             </div>
             <div className="space-y-2">
-              <Label>Level (optional)</Label>
+              <Label>Level</Label>
               <Input
                 value={level}
                 onChange={(e) => onLevelChange(e.target.value)}
@@ -192,7 +189,7 @@ export function QuizAiGenerationBlock({
             <Button
               type="button"
               onClick={onGenerate}
-              disabled={isGenerating || !selectedType}
+              disabled={isGenerating || !topic.trim() || !selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
             >
               {isGenerating ? "Generating…" : generateLabel}

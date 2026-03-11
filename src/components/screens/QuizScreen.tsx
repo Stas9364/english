@@ -392,10 +392,9 @@ function MatchingBlock({
   checked: boolean;
   onMatch: (questionId: string, optionId: string) => void;
 }) {
-  const questionIds = useMemo(() => questions.map((q) => q.id).join(","), [questions]);
   const shuffledOptions = useMemo(
     () => shuffle(questions.flatMap((q) => q.options ?? [])),
-    [questionIds, questions]
+    [questions]
   );
   const optionById = useMemo(
     () => new Map(questions.flatMap((q) => (q.options ?? []).map((o) => [o.id, o]))),
