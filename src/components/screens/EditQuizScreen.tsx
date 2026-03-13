@@ -111,9 +111,10 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     name: "pages",
   });
 
-  async function handleGenerate() {
+  async function handleGenerate(topicOverride: string) {
+    ai.setTopic(topicOverride);
     setGeneratedDraft(null);
-    const res = await ai.generate();
+    const res = await ai.generate(topicOverride);
     if (!res.ok) return;
     if (res.pages?.length) {
       const startIndex = pagesArray.fields.length;

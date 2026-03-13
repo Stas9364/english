@@ -30,8 +30,9 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function generate(): Promise<GenerateQuizResult> {
-    const topicTrimmed = topic.trim();
+  async function generate(nextTopic?: string): Promise<GenerateQuizResult> {
+    const topicToUse = typeof nextTopic === "string" ? nextTopic : topic;
+    const topicTrimmed = topicToUse.trim();
     if (!topicTrimmed) {
       setErrorMessage("Topic is required for generation.");
       return { ok: false, error: "Topic is required for generation." };

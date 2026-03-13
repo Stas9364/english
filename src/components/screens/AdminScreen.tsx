@@ -126,10 +126,11 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     })) satisfies CreateQuizFormValues["pages"];
   }
 
-  async function handleGeneratePages() {
+  async function handleGeneratePages(topicOverride: string) {
+    ai.setTopic(topicOverride);
     setGenStatus({ state: "loading" });
     try {
-      const res = await ai.generate();
+      const res = await ai.generate(topicOverride);
       if (!res.ok) {
         setGenStatus({ state: "error", message: res.error });
         return;

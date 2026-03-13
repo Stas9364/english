@@ -265,9 +265,8 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
       ? `Primary instruction (VERBATIM, highest priority): ${customTask}`
       : null,
     customTask
-      ? `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${
-          singleType ? `, and all pages must have type = "${singleType}".` : "."
-        }`
+      ? `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${singleType ? `, and all pages must have type = "${singleType}".` : "."
+      }`
       : null,
     ``,
     `Content requirements:`,
@@ -365,7 +364,7 @@ export async function generateQuizPages(
     const signal =
       typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (AbortSignal as any).timeout(45_000)
+        (AbortSignal as any).timeout(45_000)
         : undefined;
     const resp = await fetch(url, {
       method: "POST",

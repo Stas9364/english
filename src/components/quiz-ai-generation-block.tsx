@@ -36,7 +36,7 @@ export interface QuizAiGenerationBlockProps {
   helperText?: string;
 
   isGenerating: boolean;
-  onGenerate: () => void;
+  onGenerate: (topicValue: string) => void;
 
   generatedSummary?: string | null;
   errorMessage?: string | null;
@@ -107,7 +107,7 @@ export function QuizAiGenerationBlock({
     lexiconField.syncIfChanged(onLexiconChange);
     bannedTopicsField.syncIfChanged(onBannedTopicsChange);
     customTaskField.syncIfChanged(onCustomTaskChange);
-    onGenerate();
+    onGenerate(topicField.local);
   };
 
   return (
@@ -258,7 +258,7 @@ export function QuizAiGenerationBlock({
             <Button
               type="button"
               onClick={handleGenerateClick}
-              disabled={isGenerating || !topic.trim() || !selectedType}
+              disabled={isGenerating || !topicField.local.trim() || !selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
             >
               {isGenerating ? "Generating…" : generateLabel}
