@@ -1,0 +1,629 @@
+"use server";
+
+import Link from "next/link";
+
+export default async function AdminGuidePage() {
+  return (
+    <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+      <header className="flex-col items-center justify-between gap-4">
+        <Link
+          href="/admin"
+          className="text-base block text-primary underline-offset-4 hover:underline mb-4"
+        >
+          ← Назад
+        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Создание квизов и страниц с ответами</h1>
+          <p className="text-base text-muted-foreground">
+            Пошаговое руководство: как устроен квиз, как добавлять страницы, теорию и настраивать ответы.
+          </p>
+        </div>
+      </header>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Как устроен квиз</h2>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>Квиз</strong> — это один тест (например, «Present Simple»).
+          </li>
+          <li>
+            У квиза есть <strong>название</strong> и <strong>описание</strong> (описание показывается пользователю в начале).
+          </li>
+          <li>
+            Квиз может содержать <strong>теорию</strong> — блоки текста и/или изображений, которые отображаются пользователю во
+            вкладке «Theory» до или во время прохождения теста.
+          </li>
+          <li>
+            Квиз состоит из <strong>страниц</strong>. Каждая страница — это один экран с заданиями.
+          </li>
+          <li>
+            На каждой странице задаётся <strong>тип ответа</strong>: один вариант, несколько вариантов, ввод текста, выбор в
+            пропусках (dropdown) или соответствие (matching).
+          </li>
+          <li>
+            Внутри страницы — <strong>вопросы</strong>. У каждого вопроса свой текст и свои варианты ответов (или список
+            правильных фраз, или пары для соответствия).
+          </li>
+        </ul>
+        <p className="text-base text-muted-foreground">
+          Схема: <strong>Квиз → (опционально) Теория + Страницы → У каждой страницы тип + вопросы → У каждого вопроса варианты /
+          правильные ответы / пары</strong>.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Автогенерация страниц (AI generation)</h2>
+        <p className="text-base">
+          В админке ниже полей квиза есть блок <strong>AI generation (Gemini)</strong>. Он умеет по заданным параметрам
+          автоматически создавать одну страницу квиза и сразу вставлять её в форму.
+        </p>
+
+        <h3 className="text-lg font-semibold">Как пользоваться базовым режимом (без custom task)</h3>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            Заполните <strong>Topic</strong> (обязательно) — кратко опишите тему, например «Present Simple daily routine».
+          </li>
+          <li>
+            Укажите <strong>Level</strong> (например, B1) и <strong>Explanation language</strong> (RU/EN) — это подсказки для
+            уровня сложности и языка комментариев.
+          </li>
+          <li>
+            В блоке <strong>Pages per request / Questions per page / Page type to generate</strong>:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                <em>Pages per request</em> всегда = 1 (генерируется одна страница за раз).
+              </li>
+              <li>
+                В <strong>Questions per page</strong> задайте целое число вопросов на странице (например, 5).
+              </li>
+              <li>
+                В <strong>Page type to generate</strong> выберите нужный тип: <em>single</em>, <em>multiple</em>, <em>input</em>,{" "}
+                <em>select_gaps</em>, <em>matching</em>.
+              </li>
+            </ul>
+          </li>
+          <li>
+            При необходимости задайте:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                <strong>Style (optional)</strong> — стиль заданий (короткие предложения, диалоговый формат и т.п.).
+              </li>
+              <li>
+                <strong>Constraints (optional)</strong> — ограничения (без имён собственных, без чисел, использовать только
+                Present Simple и т.п.).
+              </li>
+              <li>
+                <strong>Lexis (optional)</strong> — слова/темы, которые обязательно должны встретиться.
+              </li>
+              <li>
+                <strong>Forbidden topics (optional)</strong> — темы, которых нужно избегать.
+              </li>
+            </ul>
+          </li>
+          <li>
+            Нажмите <strong>Generate page</strong>:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>если форма ещё пустая (одна дефолтная страница) — она будет заменена;</li>
+              <li>если страница уже есть или это не первая генерация — новая страница добавится в конец.</li>
+            </ul>
+          </li>
+          <li>
+            После генерации <strong>обязательно проверьте</strong> вопросы и варианты перед сохранением квиза — при необходимости
+            отредактируйте их вручную.
+          </li>
+        </ol>
+
+        <h3 className="text-lg font-semibold">Как пользоваться режимом с собственным заданием (Custom task)</h3>
+        <p className="text-base">
+          Иногда нужно взять уже подготовленное задание (например, текст из учебника) и просто «упаковать» его в формат страницы
+          квиза выбранного типа. Для этого используется поле <strong>Custom task (optional)</strong> в блоке AI generation.
+        </p>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            Заполните поля:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                <strong>Topic</strong> — для контекста (название грамматической темы / лексики).
+              </li>
+              <li>
+                <strong>Page type to generate</strong> — тот тип страницы, в который нужно превратить задание (
+                <em>single</em> / <em>multiple</em> / <em>input</em> / <em>select_gaps</em> / <em>matching</em>).
+              </li>
+              <li>Остальные поля (Level, Style и т.п.) по желанию.</li>
+            </ul>
+          </li>
+          <li>
+            В поле <strong>Custom task (optional)</strong> вставьте своё задание:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>это может быть текст инструкции и примеры вопросов;</li>
+              <li>
+                Gemini воспринимает этот текст как <strong>канонический</strong> — он не должен перефразировать или придумывать
+                новые вопросы, только разложить их по схеме (question_title / options / правильные ответы).
+              </li>
+            </ul>
+          </li>
+          <li>
+            Нажмите <strong>Generate page</strong>:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                сервер передаст custom task в промпт как <em>Primary instruction (highest priority)</em>;
+              </li>
+              <li>
+                если custom task описывает один вопрос, будет создана страница с одним вопросом (кол-во вопросов{" "}
+                <strong>не подгоняется</strong> под <em>Questions per page</em>);
+              </li>
+              <li>
+                все страницы будут выбранного в блоке <strong>Page type to generate</strong> типа (например, только matching).
+              </li>
+            </ul>
+          </li>
+          <li>
+            Если при генерации возникает ошибка:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>проверьте, что ваш текст можно однозначно разбить на вопросы и варианты ответов;</li>
+              <li>
+                при необходимости немного адаптируйте задание (добавьте явные номера, маркеры вариантов и т.п.), но сохраняйте его
+                смысл — Gemini использует текст <strong>как есть</strong>.
+              </li>
+            </ul>
+          </li>
+        </ol>
+
+        <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
+          <p className="font-medium">Рекомендуется:</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            <li>
+              Для <strong>matching</strong> давать в custom task предложения или фразы с контекстом (а не одиночные слова), чтобы
+              каждая пара «вопрос — ответ» была однозначной.
+            </li>
+            <li>
+              Для <strong>input</strong>/<strong>select_gaps</strong> явно указывать, где должны быть пропуски, и какие варианты
+              считаются правильными.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Создание нового квиза</h2>
+
+        <h3 className="text-lg font-semibold">Шаг 1. Основные поля</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>Quiz title</strong> (обязательно) — название квиза, например «Present Simple». Оно отображается на главной и в
+            начале теста.
+          </li>
+          <li>
+            <strong>Description (optional)</strong> — краткое описание или инструкция. Показывается пользователю перед началом и
+            при необходимости на странице.
+          </li>
+        </ul>
+
+        <h3 className="text-lg font-semibold">Шаг 2. Страницы</h3>
+        <p className="text-base">
+          Под полями квиза идёт блок <strong>Pages</strong>.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            У каждой страницы есть карточка <strong>Page 1</strong>, <strong>Page 2</strong> и т.д.
+          </li>
+          <li>
+            Страниц должно быть <strong>хотя бы одна</strong>. Добавление новой страницы — кнопка <strong>Add page</strong> внизу
+            блока «Pages».
+          </li>
+        </ul>
+        <p className="text-base">В каждой карточке страницы настраивается:</p>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            <strong>Page type</strong> — тип ответов на этой странице:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                <strong>Single choice</strong> — один правильный вариант (радиокнопки).
+              </li>
+              <li>
+                <strong>Multiple choice</strong> — несколько правильных вариантов (чекбоксы).
+              </li>
+              <li>
+                <strong>Text input</strong> — пользователь вводит текст в пропуски в предложении; правильность по списку
+                допустимых ответов для каждого пропуска.
+              </li>
+              <li>
+                <strong>Dropdown in gaps</strong> — в предложении есть пропуски <code>[[]]</code>; в каждом пропуске пользователь
+                выбирает один вариант из выпадающего списка; вы отмечаете, какой вариант правильный для каждого пропуска.
+              </li>
+              <li>
+                <strong>Matching</strong> — слева перетаскиваемые элементы, справа вопросы; пользователь сопоставляет каждый
+                элемент слева с вопросом справа (drag and drop).
+              </li>
+            </ul>
+          </li>
+          <li>
+            <strong>Page title (optional)</strong> — подзаголовок страницы, если нужен.
+          </li>
+          <li>
+            <strong>Questions</strong> — список вопросов на этой странице (см. ниже).
+          </li>
+        </ol>
+        <p className="text-xs text-muted-foreground">
+          Иконка корзины рядом с заголовком страницы удаляет страницу сразу после подтверждения (запись удаляется в БД). Удалить
+          можно только если страниц больше одной.
+        </p>
+
+        <h3 className="text-lg font-semibold">Шаг 3. Вопросы внутри страницы</h3>
+        <p className="text-base">
+          Внутри каждой страницы — блок <strong>Questions</strong>.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Вопросов на странице должно быть <strong>хотя бы один</strong>.
+          </li>
+          <li>
+            Новый вопрос — кнопка <strong>Add question</strong> внизу блока вопросов этой страницы.
+          </li>
+        </ul>
+        <p className="text-base">У каждого вопроса заполняете:</p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>Question text</strong> (обязательно) — текст вопроса, например «Choose the correct form». Для{" "}
+            <strong>Text input</strong> без <code>[[]]</code> будет одно поле для ответа; с <code>[[]]</code> — несколько полей в
+            местах пропусков. Для <strong>Dropdown in gaps</strong> в тексте обязательно указывайте <code>[[]]</code> в местах
+            выпадающих списков.
+          </li>
+          <li>
+            <strong>Explanation (optional)</strong> — пояснение, которое показывается пользователю после проверки ответа.
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Иконка корзины рядом с «Question 1», «Question 2» удаляет вопрос сразу после подтверждения. Удалить можно только если
+          вопросов больше одного.
+        </p>
+
+        <h3 className="text-lg font-semibold">Шаг 4. Варианты ответов (Single choice и Multiple choice)</h3>
+        <p className="text-base">
+          Если у страницы тип <strong>Single choice</strong> или <strong>Multiple choice</strong>, у каждого вопроса есть блок{" "}
+          <strong>Options</strong>.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Каждый вариант — это поле с текстом и чекбокс <strong>Correct</strong>.
+          </li>
+          <li>
+            <strong>Single choice</strong>: отметьте <strong>Correct</strong> только у одного варианта — это и будет правильный
+            ответ.
+          </li>
+          <li>
+            <strong>Multiple choice</strong>: отметьте <strong>Correct</strong> у всех вариантов, которые считаются правильными;
+            пользователь должен выбрать все правильные.
+          </li>
+          <li>
+            Кнопка <strong>Add option</strong> внизу списка вариантов добавляет новый вариант. Иконка корзины рядом с вариантом
+            удаляет его сразу после подтверждения. Вариантов должно остаться <strong>минимум один</strong>.
+          </li>
+          <li>У каждого вопроса свой набор вариантов; они не связаны с другими вопросами.</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold">Шаг 5. Правильные ответы для Text input</h3>
+        <p className="text-base">
+          Если у страницы тип <strong>Text input</strong>, у каждого вопроса вместо вариантов выбора показывается блок{" "}
+          <strong>Correct answers</strong>.
+        </p>
+        <p className="text-base font-medium">Два варианта использования:</p>
+        <ol className="list-decimal space-y-2 pl-5 text-base">
+          <li>
+            <strong>Один общий ответ (без пропусков в тексте)</strong>
+            <p className="mt-1">
+              Если в тексте вопроса <strong>нет</strong> <code>[[]]</code>, под вопросом отображается <strong>одно поле ввода</strong>. Пользователь вводит ответ в
+              него (например, на вопрос «Переведите: яблоко» — вводит «apple»). В блоке <strong>Correct answers</strong> укажите все
+              допустимые варианты ответа (например, «apple», «an apple»). Хотя бы один правильный ответ обязателен.
+            </p>
+          </li>
+          <li>
+            <strong>Несколько пропусков в предложении</strong>
+            <p className="mt-1">
+              Если в тексте вопроса есть <code>[[]]</code>, количество пропусков считается по числу <code>[[]]</code> (например:
+              «She [[]] to school every day.» — один пропуск; «The cat [[]] on the [[]].» — два пропуска). Под вопросом
+              показывается <strong>столько полей ввода, сколько пропусков</strong>. Появляются блоки{" "}
+              <em>Correct answers for gap 1</em>, <em>Correct answers for gap 2</em> и т.д. — для каждого пропуска задаёте свой
+              список допустимых фраз. Пользователь заполняет поля по порядку; каждое проверяется по своему списку (без учёта
+              регистра).
+            </p>
+          </li>
+        </ol>
+        <p className="text-base">
+          В каждом блоке — кнопка <strong>Add correct answer</strong> (или <strong>Add correct answer for gap N</strong> при
+          нескольких пропусках). Иконка корзины удаляет строку после подтверждения. Для каждого пропуска (или для единственного
+          ответа) должен остаться <strong>хотя бы один</strong> правильный ответ.
+        </p>
+
+        <h3 className="text-lg font-semibold">Шаг 6. Варианты для Dropdown in gaps</h3>
+        <p className="text-base">
+          Тип страницы <strong>Dropdown in gaps</strong> подходит, когда нужно вставить в предложение <strong>выбор из списка</strong> вместо
+          ввода с клавиатуры: в каждом пропуске пользователь видит выпадающий список и выбирает один вариант.
+        </p>
+        <p className="text-base font-medium">Как настроить</p>
+        <ol className="list-decimal space-y-2 pl-5 text-base">
+          <li>
+            <strong>Текст вопроса</strong> должен содержать <code>[[]]</code> в тех местах, где должен быть выпадающий список.
+            Количество пропусков = количеству <code>[[]]</code>. Пример: «She [[]] to school every day.» — один пропуск; «The cat
+            [[]] on the [[]].» — два пропуска.
+          </li>
+          <li>
+            Ниже появятся блоки <strong>Options for gap 1</strong>, <strong>Options for gap 2</strong> и т.д. — по одному на каждый
+            пропуск. Порядок блоков совпадает с порядком пропусков слева направо.
+          </li>
+          <li>
+            <strong>В каждом блоке</strong> задаёте варианты, которые будут в выпадающем списке для этого пропуска:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>Поле с текстом варианта (например, «goes», «go», «went»).</li>
+              <li>
+                Чекбокс <strong>Correct</strong> — отметьте его у всех вариантов, которые считаются правильным ответом для этого
+                пропуска (можно несколько: например, «goes» и «go» оба правильные).
+              </li>
+              <li>
+                Кнопка <strong>Add option for gap N</strong> добавляет ещё один вариант в этот пропуск.
+              </li>
+              <li>
+                Иконка корзины удаляет вариант после подтверждения. В каждом пропуске должен остаться{" "}
+                <strong>хотя бы один вариант</strong>, и <strong>хотя бы один из них должен быть отмечен как Correct</strong>.
+              </li>
+            </ul>
+          </li>
+          <li>
+            Варианты для разных пропусков <strong>не смешиваются</strong>: то, что вы добавили в «Options for gap 1», показывается
+            только в первом выпадающем списке; в «Options for gap 2» — только во втором и т.д.
+          </li>
+        </ol>
+        <p className="text-base">
+          <strong>Пример.</strong> Вопрос: «She [[]] to school. He [[]] to work.»
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            В <strong>Options for gap 1</strong> добавляете, например: «goes» (Correct), «go» (Correct), «went».
+          </li>
+          <li>
+            В <strong>Options for gap 2</strong> добавляете: «goes» (Correct), «go», «went».
+          </li>
+        </ul>
+        <p className="text-base">
+          В квизе пользователь в первом пропуске выберет из первого списка, во втором — из второго; засчитается, если в каждом
+          выбран вариант с галочкой Correct.
+        </p>
+
+        <h3 className="text-lg font-semibold">Шаг 7. Пары для Matching</h3>
+        <p className="text-base">
+          Если у страницы тип <strong>Matching</strong>, у каждого вопроса два поля:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>Right column (question)</strong> — текст, который пользователь увидит справа (цель для сопоставления),
+            например «Apple».
+          </li>
+          <li>
+            <strong>Left column (matching item)</strong> — элемент, который пользователь будет перетаскивать к этому вопросу,
+            например «яблоко». Это правильная пара для данной строки.
+          </li>
+        </ul>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            На странице квиза слева отображаются все «элементы слева» (перемешанные), справа — все «вопросы». Пользователь
+            перетаскивает элемент к нужному вопросу. После проверки показывается, верно ли сопоставление (зелёный/красный).
+          </li>
+          <li>
+            У каждого вопроса должна быть заполнена <strong>хотя бы одна пара</strong> (текст справа и элемент слева).
+          </li>
+        </ul>
+
+        <h3 className="text-lg font-semibold">Шаг 8. Теория (опционально)</h3>
+        <p className="text-base">
+          Блок <strong>Theory (optional)</strong> позволяет добавить к квизу блоки теории до сохранения.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Кнопки <strong>Text</strong> и <strong>Image</strong> добавляют блок: текстовый или с изображением.
+          </li>
+          <li>
+            <strong>Текст</strong>: введите или вставьте текст в поле (поддерживается разметка).
+          </li>
+          <li>
+            <strong>Изображение</strong>: нажмите <strong>Upload</strong> и выберите файл (JPEG, PNG, GIF, WebP) — он загрузится в
+            хранилище и ссылка подставится автоматически; либо вставьте готовый URL в поле.
+          </li>
+          <li>
+            Стрелки вверх/вниз меняют порядок блоков, иконка корзины удаляет блок сразу после подтверждения (для изображений из
+            хранилища файл тоже удаляется).
+          </li>
+          <li>Теорию можно не заполнять при создании и добавить позже в режиме редактирования.</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold">Шаг 9. Сохранение</h3>
+        <p className="text-base">
+          Нажмите <strong>Create quiz</strong>. После успешного сохранения появится сообщение «Quiz created successfully», форма
+          очистится, а новый квиз появится в списке <strong>Your quizzes</strong> и на главной странице сайта.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Редактирование квиза</h2>
+        <ol className="list-decimal space-y-2 pl-5 text-base">
+          <li>
+            На странице <code>/admin</code> в блоке <strong>Your quizzes</strong> нажмите иконку карандаша у нужного квиза.
+          </li>
+          <li>
+            Откроется форма редактирования с <strong>двумя вкладками</strong>: <strong>Details and pages</strong> и{" "}
+            <strong>Theory</strong>.
+          </li>
+        </ol>
+
+        <h3 className="text-lg font-semibold">Вкладка «Details and pages»</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>Поля <strong>Quiz title</strong>, <strong>Description</strong>.</li>
+          <li>
+            Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, вопросы; для каждого типа — свои поля
+            (варианты, правильные ответы для Text input, варианты по пропускам для Dropdown in gaps, пары «справа / слева» для
+            Matching).
+          </li>
+          <li>
+            <strong>Add page</strong> / <strong>Add question</strong> / <strong>Add option</strong> (или{" "}
+            <strong>Add correct answer</strong>) — добавление элементов.
+          </li>
+          <li>
+            Иконки корзины удаляют страницу, вопрос или вариант сразу после подтверждения (изменения в БД и, для изображений
+            теории, в хранилище применяются немедленно).
+          </li>
+          <li>
+            Кнопка <strong>Save changes</strong> сохраняет изменения в названии, описании, slug, страницах и блоках теории
+            (создание и редактирование). Удаления выполняются сразу при подтверждении, отдельно сохранять их не нужно.
+          </li>
+        </ul>
+
+        <h3 className="text-lg font-semibold">Вкладка «Theory»</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Блоки теории (текст и изображения), которые видны пользователю во вкладке «Theory» при прохождении квиза.
+          </li>
+          <li>
+            Кнопки <strong>Text</strong> и <strong>Image</strong> добавляют новый блок.
+          </li>
+          <li>
+            <strong>Текст</strong>: поле с текстом (поддерживается разметка).
+          </li>
+          <li>
+            <strong>Изображение</strong>: поле для URL или кнопка <strong>Upload</strong> — загрузка файла в хранилище, ссылка
+            подставляется автоматически.
+          </li>
+          <li>
+            Стрелки вверх/вниз меняют порядок блоков. Иконка корзины удаляет блок сразу после подтверждения; если это изображение
+            из хранилища, файл там тоже удаляется.
+          </li>
+          <li>
+            Изменения по теории (добавление и правка блоков) сохраняются кнопкой <strong>Save changes</strong> на вкладке{" "}
+            <strong>Details and pages</strong>; удаление блоков теории выполняется сразу при подтверждении.
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Удаление и сохранение</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs sm:text-base">
+            <thead>
+              <tr>
+                <th className="border px-2 py-1 font-semibold">Действие</th>
+                <th className="border px-2 py-1 font-semibold">Когда применяется</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border px-2 py-1">
+                  Удаление страницы, вопроса, варианта, блока теории
+                </td>
+                <td className="border px-2 py-1">
+                  <strong>Сразу после подтверждения</strong> в диалоге (запись в БД удаляется; для изображений теории — и файл в
+                  хранилище).
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">
+                  Создание и редактирование (тексты, добавление страниц/вопросов/вариантов/блоков теории)
+                </td>
+                <td className="border px-2 py-1">
+                  По нажатию <strong>Save changes</strong> (редактирование) или <strong>Create quiz</strong> (создание).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Краткая памятка</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs sm:text-base">
+            <thead>
+              <tr>
+                <th className="border px-2 py-1 font-semibold">Что настраиваете</th>
+                <th className="border px-2 py-1 font-semibold">Где</th>
+                <th className="border px-2 py-1 font-semibold">Обязательно</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border px-2 py-1">Название квиза</td>
+                <td className="border px-2 py-1">Quiz title</td>
+                <td className="border px-2 py-1">Да</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Описание</td>
+                <td className="border px-2 py-1">Description</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Теория (текст/изображения)</td>
+                <td className="border px-2 py-1">Вкладка Theory / блок Theory (optional)</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Тип ответов на странице</td>
+                <td className="border px-2 py-1">
+                  Page type: Single / Multiple / Text input / Dropdown in gaps / Matching
+                </td>
+                <td className="border px-2 py-1">Да</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Заголовок страницы</td>
+                <td className="border px-2 py-1">Page title</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Текст вопроса</td>
+                <td className="border px-2 py-1">
+                  Question text (для input/dropdown — с <code>[[]]</code> где пропуски)
+                </td>
+                <td className="border px-2 py-1">Да</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Пояснение после ответа</td>
+                <td className="border px-2 py-1">Explanation</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Варианты (single/multiple)</td>
+                <td className="border px-2 py-1">Options + Correct</td>
+                <td className="border px-2 py-1">
+                  Минимум один вариант, хотя бы один Correct
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Допустимые ответы (text input)</td>
+                <td className="border px-2 py-1">Correct answers по каждому пропуску</td>
+                <td className="border px-2 py-1">
+                  Минимум один правильный ответ на пропуск
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Варианты по пропускам (dropdown)</td>
+                <td className="border px-2 py-1">Options for gap N + Correct</td>
+                <td className="border px-2 py-1">
+                  Минимум один вариант и один Correct на пропуск
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Пары (matching)</td>
+                <td className="border px-2 py-1">Right column + Left column</td>
+                <td className="border px-2 py-1">
+                  Одна пара (вопрос справа + элемент слева) на строку
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-base">
+          Если при сохранении появляется ошибка — проверьте, что заполнены все обязательные поля, у вопросов с выбором отмечен
+          хотя бы один правильный вариант, у текстовых/пропусков — хотя бы один правильный ответ на каждый пропуск, у matching —
+          пара для каждой строки.
+        </p>
+      </section>
+    </main>
+  );
+}
+

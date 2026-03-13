@@ -23,6 +23,7 @@ import type { PageFormBlockFormValues } from "@/components/page-form-block";
 import type { UseFormReturn } from "react-hook-form";
 import { createQuizFormSchema, type CreateQuizFormValues } from "@/lib/quiz-page-schema";
 import { AdminQuizListCard } from "@/components/admin-quiz-list-card";
+import Link from "next/link";
 
 function slugify(title: string): string {
   const s = title
@@ -213,11 +214,11 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
           explanation: q.explanation || null,
           order_index: qi,
           options:
-          p.type === "input"
-            ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 })) ?? [])
-            : p.type === "select_gaps"
-              ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: o.is_correct, gap_index: o.gap_index ?? 0 })) ?? [])
-              : q.options,
+            p.type === "input"
+              ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: true, gap_index: o.gap_index ?? 0 })) ?? [])
+              : p.type === "select_gaps"
+                ? (q.options?.filter((o) => (o.option_text ?? "").trim()).map((o) => ({ option_text: o.option_text.trim(), is_correct: o.is_correct, gap_index: o.gap_index ?? 0 })) ?? [])
+                : q.options,
         })),
       })),
       theoryBlocks: theoryBlocks.map((b, i) => ({ type: b.type, content: b.content, order_index: i })),
@@ -238,6 +239,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
 
   return (
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+
       <AdminQuizListCard
         quizzes={quizzes}
         onDeleteError={setResult}
@@ -280,6 +282,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
               language={ai.language}
               questionsPerPage={String(ai.questionsPerPage)}
               selectedType={ai.selectedType as TestType}
+              customTask={ai.customTask}
               style={ai.style}
               constraints={ai.constraints}
               lexicon={ai.lexicon}
@@ -289,12 +292,11 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
               onLanguageChange={ai.setLanguage}
               onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
               onSelectedTypeChange={ai.setSelectedType}
+              onCustomTaskChange={ai.setCustomTask}
               onStyleChange={ai.setStyle}
               onConstraintsChange={ai.setConstraints}
               onLexiconChange={ai.setLexicon}
               onBannedTopicsChange={ai.setBannedTopics}
-              generateLabel="Generate page"
-              helperText="The first successful generation replaces the current pages; all subsequent generations append new pages to the end."
               isGenerating={ai.isGenerating}
               onGenerate={handleGeneratePages}
               generatedSummary={genStatus.state === "success" ? genStatus.message : null}

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState, useEffect } from "react";
 
 export interface QuizAiGenerationBlockProps {
   topic: string;
@@ -14,6 +15,7 @@ export interface QuizAiGenerationBlockProps {
   language: "RU" | "EN";
   questionsPerPage: number | string;
   selectedType: TestType;
+  customTask: string;
   style: string;
   constraints: string;
   lexicon: string;
@@ -24,6 +26,7 @@ export interface QuizAiGenerationBlockProps {
   onLanguageChange: (value: "RU" | "EN") => void;
   onQuestionsPerPageChange: (value: number) => void;
   onSelectedTypeChange: (value: TestType) => void;
+  onCustomTaskChange: (value: string) => void;
   onStyleChange: (value: string) => void;
   onConstraintsChange: (value: string) => void;
   onLexiconChange: (value: string) => void;
@@ -39,12 +42,29 @@ export interface QuizAiGenerationBlockProps {
   errorMessage?: string | null;
 }
 
+function useLocalTextField(external: string) {
+  const [local, setLocal] = useState(external);
+
+  useEffect(() => {
+    setLocal(external);
+  }, [external]);
+
+  const syncIfChanged = (onChange: (value: string) => void) => {
+    if (local !== external) {
+      onChange(local);
+    }
+  };
+
+  return { local, setLocal, syncIfChanged };
+}
+
 export function QuizAiGenerationBlock({
   topic,
   level,
   language,
   questionsPerPage,
   selectedType,
+  customTask,
   style,
   constraints,
   lexicon,
@@ -54,18 +74,41 @@ export function QuizAiGenerationBlock({
   onLanguageChange,
   onQuestionsPerPageChange,
   onSelectedTypeChange,
+  onCustomTaskChange,
   onStyleChange,
   onConstraintsChange,
   onLexiconChange,
   onBannedTopicsChange,
   generateLabel = "Generate page",
-  helperText,
+  helperText="The first successful generation replaces the current pages; all subsequent generations append new pages to the end.",
   isGenerating,
   onGenerate,
   generatedSummary,
   errorMessage,
 }: QuizAiGenerationBlockProps) {
   const questionsValue = typeof questionsPerPage === "number" ? String(questionsPerPage) : questionsPerPage;
+  const MAX_CUSTOM_TASK_CHARS = 250_000;
+
+  const topicField = useLocalTextField(topic);
+  const styleField = useLocalTextField(style);
+  const constraintsField = useLocalTextField(constraints);
+  const lexiconField = useLocalTextField(lexicon);
+  const bannedTopicsField = useLocalTextField(bannedTopics);
+  const customTaskField = useLocalTextField(customTask);
+
+  const handleCustomTaskBlur = () => {
+    customTaskField.syncIfChanged(onCustomTaskChange);
+  };
+
+  const handleGenerateClick = () => {
+    topicField.syncIfChanged(onTopicChange);
+    styleField.syncIfChanged(onStyleChange);
+    constraintsField.syncIfChanged(onConstraintsChange);
+    lexiconField.syncIfChanged(onLexiconChange);
+    bannedTopicsField.syncIfChanged(onBannedTopicsChange);
+    customTaskField.syncIfChanged(onCustomTaskChange);
+    onGenerate();
+  };
 
   return (
     <Card className="border border-blue-400">
@@ -84,18 +127,25 @@ export function QuizAiGenerationBlock({
             <div className="space-y-2 sm:col-span-2">
               <Label>Topic (required)</Label>
               <Input
-                value={topic}
-                onChange={(e) => onTopicChange(e.target.value)}
+                value={topicField.local}
+                onChange={(e) => topicField.setLocal(e.target.value)}
                 placeholder="e.g. Present Simple (routine)"
               />
             </div>
             <div className="space-y-2">
               <Label>Level</Label>
-              <Input
+              <select
+                className="cursor-pointer h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:scheme-dark"
                 value={level}
                 onChange={(e) => onLevelChange(e.target.value)}
-                placeholder="A1, A2, B1, B2, C1…"
-              />
+              >
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
             </div>
             <div className="space-y-2">
               <Label>Explanation language</Label>
@@ -108,6 +158,24 @@ export function QuizAiGenerationBlock({
                 <option value="EN">EN</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Custom task (optional)</Label>
+              <span className="text-[11px] text-muted-foreground">
+                {customTaskField.local.length.toLocaleString()} / {MAX_CUSTOM_TASK_CHARS.toLocaleString()}
+              </span>
+            </div>
+            <textarea
+              value={customTaskField.local}
+              onChange={(e) => customTaskField.setLocal(e.target.value)}
+              onBlur={handleCustomTaskBlur}
+              placeholder="Paste your own exercise description or instructions here. Gemini will convert it into a quiz page according to the settings above."
+              rows={4}
+              maxLength={MAX_CUSTOM_TASK_CHARS}
+              className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            />
           </div>
 
         <div className="grid gap-4 sm:grid-cols-[7rem_8rem_1fr] sm:items-start">
@@ -147,32 +215,32 @@ export function QuizAiGenerationBlock({
           <div className="space-y-2">
             <Label>Style (optional)</Label>
             <Input
-              value={style}
-              onChange={(e) => onStyleChange(e.target.value)}
+              value={styleField.local}
+              onChange={(e) => styleField.setLocal(e.target.value)}
               placeholder="Short sentences, everyday topics…"
             />
           </div>
           <div className="space-y-2">
             <Label>Constraints (optional)</Label>
             <Input
-              value={constraints}
-              onChange={(e) => onConstraintsChange(e.target.value)}
+              value={constraintsField.local}
+              onChange={(e) => constraintsField.setLocal(e.target.value)}
               placeholder="No proper names, no numbers…"
             />
           </div>
           <div className="space-y-2">
             <Label>Lexis (optional)</Label>
             <Input
-              value={lexicon}
-              onChange={(e) => onLexiconChange(e.target.value)}
+              value={lexiconField.local}
+              onChange={(e) => lexiconField.setLocal(e.target.value)}
               placeholder="Words / topics that must be included"
             />
           </div>
           <div className="space-y-2">
             <Label>Forbidden topics (optional)</Label>
             <Input
-              value={bannedTopics}
-              onChange={(e) => onBannedTopicsChange(e.target.value)}
+              value={bannedTopicsField.local}
+              onChange={(e) => bannedTopicsField.setLocal(e.target.value)}
               placeholder="e.g. politics, violence…"
             />
           </div>
@@ -189,7 +257,7 @@ export function QuizAiGenerationBlock({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              onClick={onGenerate}
+              onClick={handleGenerateClick}
               disabled={isGenerating || !topic.trim() || !selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
             >

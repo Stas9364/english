@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateQuizPages } from "@/app/admin/actions";
+import { generateQuizPages } from "@/app/admin/ai-generate";
 import type { TestType } from "@/lib/supabase";
 
 export type GenerateQuizResult = Awaited<ReturnType<typeof generateQuizPages>>;
@@ -19,12 +19,13 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [topic, setTopic] = useState(options.initialTopic ?? "");
   const [level, setLevel] = useState(options.initialLevel ?? "B1");
   const [language, setLanguage] = useState<"RU" | "EN">(options.initialLanguage ?? "EN");
-  const [questionsPerPage, setQuestionsPerPage] = useState<number>(options.initialQuestionsPerPage ?? 3);
+  const [questionsPerPage, setQuestionsPerPage] = useState<number>(options.initialQuestionsPerPage ?? 10);
   const [selectedType, setSelectedType] = useState<TestType>(options.initialType ?? "single");
   const [style, setStyle] = useState("");
   const [constraints, setConstraints] = useState("");
   const [lexicon, setLexicon] = useState("");
   const [bannedTopics, setBannedTopics] = useState("");
+  const [customTask, setCustomTask] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -49,6 +50,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
           : 1,
         // Пока генерируем только один тип страницы за запрос.
         allowedTypes: [selectedType],
+        customTask: customTask.trim() || undefined,
         style: style.trim() || undefined,
         constraints: constraints.trim() || undefined,
         lexicon: lexicon.trim() || undefined,
@@ -79,6 +81,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     language,
     questionsPerPage,
     selectedType,
+    customTask,
     style,
     constraints,
     lexicon,
@@ -92,6 +95,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     setLanguage,
     setQuestionsPerPage,
     setSelectedType,
+    setCustomTask,
     setStyle,
     setConstraints,
     setLexicon,
