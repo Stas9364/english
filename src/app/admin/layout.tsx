@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser, getIsAdmin } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { AdminChatWidget } from "@/components/admin-chat-widget";
 
 /** Avoid cached layout so auth is read on every request (fixes "login works on second try" in prod). */
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export default async function AdminLayout({
         </div>
       </header>
       {children}
+      <AdminChatWidget />
     </div>
   );
 }

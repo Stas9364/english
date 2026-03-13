@@ -87,7 +87,7 @@ export function QuizAiGenerationBlock({
   errorMessage,
 }: QuizAiGenerationBlockProps) {
   const questionsValue = typeof questionsPerPage === "number" ? String(questionsPerPage) : questionsPerPage;
-  const MAX_CUSTOM_TASK_CHARS = 250_000;
+  const MAX_CUSTOM_TASK_CHARS = 350000;
 
   const topicField = useLocalTextField(topic);
   const styleField = useLocalTextField(style);
@@ -164,7 +164,7 @@ export function QuizAiGenerationBlock({
             <div className="flex items-baseline justify-between gap-2">
               <Label>Custom task (optional)</Label>
               <span className="text-[11px] text-muted-foreground">
-                {customTaskField.local.length.toLocaleString()} / {MAX_CUSTOM_TASK_CHARS.toLocaleString()}
+                {customTaskField.local.length.toLocaleString("en-US")} / {MAX_CUSTOM_TASK_CHARS.toLocaleString("en-US")}
               </span>
             </div>
             <textarea
