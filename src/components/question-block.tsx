@@ -216,7 +216,7 @@ export function QuestionBlock({
                         onChange={(e) => onSelectGap?.(i, e.target.value)}
                         disabled={checked}
                         className={cn(
-                          "gap-control inline-block min-w-0 align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40",
+                          "gap-control inline-block w-auto min-w-0 max-w-full align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:appearance-none disabled:bg-none",
                           perGapCorrectnessSelect?.[i] === true &&
                             "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                           perGapCorrectnessSelect?.[i] === false &&

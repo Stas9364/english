@@ -92,28 +92,31 @@ export function useQuizProgress(quiz: QuizWithPages) {
 
   const getScore = useCallback(() => {
     let correct = 0;
+    let total = 0;
     currentPage.questions.forEach((q) => {
       const chosen = selected[q.id] ?? [];
       if (pageType === "single") {
+        total++;
         const correctOption = q.options?.find((o) => o.is_correct);
         if (chosen.length === 1 && correctOption && chosen[0] === correctOption.id) correct++;
       } else if (pageType === "multiple") {
+        total++;
         const correctIds = (q.options ?? []).filter((o) => o.is_correct).map((o) => o.id).sort();
         const chosenIds = [...chosen].sort();
         if (correctIds.length === chosenIds.length && correctIds.every((id, i) => id === chosenIds[i])) correct++;
       } else if (pageType === "input") {
         const gapCount = getEffectiveGapCount(q.question_title);
+        total += gapCount;
         const userArr = (textAnswers[q.id] ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
-        if (userArr.length !== gapCount || userArr.some((s) => !s)) return;
         const options = (q.options ?? []).filter((o) => (o.option_text ?? "").trim());
-        const allGapsCorrect = Array.from({ length: gapCount }, (_, i) => {
+        Array.from({ length: gapCount }, (_, i) => {
           const correctTexts = new Set(
             options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
           );
-          return correctTexts.has(userArr[i] ?? "");
-        }).every(Boolean);
-        if (allGapsCorrect) correct++;
+          if (correctTexts.has(userArr[i] ?? "")) correct++;
+        });
       } else if (pageType === "select_gaps") {
+        total++;
         const gapCount = getEffectiveGapCount(q.question_title);
         const chosenForGaps = (selected[q.id] ?? []).slice(0, gapCount);
         if (chosenForGaps.length !== gapCount || chosenForGaps.some((id) => !id)) return;
@@ -121,13 +124,14 @@ export function useQuizProgress(quiz: QuizWithPages) {
         const allCorrect = chosenForGaps.every((optId) => optionById.get(optId)?.is_correct === true);
         if (allCorrect) correct++;
       } else if (pageType === "matching") {
-        const chosen = selected[q.id]?.[0];
-        if (!chosen) return;
-        const opt = (q.options ?? []).find((o) => o.id === chosen);
+        total++;
+        const matchChosen = selected[q.id]?.[0];
+        if (!matchChosen) return;
+        const opt = (q.options ?? []).find((o) => o.id === matchChosen);
         if (opt?.is_correct) correct++;
       }
     });
-    return { correct, total: currentPage.questions.length };
+    return { correct, total };
   }, [currentPage.questions, currentPage.type, pageType, selected, textAnswers]);
 
   const allChoiceAnswered =
