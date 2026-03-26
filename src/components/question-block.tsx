@@ -61,6 +61,20 @@ function getPerGapCorrectnessSelectGaps(question: QuestionWithOptions, selectedO
   });
 }
 
+/** Returns accepted correct answer texts for each gap index. */
+function getCorrectTextsByGap(question: QuestionWithOptions): string[][] {
+  const gapCount = getEffectiveGapCount(question.question_title);
+  const options = question.options ?? [];
+  return Array.from({ length: gapCount }, (_, i) => {
+    const unique = new Set(
+      options
+        .filter((o) => (o.gap_index ?? 0) === i && (o.option_text ?? "").trim())
+        .map((o) => o.option_text!.trim())
+    );
+    return Array.from(unique);
+  });
+}
+
 function OptionRow({
   option,
   isSelected,
@@ -186,6 +200,7 @@ export function QuestionBlock({
   const parts = hasInlineGaps ? title.split("[[]]") : [];
   const perGapCorrectness = isText && checked && hasInlineGaps ? getPerGapCorrectness(question, textAnswers) : null;
   const perGapCorrectnessSelect = isSelectGaps && checked && hasInlineGaps ? getPerGapCorrectnessSelectGaps(question, selectedOptionIds) : null;
+  const correctTextsByGap = (isText || isSelectGaps) && checked ? getCorrectTextsByGap(question) : null;
 
   const showQuestionNumber = !(isText && totalQuestionsOnPage === 1);
 
@@ -237,6 +252,18 @@ export function QuestionBlock({
                   return nodes;
                 })}
               </div>
+              {checked && correctTextsByGap && (
+                <div className="text-sm text-muted-foreground">
+                  <p className="mb-1">Correct answers:</p>
+                  <ul className="list-disc pl-5 space-y-0.5">
+                    {correctTextsByGap.map((texts, i) => (
+                      <li key={`correct-select-gap-${i}`}>
+                        #{i + 1}: {texts.join(" / ") || "—"}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ) : isText ? (
             hasInlineGaps ? (
@@ -270,6 +297,18 @@ export function QuestionBlock({
                   return nodes;
                 })}
                 </div>
+                {checked && correctTextsByGap && (
+                  <div className="text-sm text-muted-foreground">
+                    <p className="mb-1">Correct answers:</p>
+                    <ul className="list-disc pl-5 space-y-0.5">
+                      {correctTextsByGap.map((texts, i) => (
+                        <li key={`correct-input-gap-${i}`}>
+                          #{i + 1}: {texts.join(" / ") || "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -294,6 +333,14 @@ export function QuestionBlock({
                     )}
                   />
                 </div>
+                {checked && correctTextsByGap && (
+                  <div className="text-sm text-muted-foreground">
+                    <p className="mb-1">Correct answer:</p>
+                    <ul className="list-disc pl-5">
+                      <li>{correctTextsByGap[0]?.join(" / ") || "—"}</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )
           ) : isMultiple ? (
