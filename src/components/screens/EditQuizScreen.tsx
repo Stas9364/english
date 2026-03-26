@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -115,6 +115,8 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     control: form.control,
     name: "pages",
   });
+
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   async function handleGenerate(topicOverride: string) {
     ai.setTopic(topicOverride);
@@ -370,38 +372,52 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
                 errorMessage={ai.errorMessage}
               />
               {pagesArray.fields.map((field, pIndex) => (
-                <PageBlock
+                <div
                   key={field.id}
-                  form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                  pageIndex={pIndex}
-                  defaultOption={() => defaultOption()}
-                  defaultQuestion={defaultQuestionForBlock}
-                  onRemove={() => handleDeletePage(pIndex)}
-                  canRemove={pagesArray.fields.length > 1}
-                  onConfirmDeleteQuestion={async (pi, qIndex) => {
-                    const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                    if (q?.id) {
-                      const r = await deleteQuestion(q.id);
-                      if (!r.ok) {
-                        setResult(r);
-                        return false;
+                  ref={(el) => { pageRefs.current[pIndex] = el; }}
+                >
+                  <PageBlock
+                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                    pageIndex={pIndex}
+                    defaultOption={() => defaultOption()}
+                    defaultQuestion={defaultQuestionForBlock}
+                    onRemove={() => handleDeletePage(pIndex)}
+                    canRemove={pagesArray.fields.length > 1}
+                    onMoveUp={() => {
+                      pagesArray.move(pIndex, pIndex - 1);
+                      setTimeout(() => pageRefs.current[pIndex - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                    }}
+                    onMoveDown={() => {
+                      pagesArray.move(pIndex, pIndex + 1);
+                      setTimeout(() => pageRefs.current[pIndex + 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                    }}
+                    canMoveUp={pIndex > 0}
+                    canMoveDown={pIndex < pagesArray.fields.length - 1}
+                    onConfirmDeleteQuestion={async (pi, qIndex) => {
+                      const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
+                      if (q?.id) {
+                        const r = await deleteQuestion(q.id);
+                        if (!r.ok) {
+                          setResult(r);
+                          return false;
+                        }
                       }
-                    }
-                    return true;
-                  }}
-                  onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
-                    const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
-                    const opt = opts[oIndex];
-                    if (opt?.id) {
-                      const r = await deleteOption(opt.id);
-                      if (!r.ok) {
-                        setResult(r);
-                        return false;
+                      return true;
+                    }}
+                    onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
+                      const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
+                      const opt = opts[oIndex];
+                      if (opt?.id) {
+                        const r = await deleteOption(opt.id);
+                        if (!r.ok) {
+                          setResult(r);
+                          return false;
+                        }
                       }
-                    }
-                    return true;
-                  }}
-                />
+                      return true;
+                    }}
+                  />
+                </div>
               ))}
               <Button
                 type="button"

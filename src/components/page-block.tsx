@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TestType } from "@/lib/supabase";
 import {
@@ -50,6 +50,10 @@ export interface PageBlockProps {
   ) => PageBlockFormValues["pages"][0]["questions"][0];
   onRemove: () => void;
   canRemove: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   onConfirmDeleteQuestion?: (pageIndex: number, qIndex: number) => Promise<boolean>;
   onConfirmDeleteOption?: (pageIndex: number, qIndex: number, oIndex: number) => Promise<boolean>;
 }
@@ -297,6 +301,10 @@ export function PageBlock({
   defaultQuestion,
   onRemove,
   canRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   onConfirmDeleteQuestion,
   onConfirmDeleteOption,
 }: PageBlockProps) {
@@ -327,11 +335,31 @@ export function PageBlock({
             </span>
             <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
           </button>
-          <ConfirmDeletePopover title="Delete page?" onConfirm={onRemove} disabled={!canRemove}>
-            <Button type="button" variant="ghost" size="icon-sm">
-              <Trash2 className="size-4" />
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+            >
+              <ArrowUp className="size-4" />
             </Button>
-          </ConfirmDeletePopover>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+            >
+              <ArrowDown className="size-4" />
+            </Button>
+            <ConfirmDeletePopover title="Delete page?" onConfirm={onRemove} disabled={!canRemove}>
+              <Button type="button" variant="ghost" size="icon-sm">
+                <Trash2 className="size-4" />
+              </Button>
+            </ConfirmDeletePopover>
+          </div>
         </div>
       </CardHeader>
       {isExpanded && (
