@@ -1,26 +1,29 @@
 "use server";
 
 import Link from "next/link";
+import { GuideToc } from "@/components/guide-toc";
 
 export default async function AdminGuidePage() {
   return (
-    <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-      <header className="flex-col items-center justify-between gap-4">
+    <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+      <header className="space-y-1">
         <Link
           href="/admin"
           className="text-base block text-primary underline-offset-4 hover:underline mb-4"
         >
           ← Назад
         </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Создание квизов и страниц с ответами</h1>
-          <p className="text-base text-muted-foreground">
-            Пошаговое руководство: как устроен квиз, как добавлять страницы, теорию и настраивать ответы.
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Создание квизов и страниц с ответами</h1>
+        <p className="text-base text-muted-foreground">
+          Пошаговое руководство: как устроен квиз, как добавлять страницы, теорию и настраивать ответы.
+        </p>
       </header>
 
-      <section className="space-y-3">
+      <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-10">
+        <GuideToc />
+        <main className="min-w-0 space-y-8 mt-6 lg:mt-0">
+
+      <section id="how-quiz-works" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Как устроен квиз</h2>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
@@ -51,7 +54,7 @@ export default async function AdminGuidePage() {
         </p>
       </section>
 
-      <section className="space-y-3">
+      <section id="ai-generation" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Автогенерация страниц (AI generation)</h2>
         <p className="text-base">
           В админке ниже полей квиза есть блок <strong>AI generation (Gemini)</strong>. Он умеет по заданным параметрам
@@ -184,7 +187,7 @@ export default async function AdminGuidePage() {
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="create-quiz" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Создание нового квиза</h2>
 
         <h3 className="text-lg font-semibold">Шаг 1. Основные поля</h3>
@@ -241,9 +244,20 @@ export default async function AdminGuidePage() {
             <strong>Page title (optional)</strong> — подзаголовок страницы, если нужен.
           </li>
           <li>
+            <strong>Example (optional)</strong> — образец выполнения задания, который показывается пользователю на этой странице.
+            Удобно, когда нужно наглядно показать, как отвечать: например, «I usually get up at 7 a.m.» для страницы с
+            составлением предложений.
+          </li>
+          <li>
             <strong>Questions</strong> — список вопросов на этой странице (см. ниже).
           </li>
         </ol>
+        <p className="text-base">
+          В правом верхнем углу карточки страницы расположены кнопки <strong>↑</strong> и <strong>↓</strong> — они меняют порядок
+          страниц в квизе. Кнопка <strong>↑</strong> недоступна для первой страницы, <strong>↓</strong> — для последней. Новый
+          порядок применяется сразу в форме и сохраняется при нажатии <strong>Create quiz</strong> /{" "}
+          <strong>Save changes</strong>.
+        </p>
         <p className="text-xs text-muted-foreground">
           Иконка корзины рядом с заголовком страницы удаляет страницу сразу после подтверждения (запись удаляется в БД). Удалить
           можно только если страниц больше одной.
@@ -442,7 +456,7 @@ export default async function AdminGuidePage() {
         </p>
       </section>
 
-      <section className="space-y-3">
+      <section id="edit-quiz" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Редактирование квиза</h2>
         <ol className="list-decimal space-y-2 pl-5 text-base">
           <li>
@@ -458,9 +472,13 @@ export default async function AdminGuidePage() {
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>Поля <strong>Quiz title</strong>, <strong>Description</strong>.</li>
           <li>
-            Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, вопросы; для каждого типа — свои поля
-            (варианты, правильные ответы для Text input, варианты по пропускам для Dropdown in gaps, пары «справа / слева» для
-            Matching).
+            Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, пример, вопросы; для каждого типа — свои
+            поля (варианты, правильные ответы для Text input, варианты по пропускам для Dropdown in gaps, пары «справа / слева»
+            для Matching).
+          </li>
+          <li>
+            Кнопки <strong>↑</strong> / <strong>↓</strong> в заголовке каждой страницы меняют её порядок в квизе. Изменение
+            применяется в форме сразу; сохраняется по нажатию <strong>Save changes</strong>.
           </li>
           <li>
             <strong>Add page</strong> / <strong>Add question</strong> / <strong>Add option</strong> (или{" "}
@@ -502,7 +520,7 @@ export default async function AdminGuidePage() {
         </ul>
       </section>
 
-      <section className="space-y-3">
+      <section id="delete-save" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Удаление и сохранение</h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs sm:text-base">
@@ -535,7 +553,7 @@ export default async function AdminGuidePage() {
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="cheatsheet" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Краткая памятка</h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs sm:text-base">
@@ -572,6 +590,16 @@ export default async function AdminGuidePage() {
               <tr>
                 <td className="border px-2 py-1">Заголовок страницы</td>
                 <td className="border px-2 py-1">Page title</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Образец для страницы</td>
+                <td className="border px-2 py-1">Example (optional)</td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Порядок страниц</td>
+                <td className="border px-2 py-1">Кнопки ↑ / ↓ в заголовке карточки страницы</td>
                 <td className="border px-2 py-1">Нет</td>
               </tr>
               <tr>
@@ -624,7 +652,7 @@ export default async function AdminGuidePage() {
         </p>
       </section>
 
-      <section className="space-y-3">
+      <section id="ai-chat" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Админ‑чат с ИИ</h2>
         <p className="text-base">
           В правом нижнем углу админки есть плавающая кнопка с иконкой чата — она открывает полноэкранное окно{" "}
@@ -690,7 +718,9 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
       </section>
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }
 
