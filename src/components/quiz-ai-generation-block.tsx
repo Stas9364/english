@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export interface QuizAiGenerationBlockProps {
   topic: string;
@@ -86,6 +86,7 @@ export function QuizAiGenerationBlock({
   generatedSummary,
   errorMessage,
 }: QuizAiGenerationBlockProps) {
+  const customTaskTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const questionsValue = typeof questionsPerPage === "number" ? String(questionsPerPage) : questionsPerPage;
   const MAX_CUSTOM_TASK_CHARS = 350000;
 
@@ -99,6 +100,17 @@ export function QuizAiGenerationBlock({
   const handleCustomTaskBlur = () => {
     customTaskField.syncIfChanged(onCustomTaskChange);
   };
+
+  const resizeCustomTaskTextarea = () => {
+    const el = customTaskTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resizeCustomTaskTextarea();
+  }, [customTaskField.local]);
 
   const handleGenerateClick = () => {
     topicField.syncIfChanged(onTopicChange);
@@ -168,13 +180,15 @@ export function QuizAiGenerationBlock({
               </span>
             </div>
             <textarea
+              ref={customTaskTextareaRef}
               value={customTaskField.local}
               onChange={(e) => customTaskField.setLocal(e.target.value)}
+              onInput={resizeCustomTaskTextarea}
               onBlur={handleCustomTaskBlur}
               placeholder="Paste your own exercise description or instructions here. Gemini will convert it into a quiz page according to the settings above."
               rows={4}
               maxLength={MAX_CUSTOM_TASK_CHARS}
-              className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+              className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-none overflow-hidden min-h-[80px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             />
           </div>
 
