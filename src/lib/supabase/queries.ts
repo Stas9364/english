@@ -14,7 +14,7 @@ export async function getQuizzes(
   const { data, error } = await supabase
     .from("quizzes")
     .select("id, title, description, slug, created_at")
-    .order("created_at", { ascending: false });
+    .order("title", { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as Quiz[];
