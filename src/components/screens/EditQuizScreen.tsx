@@ -24,8 +24,8 @@ import { cn } from "@/lib/utils";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useQuizAiGeneration, type GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
-import { EditPageBlock } from "@/components/edit-page-block";
-import type { EditPageBlockFormValues } from "@/components/edit-page-block";
+import { PageBlock } from "@/components/page-block";
+import type { PageBlockFormValues } from "@/components/page-block";
 import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
 
@@ -56,12 +56,17 @@ function defaultQuestion(q?: {
   };
 }
 
-function defaultPage(p?: { id?: string; type: TestType; title?: string | null; questions: { id?: string; question_title: string; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
+function defaultQuestionForBlock(orderIndex: number) {
+  return defaultQuestion(undefined, orderIndex);
+}
+
+function defaultPage(p?: { id?: string; type: TestType; title?: string | null; example?: string | null; questions: { id?: string; question_title: string; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
   const type = p?.type ?? "single";
   return {
     id: p?.id,
     type,
     title: p?.title ?? "",
+    example: p?.example ?? "",
     order_index: pageIndex ?? 0,
     questions: (p?.questions?.length ? p.questions : [{ question_title: "", explanation: "", options: [defaultOption()] }]).map((q, i) =>
       defaultQuestion(q, i)
@@ -101,7 +106,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
       description: quiz.description ?? "",
       slug: quiz.slug,
       pages: quiz.pages?.length
-        ? quiz.pages.map((p, i) => defaultPage({ id: p.id, type: p.type, title: p.title, questions: p.questions }, i))
+        ? quiz.pages.map((p, i) => defaultPage({ id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions }, i))
         : [defaultPage(undefined, 0)],
     },
   });
@@ -160,6 +165,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
         id: p.id,
         type: p.type,
         title: p.title || null,
+        example: p.example || null,
         order_index: pi,
         questions: p.questions.map((q, qi) => ({
           id: q.id,
@@ -364,16 +370,16 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
                 errorMessage={ai.errorMessage}
               />
               {pagesArray.fields.map((field, pIndex) => (
-                <EditPageBlock
+                <PageBlock
                   key={field.id}
-                  form={form as unknown as UseFormReturn<EditPageBlockFormValues>}
+                  form={form as unknown as UseFormReturn<PageBlockFormValues>}
                   pageIndex={pIndex}
-                  defaultOption={defaultOption}
-                  defaultQuestion={defaultQuestion}
+                  defaultOption={() => defaultOption()}
+                  defaultQuestion={defaultQuestionForBlock}
                   onRemove={() => handleDeletePage(pIndex)}
                   canRemove={pagesArray.fields.length > 1}
-                  onConfirmDeleteQuestion={async (pIndex, qIndex) => {
-                    const q = form.getValues(`pages.${pIndex}.questions.${qIndex}`);
+                  onConfirmDeleteQuestion={async (pi, qIndex) => {
+                    const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
                     if (q?.id) {
                       const r = await deleteQuestion(q.id);
                       if (!r.ok) {
@@ -383,8 +389,8 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
                     }
                     return true;
                   }}
-                  onConfirmDeleteOption={async (pIndex, qIndex, oIndex) => {
-                    const opts = form.getValues(`pages.${pIndex}.questions.${qIndex}.options`);
+                  onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
+                    const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
                     const opt = opts[oIndex];
                     if (opt?.id) {
                       const r = await deleteOption(opt.id);

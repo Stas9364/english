@@ -18,8 +18,8 @@ import type { TheoryBlockInput } from "@/app/admin/actions";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
 import { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
-import { PageFormBlock } from "@/components/page-form-block";
-import type { PageFormBlockFormValues } from "@/components/page-form-block";
+import { PageBlock } from "@/components/page-block";
+import type { PageBlockFormValues } from "@/components/page-block";
 import type { UseFormReturn } from "react-hook-form";
 import { createQuizFormSchema, type CreateQuizFormValues } from "@/lib/quiz-page-schema";
 import { AdminQuizListCard } from "@/components/admin-quiz-list-card";
@@ -53,6 +53,7 @@ function defaultPage(pageIndex: number) {
   return {
     type: "single" as TestType,
     title: "",
+    example: "",
     order_index: pageIndex,
     questions: [defaultQuestion(0)],
   };
@@ -62,6 +63,7 @@ function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefi
   if (!page) return false;
   if (page.type !== "single") return false;
   if ((page.title ?? "").trim() !== "") return false;
+  if ((page.example ?? "").trim() !== "") return false;
   if (!page.questions || page.questions.length !== 1) return false;
   const q = page.questions[0];
   if ((q.question_title ?? "").trim() !== "") return false;
@@ -112,6 +114,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     return pages.map((p, pi) => ({
       type: p.type,
       title: p.title ?? "",
+      example: "",
       order_index: pi,
       questions: (p.questions ?? []).map((q, qi) => ({
         question_title: q.question_title ?? "",
@@ -209,6 +212,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
       pages: data.pages.map((p, pi) => ({
         type: p.type,
         title: p.title || null,
+        example: p.example || null,
         order_index: pi,
         questions: p.questions.map((q, qi) => ({
           question_title: q.question_title,
@@ -310,9 +314,9 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
                 <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
               </div>
               {pagesArray.fields.map((field, pIndex) => (
-                <PageFormBlock
+                <PageBlock
                   key={field.id}
-                  form={form as unknown as UseFormReturn<PageFormBlockFormValues>}
+                  form={form as unknown as UseFormReturn<PageBlockFormValues>}
                   pageIndex={pIndex}
                   defaultOption={defaultOption}
                   defaultQuestion={defaultQuestion}

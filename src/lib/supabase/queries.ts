@@ -35,7 +35,7 @@ export async function getQuizWithPages(
 
   const { data: pagesData, error: pagesError } = await supabase
     .from("quiz_pages")
-    .select("id, quiz_id, type, title, order_index")
+    .select("id, quiz_id, type, title, example, order_index")
     .eq("quiz_id", quizId)
     .order("order_index", { ascending: true });
 

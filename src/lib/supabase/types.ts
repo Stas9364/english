@@ -16,6 +16,7 @@ export interface QuizPage {
   quiz_id: string;
   type: TestType;
   title: string | null;
+  example: string | null;
   order_index: number;
 }
 

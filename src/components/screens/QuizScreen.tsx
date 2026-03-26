@@ -130,13 +130,18 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
           </Card>
         )}
 
-        {(currentPage.title || totalPages > 1) && (
+        {(currentPage.title || currentPage.example || totalPages > 1) && (
           <Card className="mb-6">
             <CardContent>
               {(currentPage.title) && (
                 <p className="text-2xl font-semibold whitespace-pre-line">
                   {currentPage.title}
                   {/* {[quiz.description, currentPage.title].filter(Boolean).join("\n\n")} */}
+                </p>
+              )}
+              {currentPage.example && (
+                <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
+                  Example: {currentPage.example}
                 </p>
               )}
             </CardContent>

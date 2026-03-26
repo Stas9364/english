@@ -37,6 +37,7 @@ export type CreateQuizInput = {
   pages: {
     type: TestType;
     title?: string | null;
+    example?: string | null;
     order_index: number;
     questions: {
       question_title: string;
@@ -89,6 +90,7 @@ export async function createQuiz(data: CreateQuizInput) {
         quiz_id: quiz.id,
         type: page.type,
         title: page.title || null,
+        example: page.example || null,
         order_index: page.order_index,
       })
       .select("id")
@@ -159,6 +161,7 @@ export type UpdateQuizInput = {
     id?: string;
     type: TestType;
     title?: string | null;
+    example?: string | null;
     order_index: number;
     questions: {
       id?: string;
@@ -202,6 +205,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
         .update({
           type: page.type,
           title: page.title || null,
+          example: page.example || null,
           order_index: page.order_index,
         })
         .eq("id", pageId);
@@ -213,6 +217,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
           quiz_id: data.quizId,
           type: page.type,
           title: page.title || null,
+          example: page.example || null,
           order_index: page.order_index,
         })
         .select("id")

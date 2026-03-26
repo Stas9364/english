@@ -18,6 +18,7 @@ export const quizQuestionSchema = z.object({
 export const quizPageBaseObject = z.object({
   type: z.enum(["single", "multiple", "input", "select_gaps", "matching"]),
   title: z.string().optional(),
+  example: z.string().optional(),
   order_index: z.number(),
   questions: z.array(quizQuestionSchema).min(1, "At least one question"),
 });
