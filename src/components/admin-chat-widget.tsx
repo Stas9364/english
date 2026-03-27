@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Trash2, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,20 @@ import { cn } from "@/lib/utils";
 export function AdminChatWidget() {
   const [open, setOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chatInputTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { messages, inputValue, setInputValue, loading, streamingText, error, clearChat, handleSubmit, stopGeneration } =
     useAdminChat();
+
+  const resizeChatInputTextarea = () => {
+    const el = chatInputTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resizeChatInputTextarea();
+  }, [inputValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -140,12 +151,21 @@ export function AdminChatWidget() {
 
           <footer className="shrink-0 border-t p-4">
             <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
+              <textarea
+                ref={chatInputTextareaRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onInput={resizeChatInputTextarea}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder="Type a message..."
                 disabled={loading}
-                className="min-w-0 flex-1"
+                rows={2}
+                className="placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input min-w-0 flex-1 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-none overflow-y-auto min-h-9 max-h-[min(40vh,240px)] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 autoFocus
               />
               {loading ? (
