@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { ReactNode } from "react";
 import type { QuestionWithOptions, Option } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,18 +62,38 @@ function getPerGapCorrectnessSelectGaps(question: QuestionWithOptions, selectedO
   });
 }
 
-/** Returns accepted correct answer texts for each gap index. */
-function getCorrectTextsByGap(question: QuestionWithOptions): string[][] {
+/** Returns accepted answer texts for each gap index.
+ *  If onlyMarkedCorrect=true, include only options with is_correct=true.
+ */
+function getCorrectTextsByGap(question: QuestionWithOptions, onlyMarkedCorrect = false): string[][] {
   const gapCount = getEffectiveGapCount(question.question_title);
   const options = question.options ?? [];
   return Array.from({ length: gapCount }, (_, i) => {
     const unique = new Set(
       options
-        .filter((o) => (o.gap_index ?? 0) === i && (o.option_text ?? "").trim())
+        .filter(
+          (o) =>
+            (o.gap_index ?? 0) === i &&
+            (o.option_text ?? "").trim() &&
+            (!onlyMarkedCorrect || o.is_correct)
+        )
         .map((o) => o.option_text!.trim())
     );
     return Array.from(unique);
   });
+}
+
+const CorrectAnswers = ({ correctTextByGap }: { correctTextByGap: string[][] }) => {
+  return (<div className="text-sm text-muted-foreground">
+    <p className="mb-1">Correct answers:</p>
+    <ul className="list-disc pl-5 space-y-0.5">
+      {correctTextByGap.map((texts, i) => (
+        <li key={`correct-input-gap-${i}`}>
+          #{i + 1}: {texts.join(" / ") || "—"}
+        </li>
+      ))}
+    </ul>
+  </div>)
 }
 
 function OptionRow({
@@ -94,7 +115,7 @@ function OptionRow({
   const content = (
     <span
       className={cn(
-        "flex-1 text-lg font-normal transition-colors duration-300 ease-out",
+        "flex-1 text-lg font-normal",
         !multiple && "cursor-pointer",
         showCorrect && "text-green-800 dark:text-green-200",
         showIncorrect && "text-red-800 dark:text-red-200"
@@ -105,7 +126,7 @@ function OptionRow({
   );
 
   const wrapperClassName = cn(
-    "flex items-center gap-3 rounded-lg border px-3 py-2 min-h-[2.75rem] transition-[background-color,border-color] duration-300 ease-out",
+    "flex items-center gap-3 rounded-lg border px-3 py-2 min-h-[2.75rem]",
     (showCorrect || showIncorrect) && "animate-quiz-result-reveal",
     showCorrect && "border-green-600 bg-green-50 dark:bg-green-950/30",
     showIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30",
@@ -122,11 +143,11 @@ function OptionRow({
           checked
             ? undefined
             : (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect?.(option.id);
-                }
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect?.(option.id);
               }
+            }
         }
         className={wrapperClassName}
       >
@@ -149,11 +170,11 @@ function OptionRow({
         checked
           ? undefined
           : (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect?.(option.id);
-              }
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect?.(option.id);
             }
+          }
       }
       className={wrapperClassName}
     >
@@ -165,7 +186,7 @@ function OptionRow({
   );
 }
 
-export function QuestionBlock({
+function QuestionBlockImpl({
   question,
   pageType,
   index,
@@ -184,9 +205,9 @@ export function QuestionBlock({
   selectedOptionIds: string[];
   checked: boolean;
   textAnswers: string[];
-  onInputChange?: (gapIndex: number, value: string) => void;
-  onSelect: (optionId: string) => void;
-  onSelectGap?: (gapIndex: number, optionId: string) => void;
+  onInputChange?: (questionId: string, title: string, gapIndex: number, value: string) => void;
+  onSelect: (questionId: string, optionId: string, pageType: "single" | "multiple" | "input" | "select_gaps") => void;
+  onSelectGap?: (questionId: string, gapIndex: number, optionId: string) => void;
 }) {
   const isMultiple = pageType === "multiple";
   const isText = pageType === "input";
@@ -200,7 +221,8 @@ export function QuestionBlock({
   const parts = hasInlineGaps ? title.split("[[]]") : [];
   const perGapCorrectness = isText && checked && hasInlineGaps ? getPerGapCorrectness(question, textAnswers) : null;
   const perGapCorrectnessSelect = isSelectGaps && checked && hasInlineGaps ? getPerGapCorrectnessSelectGaps(question, selectedOptionIds) : null;
-  const correctTextsByGap = (isText || isSelectGaps) && checked ? getCorrectTextsByGap(question) : null;
+  const correctTextsByGap =
+    (isText || isSelectGaps) && checked ? getCorrectTextsByGap(question, isSelectGaps) : null;
 
   const showQuestionNumber = !(isText && totalQuestionsOnPage === 1);
 
@@ -228,14 +250,14 @@ export function QuestionBlock({
                       <select
                         key={`s-${i}`}
                         value={selectedOptionIds[i] ?? ""}
-                        onChange={(e) => onSelectGap?.(i, e.target.value)}
+                          onChange={(e) => onSelectGap?.(question.id, i, e.target.value)}
                         disabled={checked}
                         className={cn(
                           "gap-control inline-block w-auto min-w-0 max-w-full align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:appearance-none disabled:bg-none",
                           perGapCorrectnessSelect?.[i] === true &&
-                            "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
+                          "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                           perGapCorrectnessSelect?.[i] === false &&
-                            "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                          "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
                         )}
                       >
                         <option value="">—</option>
@@ -253,16 +275,7 @@ export function QuestionBlock({
                 })}
               </div>
               {checked && correctTextsByGap && (
-                <div className="text-sm text-muted-foreground">
-                  <p className="mb-1">Correct answers:</p>
-                  <ul className="list-disc pl-5 space-y-0.5">
-                    {correctTextsByGap.map((texts, i) => (
-                      <li key={`correct-select-gap-${i}`}>
-                        #{i + 1}: {texts.join(" / ") || "—"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <CorrectAnswers correctTextByGap={correctTextsByGap} />
               )}
             </div>
           ) : isText ? (
@@ -274,40 +287,31 @@ export function QuestionBlock({
                     perGapCorrectness && "animate-quiz-result-reveal"
                   )}
                 >
-                {parts.flatMap((part, i) => {
-                  const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
-                  if (i < parts.length - 1) {
-                    nodes.push(
-                      <Input
-                        key={`i-${i}`}
-                        value={textAnswers[i] ?? ""}
-                        onChange={(e) => onInputChange?.(i, e.target.value)}
-                        disabled={checked}
-                        placeholder="…"
-                        className={cn(
-                          "gap-control inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
-                          perGapCorrectness?.[i] === true &&
+                  {parts.flatMap((part, i) => {
+                    const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
+                    if (i < parts.length - 1) {
+                      nodes.push(
+                        <Input
+                          key={`i-${i}`}
+                          value={textAnswers[i] ?? ""}
+                          onChange={(e) => onInputChange?.(question.id, question.question_title, i, e.target.value)}
+                          disabled={checked}
+                          placeholder="…"
+                          className={cn(
+                            "gap-control inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
+                            perGapCorrectness?.[i] === true &&
                             "border-b-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
-                          perGapCorrectness?.[i] === false &&
+                            perGapCorrectness?.[i] === false &&
                             "border-b-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
-                        )}
-                      />
-                    );
-                  }
-                  return nodes;
-                })}
+                          )}
+                        />
+                      );
+                    }
+                    return nodes;
+                  })}
                 </div>
                 {checked && correctTextsByGap && (
-                  <div className="text-sm text-muted-foreground">
-                    <p className="mb-1">Correct answers:</p>
-                    <ul className="list-disc pl-5 space-y-0.5">
-                      {correctTextsByGap.map((texts, i) => (
-                        <li key={`correct-input-gap-${i}`}>
-                          #{i + 1}: {texts.join(" / ") || "—"}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <CorrectAnswers correctTextByGap={correctTextsByGap} />
                 )}
               </div>
             ) : (
@@ -323,7 +327,7 @@ export function QuestionBlock({
                 >
                   <Input
                     value={textAnswers[0] ?? ""}
-                    onChange={(e) => onInputChange?.(0, e.target.value)}
+                    onChange={(e) => onInputChange?.(question.id, question.question_title, 0, e.target.value)}
                     disabled={checked}
                     placeholder="Type your answer"
                     className={cn(
@@ -352,14 +356,14 @@ export function QuestionBlock({
                   isSelected={selectedOptionIds.includes(option.id)}
                   checked={checked}
                   multiple
-                  onSelect={onSelect}
+                  onSelect={(optionId) => onSelect(question.id, optionId, pageType)}
                 />
               ))}
             </div>
           ) : (
             <RadioGroup
               value={selectedOptionIds[0] ?? ""}
-              onValueChange={onSelect}
+              onValueChange={(optionId) => onSelect(question.id, optionId, pageType)}
               disabled={checked}
               className="grid gap-2"
             >
@@ -370,7 +374,7 @@ export function QuestionBlock({
                   isSelected={selectedOptionIds.includes(option.id)}
                   checked={checked}
                   multiple={false}
-                  onSelect={onSelect}
+                  onSelect={(optionId) => onSelect(question.id, optionId, pageType)}
                 />
               ))}
             </RadioGroup>
@@ -387,3 +391,7 @@ export function QuestionBlock({
     </li>
   );
 }
+
+export const QuestionBlock = memo(QuestionBlockImpl);
+
+

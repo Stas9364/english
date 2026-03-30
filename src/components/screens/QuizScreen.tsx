@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { TheoryImage } from "@/components/theory-image";
 import type { QuizWithPages, TheoryBlock } from "@/lib/supabase";
@@ -21,6 +21,7 @@ interface QuizScreenProps {
 
 export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScreenProps) {
   const [viewTab, setViewTab] = useState<ViewTab>("quiz");
+  const emptySelectedOptionIds = useMemo(() => [] as string[], []);
 
   const {
     pages,
@@ -47,6 +48,26 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
   } = useQuizProgress(quiz);
 
   const hasTheory = theoryBlocks.length > 0;
+  const totalQuestionsOnPage = currentPage.questions.length;
+
+  const getTextAnswersForQuestion = useCallback(
+    (questionId: string, title: string) => textAnswers[questionId] ?? Array(getEffectiveGapCount(title)).fill(""),
+    [textAnswers]
+  );
+
+  const handleQuestionInputChange = useCallback(
+    (questionId: string, title: string, gapIndex: number, value: string) => {
+      if (isCurrentPageChecked) return;
+      const gapCount = getEffectiveGapCount(title);
+      setTextAnswers((prev) => {
+        const prevArr = prev[questionId] ?? Array(gapCount).fill("");
+        const next = [...prevArr.slice(0, gapCount)];
+        if (gapIndex >= 0 && gapIndex < next.length) next[gapIndex] = value;
+        return { ...prev, [questionId]: next };
+      });
+    },
+    [isCurrentPageChecked, setTextAnswers]
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -173,22 +194,13 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
                 question={q}
                 pageType={pageType}
                 index={index + 1}
-                totalQuestionsOnPage={currentPage.questions.length}
-                selectedOptionIds={selected[q.id] ?? []}
+                totalQuestionsOnPage={totalQuestionsOnPage}
+                selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
                 checked={isCurrentPageChecked}
-                textAnswers={textAnswers[q.id] ?? Array(getEffectiveGapCount(q.question_title)).fill("")}
-                onInputChange={(gapIndex, value) => {
-                  if (isCurrentPageChecked) return;
-                  const gapCount = getEffectiveGapCount(q.question_title);
-                  setTextAnswers((prev) => {
-                    const prevArr = prev[q.id] ?? Array(gapCount).fill("");
-                    const next = [...prevArr.slice(0, gapCount)];
-                    if (gapIndex >= 0 && gapIndex < next.length) next[gapIndex] = value;
-                    return { ...prev, [q.id]: next };
-                  });
-                }}
-                onSelect={(optionId) => handleSelect(q.id, optionId, pageType)}
-                onSelectGap={pageType === "select_gaps" ? (gapIndex, optionId) => handleSelectGap(q.id, gapIndex, optionId) : undefined}
+                textAnswers={getTextAnswersForQuestion(q.id, q.question_title)}
+                onInputChange={handleQuestionInputChange}
+                onSelect={handleSelect}
+                onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
               />
             ))}
           </ul>
@@ -233,9 +245,9 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
               Previous page
             </Button>
             <span className="flex items-center gap-1 px-2">
-              {pages.map((_, i) => (
+              {pages.map((page, i) => (
                 <Button
-                  key={pages[i].id}
+                  key={page.id}
                   variant={pageIndex === i ? "default" : "outline"}
                   size="sm"
                   className="min-w-9"
