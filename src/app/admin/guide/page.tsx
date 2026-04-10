@@ -318,36 +318,79 @@ export default async function AdminGuidePage() {
 
         <h3 className="text-lg font-semibold">Шаг 5. Правильные ответы для Text input</h3>
         <p className="text-base">
-          Если у страницы тип <strong>Text input</strong>, у каждого вопроса вместо вариантов выбора показывается блок{" "}
-          <strong>Correct answers</strong>.
+          Если у страницы тип <strong>Text input</strong>, у каждого вопроса вместо вариантов выбора настраивается список
+          допустимых ответов. <strong>Сколько раз в тексте вопроса встречается маркер</strong> <code>[[]]</code>
+          <strong>, столько на экране квиза будет отдельных полей ввода</strong> (пропусков). Если{" "}
+          <code>[[]]</code> <strong>нет</strong>, считается <strong>одно</strong> общее поле ввода под целым вопросом — как если
+          бы был один пропуск.
         </p>
-        <p className="text-base font-medium">Два варианта использования:</p>
-        <ol className="list-decimal space-y-2 pl-5 text-base">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs sm:text-base">
+            <thead>
+              <tr>
+                <th className="border px-2 py-1 font-semibold">Маркеров [[]] в тексте</th>
+                <th className="border px-2 py-1 font-semibold">Ученик видит</th>
+                <th className="border px-2 py-1 font-semibold">В админке (подписи блоков)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border px-2 py-1">
+                  <strong>0</strong> (нет <code>[[]]</code>)
+                </td>
+                <td className="border px-2 py-1">
+                  Одно поле «снизу» под формулировкой вопроса (например: «Переведите: яблоко» → ввод «apple»).
+                </td>
+                <td className="border px-2 py-1">
+                  Один блок с подписью <strong>Correct answers (any match counts)</strong> — все строки относятся к этому единственному
+                  ответу; засчитывается любое совпадение с одной из них (без учёта регистра).
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">
+                  <strong>1</strong>
+                </td>
+                <td className="border px-2 py-1">
+                  Одно поле <strong>вместо</strong> единственного <code>[[]]</code> в предложении (например: «She [[]] to school every
+                  day.»).
+                </td>
+                <td className="border px-2 py-1">
+                  Как при нуле маркеров: снова один блок{" "}
+                  <strong>Correct answers (any match counts)</strong> — список допустимых форм для этого пропуска (например «goes»,
+                  «does go»).
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">
+                  <strong>2 и больше</strong>
+                </td>
+                <td className="border px-2 py-1">
+                  Столько полей ввода, сколько <code>[[]]</code>, слева направо в тексте (например два пропуска: «The cat [[]] on the
+                  [[]].»).
+                </td>
+                <td className="border px-2 py-1">
+                  Отдельные блоки <strong>Correct answers for gap 1</strong>, <strong>Correct answers for gap 2</strong> и т.д. — для
+                  каждого пропуска свой список фраз. Первое поле ученика сверяется с gap 1, второе — с gap 2 и т.д.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-base text-muted-foreground">
+          Важно: <strong>один</strong> <code>[[]]</code> и <strong>отсутствие</strong> <code>[[]]</code> с точки зрения формы
+          ведут себя одинаково — одно поле у ученика и один блок правильных ответов. Разница только в том, показывается ли поле
+          встроенным в предложение или отдельной строкой под текстом.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
-            <strong>Один общий ответ (без пропусков в тексте)</strong>
-            <p className="mt-1">
-              Если в тексте вопроса <strong>нет</strong> <code>[[]]</code>, под вопросом отображается <strong>одно поле ввода</strong>. Пользователь вводит ответ в
-              него (например, на вопрос «Переведите: яблоко» — вводит «apple»). В блоке <strong>Correct answers</strong> укажите все
-              допустимые варианты ответа (например, «apple», «an apple»). Хотя бы один правильный ответ обязателен.
-            </p>
+            Кнопка <strong>Add correct answer</strong> добавляет ещё одну допустимую фразу в текущий блок; если пропусков{" "}
+            <strong>больше одного</strong>, кнопки называются <strong>Add correct answer for gap N</strong>.
           </li>
           <li>
-            <strong>Несколько пропусков в предложении</strong>
-            <p className="mt-1">
-              Если в тексте вопроса есть <code>[[]]</code>, количество пропусков считается по числу <code>[[]]</code> (например:
-              «She [[]] to school every day.» — один пропуск; «The cat [[]] on the [[]].» — два пропуска). Под вопросом
-              показывается <strong>столько полей ввода, сколько пропусков</strong>. Появляются блоки{" "}
-              <em>Correct answers for gap 1</em>, <em>Correct answers for gap 2</em> и т.д. — для каждого пропуска задаёте свой
-              список допустимых фраз. Пользователь заполняет поля по порядку; каждое проверяется по своему списку (без учёта
-              регистра).
-            </p>
+            Иконка корзины удаляет строку после подтверждения. В каждом блоке правильных ответов должен остаться{" "}
+            <strong>хотя бы один</strong> вариант.
           </li>
-        </ol>
-        <p className="text-base">
-          В каждом блоке — кнопка <strong>Add correct answer</strong> (или <strong>Add correct answer for gap N</strong> при
-          нескольких пропусках). Иконка корзины удаляет строку после подтверждения. Для каждого пропуска (или для единственного
-          ответа) должен остаться <strong>хотя бы один</strong> правильный ответ.
-        </p>
+        </ul>
 
         <h3 className="text-lg font-semibold">Шаг 6. Варианты для Dropdown in gaps</h3>
         <p className="text-base">
@@ -623,9 +666,12 @@ export default async function AdminGuidePage() {
               </tr>
               <tr>
                 <td className="border px-2 py-1">Допустимые ответы (text input)</td>
-                <td className="border px-2 py-1">Correct answers по каждому пропуску</td>
                 <td className="border px-2 py-1">
-                  Минимум один правильный ответ на пропуск
+                  0–1× <code>[[]]</code>: <strong>Correct answers (any match counts)</strong>; 2+× <code>[[]]</code>:{" "}
+                  <strong>Correct answers for gap N</strong>
+                </td>
+                <td className="border px-2 py-1">
+                  Минимум один допустимый вариант на каждый пропуск (на каждый блок)
                 </td>
               </tr>
               <tr>
