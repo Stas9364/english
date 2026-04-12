@@ -17,6 +17,7 @@ import {
   QuizQuestionMatchingOption,
 } from "@/components/quiz-question-options-editor";
 import type { QuizQuestionFormValues } from "@/components/quiz-question-options-editor";
+import { QuestionTitleEditor } from './question-title-editor';
 
 export type PageBlockFormValues = {
   pages: {
@@ -201,26 +202,37 @@ function QuestionItemCard({
                 : "Question text"}
           </Label>
           {pageType === "input" || pageType === "select_gaps" ? (
-            <textarea
-              {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-              placeholder="Use [[]] where the user should type or choose"
-              rows={4}
-              className={cn(
-                "placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px]",
-                "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-                "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title &&
+            <>
+              {/* <textarea
+                {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                placeholder="Use [[]] where the user should type or choose"
+                rows={4}
+                className={cn(
+                  "placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px]",
+                  "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                  "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+                  "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                  form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title &&
                   "border-destructive"
-              )}
-            />
+                )}
+              /> */}
+              <QuestionTitleEditor
+                value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
+                onBlur={() => form.trigger(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                disabled={form.formState.isSubmitting}
+                invalid={
+                  !!form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title
+                }
+              />
+            </>
           ) : (
             <Input
               {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
               placeholder={pageType === "matching" ? "Text shown on the right" : "Enter the question"}
               className={cn(
                 form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title &&
-                  "border-destructive"
+                "border-destructive"
               )}
             />
           )}

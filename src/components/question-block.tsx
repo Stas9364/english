@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { ReactNode } from "react";
 import type { QuestionWithOptions, Option } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 
 /** Number of [[]] gaps in the question title. 0 if none. */
 function getGapCount(title: string): number {
@@ -81,6 +82,31 @@ function getCorrectTextsByGap(question: QuestionWithOptions, onlyMarkedCorrect =
     );
     return Array.from(unique);
   });
+}
+
+/**
+ * Текст между `[[]]` (после санитизации).
+ * `display: contents` — участок не создаёт узкий `inline-block`, текст переносится
+ * по ширине родителя; `<p>` из редактора переводим в inline, чтобы не рвать строку с пропусками.
+ */
+function GapTitleSegment({ part }: { part: string }) {
+  const safe = useMemo(() => sanitizeQuestionTitleHtml(part), [part]);
+  if (!safe) return <span className="inline" />;
+  return (
+    <p
+      className={cn(
+        "contents text-left",
+        "[&_a]:text-primary [&_a]:wrap-break-word [&_a]:underline",
+        "[&_p]:m-0 [&_p]:inline [&_p]:max-w-none",
+        "[&_h1]:m-0 [&_h1]:inline [&_h1]:text-lg [&_h1]:font-semibold",
+        "[&_h2]:m-0 [&_h2]:inline [&_h2]:text-base [&_h2]:font-semibold",
+        "[&_pre]:m-0 [&_pre]:inline [&_pre]:max-w-full [&_pre]:whitespace-pre-wrap [&_pre]:align-baseline",
+        "[&_ul]:my-0 [&_ul]:inline-block [&_ul]:max-w-full [&_ul]:align-baseline [&_ul]:list-disc [&_ul]:pl-5",
+        "[&_ol]:my-0 [&_ol]:inline-block [&_ol]:max-w-full [&_ol]:align-baseline [&_ol]:list-decimal [&_ol]:pl-5"
+      )}
+      dangerouslySetInnerHTML={{ __html: safe }}
+    />
+  );
 }
 
 const CorrectAnswers = ({ correctTextByGap }: { correctTextByGap: string[][] }) => {
@@ -239,18 +265,18 @@ function QuestionBlockImpl({
             <div className="space-y-2">
               <div
                 className={cn(
-                  "rounded-lg border border-input px-3 py-2 text-lg leading-relaxed transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
+                  "block w-full max-w-full rounded-lg  border border-input px-3 py-2 text-lg/[45px]   transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
                   perGapCorrectnessSelect && "animate-quiz-result-reveal"
                 )}
               >
                 {parts.flatMap((part, i) => {
-                  const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
+                  const nodes: ReactNode[] = [<GapTitleSegment key={`t-${i}`} part={part} />];
                   if (i < parts.length - 1) {
                     nodes.push(
                       <select
                         key={`s-${i}`}
                         value={selectedOptionIds[i] ?? ""}
-                          onChange={(e) => onSelectGap?.(question.id, i, e.target.value)}
+                        onChange={(e) => onSelectGap?.(question.id, i, e.target.value)}
                         disabled={checked}
                         className={cn(
                           "gap-control inline-block w-auto min-w-0 max-w-full align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:appearance-none disabled:bg-none",
@@ -283,12 +309,12 @@ function QuestionBlockImpl({
               <div className="space-y-2">
                 <div
                   className={cn(
-                    "rounded-lg border border-input px-3 py-2 text-lg leading-relaxed transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
+                    "block w-full max-w-full rounded-lg border border-input px-3 py-2 text-lg/[45px] transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
                     perGapCorrectness && "animate-quiz-result-reveal"
                   )}
                 >
                   {parts.flatMap((part, i) => {
-                    const nodes: ReactNode[] = [<span key={`t-${i}`}>{part}</span>];
+                    const nodes: ReactNode[] = [<GapTitleSegment key={`t-${i}`} part={part} />];
                     if (i < parts.length - 1) {
                       nodes.push(
                         <Input
@@ -298,7 +324,7 @@ function QuestionBlockImpl({
                           disabled={checked}
                           placeholder="…"
                           className={cn(
-                            "gap-control inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
+                            "inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
                             perGapCorrectness?.[i] === true &&
                             "border-b-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                             perGapCorrectness?.[i] === false &&
