@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions } from "@/lib/supabase";
-import { getEffectiveGapCount } from "@/components/question-block";
+import { getEffectiveGapCount } from '@/lib/question-block-utils';
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
