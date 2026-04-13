@@ -1,9 +1,32 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase/server";
 import { getIsAdmin } from "@/lib/supabase";
+import { isChapter, type Chapter } from "@/lib/chapters";
 import { revalidatePath } from "next/cache";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
+
+/** Списки тем и квизов в админке для данного топика */
+async function revalidateAdminPathsForTopicId(
+  supabase: SupabaseClient,
+  topicId: string | null | undefined
+) {
+  if (!topicId) return;
+  const { data: t } = await supabase
+    .from("topics")
+    .select("slug, chapter")
+    .eq("id", topicId)
+    .single();
+  if (!t || !isChapter(t.chapter)) return;
+  revalidatePath(`/admin/${t.chapter}`);
+  revalidatePath(`/admin/${t.chapter}/${t.slug}`);
+}
+
+async function revalidateAdminPathsForQuizId(supabase: SupabaseClient, quizId: string) {
+  const { data: quiz } = await supabase.from("quizzes").select("topic_id").eq("id", quizId).single();
+  await revalidateAdminPathsForTopicId(supabase, quiz?.topic_id);
+}
 
 /** Storage bucket for quiz theory images (public read, admin write) */
 const IMAGES_BUCKET = "Eanglish";
@@ -31,6 +54,8 @@ export type TheoryBlockInput = {
 };
 
 export type CreateQuizInput = {
+  /** Раздел страницы создания — должен совпадать с `topics.chapter` выбранной темы */
+  chapter: Chapter;
   topic_id: string;
   title: string;
   description: string;
@@ -78,11 +103,14 @@ function slugifyTopicName(value: string): string {
 
 /** Create topic with unique slug. */
 export async function createTopic(payload: {
+  chapter: Chapter;
   name: string;
   description?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const isAdmin = await getIsAdmin();
   if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  if (!isChapter(payload.chapter)) return { ok: false, error: "Invalid section" };
 
   const name = payload.name.trim();
   if (!name) return { ok: false, error: "Topic name is required" };
@@ -98,6 +126,7 @@ export async function createTopic(payload: {
       name,
       slug,
       description: description || null,
+      chapter: payload.chapter,
     });
 
     if (!error) break;
@@ -110,11 +139,26 @@ export async function createTopic(payload: {
   }
 
   revalidatePath("/admin");
+  revalidatePath(`/admin/${payload.chapter}`);
   return { ok: true };
 }
 
 export async function createQuiz(data: CreateQuizInput) {
   const supabase = await createServerClient();
+
+  if (!isChapter(data.chapter)) {
+    return { ok: false, error: "Invalid section" };
+  }
+
+  const { data: topicRow, error: topicFetchError } = await supabase
+    .from("topics")
+    .select("chapter")
+    .eq("id", data.topic_id)
+    .single();
+
+  if (topicFetchError || !topicRow || topicRow.chapter !== data.chapter) {
+    return { ok: false, error: "Topic does not belong to this section" };
+  }
 
   let slug = data.slug.trim();
   let quiz: { id: string } | null = null;
@@ -215,6 +259,8 @@ export async function createQuiz(data: CreateQuizInput) {
 
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath(`/admin/${data.chapter}`);
+  await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
 }
 
@@ -244,6 +290,12 @@ export type UpdateQuizInput = {
 
 export async function updateQuiz(data: UpdateQuizInput) {
   const supabase = await createServerClient();
+
+  const { data: beforeQuiz } = await supabase
+    .from("quizzes")
+    .select("topic_id")
+    .eq("id", data.quizId)
+    .single();
 
   const { error: quizError } = await supabase
     .from("quizzes")
@@ -311,8 +363,8 @@ export async function updateQuiz(data: UpdateQuizInput) {
         const { error: up } = await supabase
           .from("questions")
           .update({
-          question_title: q.question_title || "",
-          question_image_url: q.question_image_url || null,
+            question_title: q.question_title || "",
+            question_image_url: q.question_image_url || null,
             explanation: q.explanation || null,
             order_index: q.order_index,
           })
@@ -457,6 +509,8 @@ export async function updateQuiz(data: UpdateQuizInput) {
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/quiz/${data.quizId}`);
+  await revalidateAdminPathsForTopicId(supabase, beforeQuiz?.topic_id);
+  await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
 }
 
@@ -528,6 +582,7 @@ export async function deleteTheoryBlock(
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/quiz/${block.quiz_id}`);
+  await revalidateAdminPathsForQuizId(supabase, block.quiz_id);
   return { ok: true };
 }
 
@@ -539,11 +594,14 @@ export async function deleteQuiz(
   if (!isAdmin) return { ok: false, error: "Unauthorized" };
 
   const supabase = await createServerClient();
+  const { data: quizRow } = await supabase.from("quizzes").select("topic_id").eq("id", quizId).single();
+
   const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
   revalidatePath("/admin");
+  await revalidateAdminPathsForTopicId(supabase, quizRow?.topic_id);
   return { ok: true };
 }
 
@@ -563,7 +621,10 @@ export async function deleteQuizPage(
 
   revalidatePath("/");
   revalidatePath("/admin");
-  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  if (quizId) {
+    revalidatePath(`/admin/quiz/${quizId}`);
+    await revalidateAdminPathsForQuizId(supabase, quizId);
+  }
   return { ok: true };
 }
 
@@ -587,7 +648,10 @@ export async function deleteQuestion(
 
   revalidatePath("/");
   revalidatePath("/admin");
-  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  if (quizId) {
+    revalidatePath(`/admin/quiz/${quizId}`);
+    await revalidateAdminPathsForQuizId(supabase, quizId);
+  }
   return { ok: true };
 }
 
@@ -629,7 +693,10 @@ export async function deleteQuestionImage(
 
   revalidatePath("/");
   revalidatePath("/admin");
-  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  if (quizId) {
+    revalidatePath(`/admin/quiz/${quizId}`);
+    await revalidateAdminPathsForQuizId(supabase, quizId);
+  }
   return { ok: true };
 }
 
@@ -656,7 +723,10 @@ export async function deleteOption(
 
   revalidatePath("/");
   revalidatePath("/admin");
-  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  if (quizId) {
+    revalidatePath(`/admin/quiz/${quizId}`);
+    await revalidateAdminPathsForQuizId(supabase, quizId);
+  }
   return { ok: true };
 }
 
@@ -673,6 +743,12 @@ export async function updateTopic(
   const nextDescription = payload.description?.trim() ?? "";
 
   const supabase = await createServerClient();
+  const { data: existing } = await supabase
+    .from("topics")
+    .select("slug, chapter")
+    .eq("id", topicId)
+    .single();
+
   const { error } = await supabase
     .from("topics")
     .update({ name: nextName, description: nextDescription || null })
@@ -681,6 +757,10 @@ export async function updateTopic(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/admin");
+  if (existing && isChapter(existing.chapter)) {
+    revalidatePath(`/admin/${existing.chapter}`);
+    revalidatePath(`/admin/${existing.chapter}/${existing.slug}`);
+  }
   return { ok: true };
 }
 
@@ -694,7 +774,7 @@ export async function deleteTopic(
   const supabase = await createServerClient();
   const { data: topic } = await supabase
     .from("topics")
-    .select("slug")
+    .select("slug, chapter")
     .eq("id", topicId)
     .single();
 
@@ -710,6 +790,9 @@ export async function deleteTopic(
   }
 
   revalidatePath("/admin");
-  if (topic?.slug) revalidatePath(`/admin/${topic.slug}`);
+  if (topic && isChapter(topic.chapter)) {
+    revalidatePath(`/admin/${topic.chapter}`);
+    revalidatePath(`/admin/${topic.chapter}/${topic.slug}`);
+  }
   return { ok: true };
 }

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Chapter } from "@/lib/chapters";
 import type {
   Option,
   Quiz,
@@ -14,7 +15,7 @@ export async function getTopics(
 ): Promise<Topic[]> {
   const { data, error } = await supabase
     .from("topics")
-    .select("id, name, slug, description, order_index, created_at")
+    .select("id, name, slug, description, order_index, chapter, created_at")
     .order("order_index", { ascending: true })
     .order("name", { ascending: true });
 
@@ -29,9 +30,42 @@ export async function getTopicBySlug(
 ): Promise<Topic | null> {
   const { data, error } = await supabase
     .from("topics")
-    .select("id, name, slug, description, order_index, created_at")
+    .select("id, name, slug, description, order_index, chapter, created_at")
     .eq("slug", slug)
     .single();
+
+  if (error || !data) return null;
+  return data as Topic;
+}
+
+/** Темы одного раздела админки (для `/admin/[chapter]`) */
+export async function getTopicsByChapter(
+  supabase: SupabaseClient,
+  chapter: Chapter
+): Promise<Topic[]> {
+  const { data, error } = await supabase
+    .from("topics")
+    .select("id, name, slug, description, order_index, chapter, created_at")
+    .eq("chapter", chapter)
+    .order("order_index", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Topic[];
+}
+
+/** Тема по slug и разделу (сегмент URL должен совпадать с `topics.chapter`) */
+export async function getTopicBySlugAndChapter(
+  supabase: SupabaseClient,
+  slug: string,
+  chapter: Chapter
+): Promise<Topic | null> {
+  const { data, error } = await supabase
+    .from("topics")
+    .select("id, name, slug, description, order_index, chapter, created_at")
+    .eq("slug", slug)
+    .eq("chapter", chapter)
+    .maybeSingle();
 
   if (error || !data) return null;
   return data as Topic;
@@ -50,12 +84,31 @@ export async function getQuizzes(
   return (data ?? []) as Quiz[];
 }
 
-/** Квизы по topic slug (для /admin/[topicSlug]) */
+/** Квизы по topic slug (legacy: без фильтра по разделу) */
 export async function getQuizzesByTopicSlug(
   supabase: SupabaseClient,
   topicSlug: string
 ): Promise<Quiz[]> {
   const topic = await getTopicBySlug(supabase, topicSlug);
+  if (!topic) return [];
+
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("id, topic_id, title, description, slug, created_at")
+    .eq("topic_id", topic.id)
+    .order("title", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Quiz[];
+}
+
+/** Квизы темы в контексте раздела (`/admin/[chapter]/[topicSlug]`) */
+export async function getQuizzesByTopicSlugAndChapter(
+  supabase: SupabaseClient,
+  topicSlug: string,
+  chapter: Chapter
+): Promise<Quiz[]> {
+  const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
   if (!topic) return [];
 
   const { data, error } = await supabase

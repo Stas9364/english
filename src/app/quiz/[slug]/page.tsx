@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isChapter } from "@/lib/chapters";
 import { createServerClient, getQuizWithPagesBySlug, getTheoryBlocks, getIsAdmin } from "@/lib/supabase";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 
@@ -19,7 +20,22 @@ export default async function QuizPage({ params }: QuizPageProps) {
 
   if (!quiz) notFound();
 
-  const theoryBlocks = await getTheoryBlocks(supabase, quiz.id);
+  const [theoryBlocks, topicRow] = await Promise.all([
+    getTheoryBlocks(supabase, quiz.id),
+    supabase.from("topics").select("slug, chapter").eq("id", quiz.topic_id).single(),
+  ]);
 
-  return <QuizScreen quiz={quiz} theoryBlocks={theoryBlocks} isAdmin={isAdmin} />;
+  const adminBackHref =
+    topicRow.data && isChapter(topicRow.data.chapter)
+      ? `/admin/${topicRow.data.chapter}/${topicRow.data.slug}`
+      : "/admin";
+
+  return (
+    <QuizScreen
+      quiz={quiz}
+      theoryBlocks={theoryBlocks}
+      isAdmin={isAdmin}
+      adminBackHref={adminBackHref}
+    />
+  );
 }

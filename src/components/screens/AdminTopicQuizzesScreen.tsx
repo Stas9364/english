@@ -26,17 +26,17 @@ export function AdminTopicQuizzesScreen({ topic, quizzes }: AdminTopicQuizzesScr
         </div>
         <div className="flex items-center gap-2">
           <Button asChild>
-            <Link href="/admin/create">Create quiz</Link>
+            <Link href={`/admin/${topic.chapter}/create`}>Create quiz</Link>
           </Button>
           <Button asChild variant="ghost">
-            <Link href="/admin">Back to topics</Link>
+            <Link href={`/admin/${topic.chapter}`}>Back to topics</Link>
           </Button>
         </div>
       </div>
 
       <AdminQuizListCard
         quizzes={quizzes}
-        onDeleteError={() => {}}
+        onDeleteError={() => { }}
         onDeleteSuccess={() => router.refresh()}
       />
     </PageContainer>

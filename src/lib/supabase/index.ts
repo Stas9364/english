@@ -4,8 +4,11 @@ export { getCurrentUser, getIsAdmin } from "./auth";
 export {
   getTopics,
   getTopicBySlug,
+  getTopicsByChapter,
+  getTopicBySlugAndChapter,
   getQuizzes,
   getQuizzesByTopicSlug,
+  getQuizzesByTopicSlugAndChapter,
   getQuizWithPages,
   getQuizWithPagesBySlug,
   getTheoryBlocks,

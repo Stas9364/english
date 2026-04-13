@@ -16,10 +16,12 @@ import { useState } from 'react';
 import { useQuizAiGeneration } from '@/hooks/use-quiz-ai-generation';
 import { createQuizFormSchema, type CreateQuizFormValues } from '@/lib/quiz-page-schema';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { Chapter } from "@/lib/chapters";
 import { createQuiz } from '@/app/admin/actions';
 import { Label } from '../ui/label';
 import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { useMemo } from "react";
+import Link from "next/link";
 
 function slugify(title: string): string {
     const s = title
@@ -73,10 +75,11 @@ function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefi
 }
 
 interface CreateQuizScreenProps {
+    chapter: Chapter;
     topics: { id: string; name: string }[];
 }
 
-export function CreateQuizScreen({ topics }: CreateQuizScreenProps) {
+export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
     const {
         theoryBlocks,
@@ -182,6 +185,7 @@ export function CreateQuizScreen({ topics }: CreateQuizScreenProps) {
     async function onSubmit(data: CreateQuizFormValues) {
         setResult(null);
         const res = await createQuiz({
+            chapter,
             topic_id: data.topic_id,
             title: data.title,
             description: data.description,
@@ -221,6 +225,12 @@ export function CreateQuizScreen({ topics }: CreateQuizScreenProps) {
         }
     }
     return (
+        <>
+            <div className="mb-4">
+                <Button asChild variant="ghost" size="sm">
+                    <Link href={`/admin/${chapter}`}>Back to topics</Link>
+                </Button>
+            </div>
         <Card>
             <CardHeader>
                 <CardTitle>Create quiz</CardTitle>
@@ -338,5 +348,7 @@ export function CreateQuizScreen({ topics }: CreateQuizScreenProps) {
                     </Button>
                 </form>
             </CardContent>
-        </Card>)
+        </Card>
+        </>
+    );
 }

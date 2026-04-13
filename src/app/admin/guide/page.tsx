@@ -58,14 +58,15 @@ export default async function AdminGuidePage() {
       <section id="topics-and-binding" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Топики и привязка квизов</h2>
         <p className="text-base">
-          В админке каждый квиз привязан к одному топику. Топики используются для группировки квизов в блоке{" "}
-          <strong>Topics</strong> на странице <code>/admin</code> и в списках по адресу <code>/admin/[topicSlug]</code>.
+          В админке каждый квиз привязан к одному топику. На <code>/admin</code> — ссылки на разделы (grammar, vocabulary); внутри раздела{" "}
+          <code>/admin/[chapter]</code> — список топиков; квизы топика — <code>/admin/[chapter]/[topicSlug]</code>. Создание квиза —{" "}
+          <code>/admin/[chapter]/create</code>.
         </p>
 
         <h3 id="topics-create" className="text-lg font-semibold scroll-mt-6">Как создать топик</h3>
         <ol className="list-decimal space-y-1 pl-5 text-base">
           <li>
-            Откройте страницу <code>/admin</code> и найдите карточку <strong>Topics</strong>.
+            Откройте нужный раздел, например <code>/admin/grammar</code>, и найдите карточку <strong>Topics</strong>.
           </li>
           <li>
             Заполните <strong>New topic name</strong> (обязательно).
@@ -559,7 +560,8 @@ export default async function AdminGuidePage() {
         <h2 className="text-xl font-semibold">Редактирование квиза</h2>
         <ol className="list-decimal space-y-2 pl-5 text-base">
           <li>
-            На странице <code>/admin</code> в блоке <strong>Your quizzes</strong> нажмите иконку карандаша у нужного квиза.
+            Откройте топик в разделе (<code>/admin/[chapter]/[topicSlug]</code>) и нажмите ссылку на квиз или перейдите на{" "}
+            <code>/admin/quiz/[id]</code> — форма редактирования откроется по ссылке с карточки квиза.
           </li>
           <li>
             Откроется форма редактирования с <strong>двумя вкладками</strong>: <strong>Details and pages</strong> и{" "}

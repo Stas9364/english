@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   updateQuiz,
   deleteQuizPage,
@@ -84,10 +83,16 @@ interface EditQuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
   topics: { id: string; name: string }[];
+  /** Ссылка «назад к списку квизов темы» (по умолчанию хаб админки) */
+  backToTopicHref?: string;
 }
 
-export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], topics }: EditQuizScreenProps) {
-  const router = useRouter();
+export function EditQuizScreen({
+  quiz,
+  theoryBlocks: initialTheoryBlocks = [],
+  topics,
+  backToTopicHref = "/admin",
+}: EditQuizScreenProps) {
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const {
@@ -230,8 +235,8 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], t
               View quiz
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            Back to topic
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={backToTopicHref}>Back to topic</Link>
           </Button>
         </div>
       </div>
@@ -264,7 +269,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], t
               Theory
             </button>
           </div>
-          
+
           <CardTitle className="pt-2">
             {activeTab === "details" ? "Quiz details" : "Theory"}
           </CardTitle>

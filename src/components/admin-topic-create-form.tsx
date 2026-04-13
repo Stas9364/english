@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import type { Chapter } from "@/lib/chapters";
 import { createTopic } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface AdminTopicCreateFormProps {
+  chapter: Chapter;
   onCreated?: () => void;
 }
 
-export function AdminTopicCreateForm({ onCreated }: AdminTopicCreateFormProps) {
+export function AdminTopicCreateForm({ chapter, onCreated }: AdminTopicCreateFormProps) {
   const [newTopicName, setNewTopicName] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
@@ -23,6 +25,7 @@ export function AdminTopicCreateForm({ onCreated }: AdminTopicCreateFormProps) {
 
     setIsCreatingTopic(true);
     const res = await createTopic({
+      chapter,
       name,
       description: newTopicDescription,
     });

@@ -19,9 +19,16 @@ interface QuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
   isAdmin?: boolean;
+  /** Куда вести из админского режима (по умолчанию хаб `/admin`) */
+  adminBackHref?: string;
 }
 
-export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScreenProps) {
+export function QuizScreen({
+  quiz,
+  theoryBlocks = [],
+  isAdmin = false,
+  adminBackHref = "/admin",
+}: QuizScreenProps) {
   const [viewTab, setViewTab] = useState<ViewTab>("quiz");
   const emptySelectedOptionIds = useMemo(() => [] as string[], []);
 
@@ -80,7 +87,7 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
           </div>
           {isAdmin && (
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin">Back to topics</Link>
+              <Link href={adminBackHref}>Back to topics</Link>
             </Button>
           )}
         </div>

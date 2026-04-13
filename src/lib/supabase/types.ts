@@ -1,3 +1,5 @@
+import type { Chapter } from "@/lib/chapters";
+
 /** Тип страницы квиза: один правильный, несколько, ввод текста, выбор в пропусках или соответствие */
 export type TestType = "single" | "multiple" | "input" | "select_gaps" | "matching";
 
@@ -8,6 +10,7 @@ export interface Topic {
   slug: string;
   description: string | null;
   order_index: number;
+  chapter: Chapter;
   created_at: string;
 }
 
