@@ -61,7 +61,7 @@ export default async function AdminGuidePage() {
           автоматически создавать одну страницу квиза и сразу вставлять её в форму.
         </p>
 
-        <h3 className="text-lg font-semibold">Как пользоваться базовым режимом (без custom task)</h3>
+        <h3 id="ai-generation-basic" className="text-lg font-semibold scroll-mt-6">Как пользоваться базовым режимом (без custom task)</h3>
         <ol className="list-decimal space-y-1 pl-5 text-base">
           <li>
             Заполните <strong>Topic</strong> (обязательно) — кратко опишите тему, например «Present Simple daily routine».
@@ -116,7 +116,7 @@ export default async function AdminGuidePage() {
           </li>
         </ol>
 
-        <h3 className="text-lg font-semibold">Как пользоваться режимом с собственным заданием (Custom task)</h3>
+        <h3 id="ai-generation-custom" className="text-lg font-semibold scroll-mt-6">Как пользоваться режимом с собственным заданием (Custom task)</h3>
         <p className="text-base">
           Иногда нужно взять уже подготовленное задание (например, текст из учебника) и просто «упаковать» его в формат страницы
           квиза выбранного типа. Для этого используется поле <strong>Custom task (optional)</strong> в блоке AI generation.
@@ -190,7 +190,7 @@ export default async function AdminGuidePage() {
       <section id="create-quiz" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Создание нового квиза</h2>
 
-        <h3 className="text-lg font-semibold">Шаг 1. Основные поля</h3>
+        <h3 id="create-quiz-step-1" className="text-lg font-semibold scroll-mt-6">Шаг 1. Основные поля</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             <strong>Quiz title</strong> (обязательно) — название квиза, например «Present Simple». Оно отображается на главной и в
@@ -202,7 +202,7 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Шаг 2. Страницы</h3>
+        <h3 id="create-quiz-step-2" className="text-lg font-semibold scroll-mt-6">Шаг 2. Страницы</h3>
         <p className="text-base">
           Под полями квиза идёт блок <strong>Pages</strong>.
         </p>
@@ -263,7 +263,7 @@ export default async function AdminGuidePage() {
           можно только если страниц больше одной.
         </p>
 
-        <h3 className="text-lg font-semibold">Шаг 3. Вопросы внутри страницы</h3>
+        <h3 id="create-quiz-step-3" className="text-lg font-semibold scroll-mt-6">Шаг 3. Вопросы внутри страницы</h3>
         <p className="text-base">
           Внутри каждой страницы — блок <strong>Questions</strong>.
         </p>
@@ -286,13 +286,21 @@ export default async function AdminGuidePage() {
           <li>
             <strong>Explanation (optional)</strong> — пояснение, которое показывается пользователю после проверки ответа.
           </li>
+          <li>
+            <strong>Question image (optional)</strong> — при необходимости можно прикрепить изображение к вопросу (например, для
+            задания по картинке): нажмите выбор файла под полем вопроса и загрузите изображение (JPEG, PNG, GIF, WebP и др.).
+          </li>
         </ul>
+        <p className="text-xs text-muted-foreground">
+          После загрузки в карточке вопроса появится предпросмотр. Кнопка <strong>Remove image</strong> удаляет изображение после
+          подтверждения.
+        </p>
         <p className="text-xs text-muted-foreground">
           Иконка корзины рядом с «Question 1», «Question 2» удаляет вопрос сразу после подтверждения. Удалить можно только если
           вопросов больше одного.
         </p>
 
-        <h3 className="text-lg font-semibold">Шаг 4. Варианты ответов (Single choice и Multiple choice)</h3>
+        <h3 id="create-quiz-step-4" className="text-lg font-semibold scroll-mt-6">Шаг 4. Варианты ответов (Single choice и Multiple choice)</h3>
         <p className="text-base">
           Если у страницы тип <strong>Single choice</strong> или <strong>Multiple choice</strong>, у каждого вопроса есть блок{" "}
           <strong>Options</strong>.
@@ -316,7 +324,7 @@ export default async function AdminGuidePage() {
           <li>У каждого вопроса свой набор вариантов; они не связаны с другими вопросами.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Шаг 5. Правильные ответы для Text input</h3>
+        <h3 id="create-quiz-step-5" className="text-lg font-semibold scroll-mt-6">Шаг 5. Правильные ответы для Text input</h3>
         <p className="text-base">
           Если у страницы тип <strong>Text input</strong>, у каждого вопроса вместо вариантов выбора настраивается список
           допустимых ответов. <strong>Сколько раз в тексте вопроса встречается маркер</strong> <code>[[]]</code>
@@ -392,7 +400,7 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Шаг 6. Варианты для Dropdown in gaps</h3>
+        <h3 id="create-quiz-step-6" className="text-lg font-semibold scroll-mt-6">Шаг 6. Варианты для Dropdown in gaps</h3>
         <p className="text-base">
           Тип страницы <strong>Dropdown in gaps</strong> подходит, когда нужно вставить в предложение <strong>выбор из списка</strong> вместо
           ввода с клавиатуры: в каждом пропуске пользователь видит выпадающий список и выбирает один вариант.
@@ -446,7 +454,7 @@ export default async function AdminGuidePage() {
           выбран вариант с галочкой Correct.
         </p>
 
-        <h3 className="text-lg font-semibold">Шаг 7. Пары для Matching</h3>
+        <h3 id="create-quiz-step-7" className="text-lg font-semibold scroll-mt-6">Шаг 7. Пары для Matching</h3>
         <p className="text-base">
           Если у страницы тип <strong>Matching</strong>, у каждого вопроса два поля:
         </p>
@@ -470,7 +478,7 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Шаг 8. Теория (опционально)</h3>
+        <h3 id="create-quiz-step-8" className="text-lg font-semibold scroll-mt-6">Шаг 8. Теория (опционально)</h3>
         <p className="text-base">
           Блок <strong>Theory (optional)</strong> позволяет добавить к квизу блоки теории до сохранения.
         </p>
@@ -492,7 +500,7 @@ export default async function AdminGuidePage() {
           <li>Теорию можно не заполнять при создании и добавить позже в режиме редактирования.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Шаг 9. Сохранение</h3>
+        <h3 id="create-quiz-step-9" className="text-lg font-semibold scroll-mt-6">Шаг 9. Сохранение</h3>
         <p className="text-base">
           Нажмите <strong>Create quiz</strong>. После успешного сохранения появится сообщение «Quiz created successfully», форма
           очистится, а новый квиз появится в списке <strong>Your quizzes</strong> и на главной странице сайта.
@@ -511,7 +519,7 @@ export default async function AdminGuidePage() {
           </li>
         </ol>
 
-        <h3 className="text-lg font-semibold">Вкладка «Details and pages»</h3>
+        <h3 id="edit-quiz-details-pages" className="text-lg font-semibold scroll-mt-6">Вкладка «Details and pages»</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>Поля <strong>Quiz title</strong>, <strong>Description</strong>.</li>
           <li>
@@ -537,7 +545,7 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Вкладка «Theory»</h3>
+        <h3 id="edit-quiz-theory" className="text-lg font-semibold scroll-mt-6">Вкладка «Theory»</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             Блоки теории (текст и изображения), которые видны пользователю во вкладке «Theory» при прохождении квиза.
@@ -706,7 +714,7 @@ export default async function AdminGuidePage() {
           другим рабочим вопросам.
         </p>
 
-        <h3 className="text-lg font-semibold">Как хранится история чата</h3>
+        <h3 id="ai-chat-history" className="text-lg font-semibold scroll-mt-6">Как хранится история чата</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             История сообщений <strong>сохраняется только локально в вашем браузере</strong> (в <code>localStorage</code>) на этом
@@ -720,7 +728,7 @@ export default async function AdminGuidePage() {
           <li>После обновления страницы история чата на этом же устройстве сохраняется, пока вы её явно не очистите.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Как очистить историю</h3>
+        <h3 id="ai-chat-clear-history" className="text-lg font-semibold scroll-mt-6">Как очистить историю</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             В шапке окна чата есть кнопка с иконкой корзины <strong>«Очистить чат»</strong>.
@@ -732,7 +740,7 @@ export default async function AdminGuidePage() {
           <li>Очистка влияет только на текущий браузер/устройство и не трогает историю других админов.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Как остановить текущий ответ</h3>
+        <h3 id="ai-chat-stop-response" className="text-lg font-semibold scroll-mt-6">Как остановить текущий ответ</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             Пока модель генерирует ответ, рядом с полем ввода показывается кнопка <strong>«стоп»</strong> (иконка квадрата).
@@ -744,7 +752,7 @@ export default async function AdminGuidePage() {
           <li>После остановки можно сразу задать новый вопрос.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold">Лимиты по запросам к модели</h3>
+        <h3 id="ai-chat-rate-limits" className="text-lg font-semibold scroll-mt-6">Лимиты по запросам к модели</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             Для защиты от перегрузки у чата установлены лимиты на весь проект (совокупно по всем администраторам):
