@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup } from "@/components/ui/radio-group";
+import { TheoryImage } from "@/components/theory-image";
 import { getCorrectTextsByGap, getGapCount, getPerGapCorrectness, getPerGapCorrectnessSelectGaps, isTextAnswerCorrect } from '@/lib/question-block-utils';
 import type { QuestionWithOptions } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,9 @@ function QuestionBlockImpl({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {question.question_image_url ? (
+            <TheoryImage src={question.question_image_url} alt={`Question ${index}`} />
+          ) : null}
           {isSelectGaps && hasInlineGaps ? (
             <div className="space-y-2">
               <div

@@ -48,7 +48,7 @@ export async function getQuizWithPages(
 
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
-    .select("id, page_id, question_title, explanation, order_index, created_at")
+    .select("id, page_id, question_title, question_image_url, explanation, order_index, created_at")
     .in("page_id", pageIds)
     .order("order_index", { ascending: true });
 

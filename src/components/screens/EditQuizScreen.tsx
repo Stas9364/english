@@ -6,14 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import {
   updateQuiz,
-  uploadTheoryImage,
-  deleteTheoryBlock,
   deleteQuizPage,
   deleteQuestion,
+  deleteQuestionImage,
   deleteOption,
 } from "@/app/admin/actions";
 import type { QuizWithPages, TestType, TheoryBlock, TheoryBlockType } from "@/lib/supabase";
-import type { TheoryBlockInput } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +22,9 @@ import { cn } from "@/lib/utils";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useQuizAiGeneration, type GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
-import { PageBlock } from "@/components/page-block";
-import type { PageBlockFormValues } from "@/components/page-block";
+import { useTheoryBlocks } from "@/hooks/use-theory-blocks";
+import { PageBlock } from "@/components/page-block/page-block";
+import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
 
@@ -42,12 +41,14 @@ function defaultOption(option?: { id?: string; option_text: string; is_correct: 
 function defaultQuestion(q?: {
   id?: string;
   question_title: string;
+  question_image_url?: string | null;
   explanation?: string | null;
   options: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }[];
 }, orderIndex?: number) {
   return {
     id: q?.id,
     question_title: q?.question_title ?? "",
+    question_image_url: q?.question_image_url ?? "",
     explanation: q?.explanation ?? "",
     order_index: orderIndex ?? 0,
     options: (q?.options?.length ? q.options : [{ option_text: "", is_correct: true, gap_index: 0 }]).map((o) =>
@@ -60,7 +61,7 @@ function defaultQuestionForBlock(orderIndex: number) {
   return defaultQuestion(undefined, orderIndex);
 }
 
-function defaultPage(p?: { id?: string; type: TestType; title?: string | null; example?: string | null; questions: { id?: string; question_title: string; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
+function defaultPage(p?: { id?: string; type: TestType; title?: string | null; example?: string | null; questions: { id?: string; question_title: string; question_image_url?: string | null; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
   const type = p?.type ?? "single";
   return {
     id: p?.id,
@@ -68,7 +69,7 @@ function defaultPage(p?: { id?: string; type: TestType; title?: string | null; e
     title: p?.title ?? "",
     example: p?.example ?? "",
     order_index: pageIndex ?? 0,
-    questions: (p?.questions?.length ? p.questions : [{ question_title: "", explanation: "", options: [defaultOption()] }]).map((q, i) =>
+    questions: (p?.questions?.length ? p.questions : [{ question_title: "", question_image_url: "", explanation: "", options: [defaultOption()] }]).map((q, i) =>
       defaultQuestion(q, i)
     ),
   };
@@ -81,18 +82,24 @@ interface EditQuizScreenProps {
   theoryBlocks?: TheoryBlock[];
 }
 
-function toTheoryBlockInput(b: TheoryBlock): TheoryBlockInput {
-  return { id: b.id, type: b.type, content: b.content, order_index: b.order_index };
-}
-
 export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }: EditQuizScreenProps) {
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("details");
-  const [theoryBlocks, setTheoryBlocks] = useState<TheoryBlockInput[]>(
-    () => initialTheoryBlocks.map(toTheoryBlockInput)
-  );
-  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const {
+    theoryBlocks,
+    uploadingImageIndex,
+    uploadError,
+    addTheoryBlock,
+    handleDeleteTheoryBlock,
+    moveTheoryBlock,
+    updateTheoryBlock,
+    handleTheoryImageUpload,
+    appendTheoryBlocks,
+  } = useTheoryBlocks({
+    quizId: quiz.id,
+    initialBlocks: initialTheoryBlocks,
+    onActionError: (error) => setResult({ ok: false, error }),
+  });
 
   const ai = useQuizAiGeneration({
     initialQuestionsPerPage: 3,
@@ -133,6 +140,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
               title: p.title ?? null,
               questions: p.questions.map((q) => ({
                 question_title: q.question_title,
+                question_image_url: null,
                 explanation: q.explanation ?? null,
                 options: q.options.map((o) => ({
                   option_text: o.option_text,
@@ -147,11 +155,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
       });
     }
     if (res.theoryBlocks?.length) {
-      const blocks = res.theoryBlocks;
-      setTheoryBlocks((prev) => [
-        ...prev,
-        ...blocks.map((b, i) => ({ ...b, order_index: prev.length + i })),
-      ]);
+      appendTheoryBlocks(res.theoryBlocks);
     }
     setGeneratedDraft(res as GenerateOk);
   }
@@ -172,6 +176,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
         questions: p.questions.map((q, qi) => ({
           id: q.id,
           question_title: q.question_title,
+          question_image_url: q.question_image_url || null,
           explanation: q.explanation || null,
           order_index: qi,
           options:
@@ -190,25 +195,9 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     setResult(res);
   }
 
-  function addTheoryBlock(type: TheoryBlockType) {
-    setTheoryBlocks((prev) => [...prev, { type, content: type === "image" ? "" : "", order_index: prev.length }]);
+  function handleAddTheoryBlock(type: TheoryBlockType) {
+    addTheoryBlock(type);
     setActiveTab("theory");
-  }
-
-  function removeTheoryBlock(index: number) {
-    setTheoryBlocks((prev) => prev.filter((_, i) => i !== index).map((b, i) => ({ ...b, order_index: i })));
-  }
-
-  async function handleDeleteTheoryBlock(index: number) {
-    const block = theoryBlocks[index];
-    if (block?.id) {
-      const res = await deleteTheoryBlock(block.id);
-      if (!res.ok) {
-        setResult(res);
-        return;
-      }
-    }
-    removeTheoryBlock(index);
   }
 
   async function handleDeletePage(pageIndex: number) {
@@ -221,35 +210,6 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
       }
     }
     pagesArray.remove(pageIndex);
-  }
-
-  function moveTheoryBlock(index: number, dir: -1 | 1) {
-    const next = index + dir;
-    if (next < 0 || next >= theoryBlocks.length) return;
-    setTheoryBlocks((prev) => {
-      const arr = [...prev];
-      [arr[index], arr[next]] = [arr[next], arr[index]];
-      return arr.map((b, i) => ({ ...b, order_index: i }));
-    });
-  }
-
-  function updateTheoryBlock(index: number, patch: Partial<TheoryBlockInput>) {
-    setTheoryBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)));
-  }
-
-  async function handleTheoryImageUpload(index: number, file: File) {
-    setUploadError(null);
-    setUploadingImageIndex(index);
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("quizId", quiz.id);
-    const result = await uploadTheoryImage(formData);
-    setUploadingImageIndex(null);
-    if (result.ok) {
-      updateTheoryBlock(index, { content: result.url });
-    } else {
-      setUploadError(result.error);
-    }
   }
 
   return (
@@ -308,127 +268,139 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {activeTab === "details" && (
-            <>
-            <div className="space-y-2">
-              <Label htmlFor="title">Quiz title</Label>
-              <Input
-                id="title"
-                {...form.register("title")}
-                placeholder="e.g. Present Simple"
-                className={cn(form.formState.errors.title && "border-destructive")}
-              />
-              {form.formState.errors.title && (
-                <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">General task / instructions</Label>
-              <Input
-                id="description"
-                {...form.register("description")}
-                placeholder="What respondents need to do (shown at the start of the quiz)"
-              />
-            </div>
-
-              <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Pages</Label>
-                <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
-              </div>
-              <QuizAiGenerationBlock
-                topic={ai.topic}
-                level={ai.level}
-                language={ai.language}
-                questionsPerPage={String(ai.questionsPerPage)}
-                selectedType={ai.selectedType as TestType}
-              customTask={ai.customTask}
-                style={ai.style}
-                constraints={ai.constraints}
-                lexicon={ai.lexicon}
-                bannedTopics={ai.bannedTopics}
-                onTopicChange={ai.setTopic}
-                onLevelChange={ai.setLevel}
-                onLanguageChange={ai.setLanguage}
-                onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                onSelectedTypeChange={ai.setSelectedType}
-              onCustomTaskChange={ai.setCustomTask}
-                onStyleChange={ai.setStyle}
-                onConstraintsChange={ai.setConstraints}
-                onLexiconChange={ai.setLexicon}
-                onBannedTopicsChange={ai.setBannedTopics}
-                isGenerating={ai.isGenerating}
-                onGenerate={handleGenerate}
-                generatedSummary={
-                  generatedDraft
-                    ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
-                        (acc, p) => acc + (p.questions?.length ?? 0),
-                        0
-                      )}.` +
-                      (generatedDraft.theoryBlocks?.length
-                        ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
-                        : "")
-                    : null
-                }
-                errorMessage={ai.errorMessage}
-              />
-              {pagesArray.fields.map((field, pIndex) => (
-                <div
-                  key={field.id}
-                  ref={(el) => { pageRefs.current[pIndex] = el; }}
-                >
-                  <PageBlock
-                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                    pageIndex={pIndex}
-                    defaultOption={() => defaultOption()}
-                    defaultQuestion={defaultQuestionForBlock}
-                    onRemove={() => handleDeletePage(pIndex)}
-                    canRemove={pagesArray.fields.length > 1}
-                    onMoveUp={() => {
-                      pagesArray.move(pIndex, pIndex - 1);
-                      setTimeout(() => pageRefs.current[pIndex - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
-                    }}
-                    onMoveDown={() => {
-                      pagesArray.move(pIndex, pIndex + 1);
-                      setTimeout(() => pageRefs.current[pIndex + 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
-                    }}
-                    canMoveUp={pIndex > 0}
-                    canMoveDown={pIndex < pagesArray.fields.length - 1}
-                    onConfirmDeleteQuestion={async (pi, qIndex) => {
-                      const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                      if (q?.id) {
-                        const r = await deleteQuestion(q.id);
-                        if (!r.ok) {
-                          setResult(r);
-                          return false;
-                        }
-                      }
-                      return true;
-                    }}
-                    onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
-                      const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
-                      const opt = opts[oIndex];
-                      if (opt?.id) {
-                        const r = await deleteOption(opt.id);
-                        if (!r.ok) {
-                          setResult(r);
-                          return false;
-                        }
-                      }
-                      return true;
-                    }}
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Quiz title</Label>
+                  <Input
+                    id="title"
+                    {...form.register("title")}
+                    placeholder="e.g. Present Simple"
+                    className={cn(form.formState.errors.title && "border-destructive")}
+                  />
+                  {form.formState.errors.title && (
+                    <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">General task / instructions</Label>
+                  <Input
+                    id="description"
+                    {...form.register("description")}
+                    placeholder="What respondents need to do (shown at the start of the quiz)"
                   />
                 </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => pagesArray.append(defaultPage(undefined, pagesArray.fields.length))}
-              >
-                <Plus className="size-4" /> Add page
-              </Button>
-            </div>
-            </>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Pages</Label>
+                    <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
+                  </div>
+                  <QuizAiGenerationBlock
+                    topic={ai.topic}
+                    level={ai.level}
+                    language={ai.language}
+                    questionsPerPage={String(ai.questionsPerPage)}
+                    selectedType={ai.selectedType as TestType}
+                    customTask={ai.customTask}
+                    style={ai.style}
+                    constraints={ai.constraints}
+                    lexicon={ai.lexicon}
+                    bannedTopics={ai.bannedTopics}
+                    onTopicChange={ai.setTopic}
+                    onLevelChange={ai.setLevel}
+                    onLanguageChange={ai.setLanguage}
+                    onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
+                    onSelectedTypeChange={ai.setSelectedType}
+                    onCustomTaskChange={ai.setCustomTask}
+                    onStyleChange={ai.setStyle}
+                    onConstraintsChange={ai.setConstraints}
+                    onLexiconChange={ai.setLexicon}
+                    onBannedTopicsChange={ai.setBannedTopics}
+                    isGenerating={ai.isGenerating}
+                    onGenerate={handleGenerate}
+                    generatedSummary={
+                      generatedDraft
+                        ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
+                          (acc, p) => acc + (p.questions?.length ?? 0),
+                          0
+                        )}.` +
+                        (generatedDraft.theoryBlocks?.length
+                          ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
+                          : "")
+                        : null
+                    }
+                    errorMessage={ai.errorMessage}
+                  />
+                  {pagesArray.fields.map((field, pIndex) => (
+                    <div
+                      key={field.id}
+                      ref={(el) => { pageRefs.current[pIndex] = el; }}
+                    >
+                      <PageBlock
+                        form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                        pageIndex={pIndex}
+                        defaultOption={() => defaultOption()}
+                        defaultQuestion={defaultQuestionForBlock}
+                        quizId={quiz.id}
+                        onRemove={() => handleDeletePage(pIndex)}
+                        canRemove={pagesArray.fields.length > 1}
+                        onMoveUp={() => {
+                          pagesArray.move(pIndex, pIndex - 1);
+                          setTimeout(() => pageRefs.current[pIndex - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                        }}
+                        onMoveDown={() => {
+                          pagesArray.move(pIndex, pIndex + 1);
+                          setTimeout(() => pageRefs.current[pIndex + 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                        }}
+                        canMoveUp={pIndex > 0}
+                        canMoveDown={pIndex < pagesArray.fields.length - 1}
+                        onConfirmDeleteQuestion={async (pi, qIndex) => {
+                          const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
+                          if (q?.id) {
+                            const r = await deleteQuestion(q.id);
+                            if (!r.ok) {
+                              setResult(r);
+                              return false;
+                            }
+                          }
+                          return true;
+                        }}
+                        onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
+                          const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
+                          const opt = opts[oIndex];
+                          if (opt?.id) {
+                            const r = await deleteOption(opt.id);
+                            if (!r.ok) {
+                              setResult(r);
+                              return false;
+                            }
+                          }
+                          return true;
+                        }}
+                        onConfirmRemoveQuestionImage={async (pi, qIndex) => {
+                          const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
+                          if (q?.id) {
+                            const r = await deleteQuestionImage(q.id);
+                            if (!r.ok) {
+                              setResult(r);
+                              return false;
+                            }
+                          }
+                          return true;
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => pagesArray.append(defaultPage(undefined, pagesArray.fields.length))}
+                  >
+                    <Plus className="size-4" /> Add page
+                  </Button>
+                </div>
+              </>
             )}
 
             {activeTab === "theory" && (
@@ -436,7 +408,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
                 blocks={theoryBlocks}
                 uploadingImageIndex={uploadingImageIndex}
                 uploadError={uploadError}
-                onAddBlock={addTheoryBlock}
+                onAddBlock={handleAddTheoryBlock}
                 onRemoveBlock={(index) => {
                   void handleDeleteTheoryBlock(index);
                 }}

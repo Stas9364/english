@@ -9,7 +9,8 @@ export const quizOptionSchema = z.object({
 });
 
 export const quizQuestionSchema = z.object({
-  question_title: z.string().min(1, "Required"),
+  question_title: z.string(),
+  question_image_url: z.string().optional(),
   explanation: z.string(),
   order_index: z.number(),
   options: z.array(quizOptionSchema),
@@ -27,15 +28,29 @@ type PageLike = {
   type: string;
   questions: Array<{
     question_title?: string;
+    question_image_url?: string;
     options?: Array<{ gap_index?: number; option_text?: string; is_correct?: boolean }>;
   }>;
 };
 
 export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T {
   return schema.superRefine((p: PageLike, ctx) => {
+    const ensureQuestionContent = (q: PageLike["questions"][number], i: number) => {
+      const hasTitle = (q.question_title ?? "").trim().length > 0;
+      const hasImage = (q.question_image_url ?? "").trim().length > 0;
+      if (!hasTitle && !hasImage) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add question text or upload image",
+          path: ["questions", i, "question_title"],
+        });
+      }
+    };
+
     if (p.type === "input") {
       for (let i = 0; i < p.questions.length; i++) {
         const q = p.questions[i];
+        ensureQuestionContent(q, i);
         const gapCount = Math.max(1, Math.max(0, ((q.question_title ?? "").split("[[]]").length - 1)));
         const missingGaps: number[] = [];
         for (let g = 0; g < gapCount; g++) {
@@ -58,6 +73,7 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
     } else if (p.type === "select_gaps") {
       for (let i = 0; i < p.questions.length; i++) {
         const q = p.questions[i];
+        ensureQuestionContent(q, i);
         const gapCount = Math.max(1, Math.max(0, ((q.question_title ?? "").split("[[]]").length - 1)));
         const missingGaps: number[] = [];
         const missingCorrect: number[] = [];
@@ -92,6 +108,7 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
     } else if (p.type === "matching") {
       for (let i = 0; i < p.questions.length; i++) {
         const q = p.questions[i];
+        ensureQuestionContent(q, i);
         const correctOpt = (q.options ?? []).find(
           (o) => o.is_correct && (o.option_text ?? "").trim()
         );
@@ -104,7 +121,9 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
         }
       }
     } else {
-      for (const q of p.questions) {
+      for (let i = 0; i < p.questions.length; i++) {
+        const q = p.questions[i];
+        ensureQuestionContent(q, i);
         if ((q.options ?? []).length === 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

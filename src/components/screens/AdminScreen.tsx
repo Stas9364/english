@@ -1,10 +1,9 @@
 "use client";
 
-import type { TheoryBlockInput } from "@/app/admin/actions";
-import { createQuiz, uploadTheoryImage } from "@/app/admin/actions";
+import { createQuiz } from "@/app/admin/actions";
 import { AdminQuizListCard } from "@/components/admin-quiz-list-card";
-import type { PageBlockFormValues } from "@/components/page-block";
-import { PageBlock } from "@/components/page-block";
+import type { PageBlockFormValues } from "@/components/page-block/page-block";
+import { PageBlock } from "@/components/page-block/page-block";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,8 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
+import { useTheoryBlocks } from "@/hooks/use-theory-blocks";
 import { createQuizFormSchema, type CreateQuizFormValues } from "@/lib/quiz-page-schema";
-import type { Quiz, TestType, TheoryBlockType } from "@/lib/supabase";
+import type { Quiz, TestType } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
@@ -42,6 +42,7 @@ function defaultQuestion(orderIndex: number, pageType?: TestType) {
       : [defaultOption()];
   return {
     question_title: "",
+    question_image_url: "",
     explanation: "",
     order_index: orderIndex,
     options,
@@ -76,14 +77,20 @@ interface AdminScreenProps {
   quizzes: Quiz[];
 }
 
-type CreateTheoryBlock = Omit<TheoryBlockInput, "id">;
-
 export function AdminScreen({ quizzes }: AdminScreenProps) {
   const router = useRouter();
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
-  const [theoryBlocks, setTheoryBlocks] = useState<CreateTheoryBlock[]>([]);
-  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const {
+    theoryBlocks,
+    uploadingImageIndex,
+    uploadError,
+    addTheoryBlock,
+    removeTheoryBlock,
+    moveTheoryBlock,
+    updateTheoryBlock,
+    handleTheoryImageUpload,
+    clearTheoryBlocks,
+  } = useTheoryBlocks({});
   const [genStatus, setGenStatus] = useState<
     | { state: "idle" }
     | { state: "loading" }
@@ -116,6 +123,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
       order_index: pi,
       questions: (p.questions ?? []).map((q, qi) => ({
         question_title: q.question_title ?? "",
+        question_image_url: "",
         explanation: (q.explanation ?? "")?.toString?.() ?? "",
         order_index: qi,
         options: (q.options ?? []).map((o) => ({
@@ -165,42 +173,6 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
     }
   }
 
-  function addTheoryBlock(type: TheoryBlockType) {
-    setTheoryBlocks((prev) => [...prev, { type, content: type === "image" ? "" : "", order_index: prev.length }]);
-  }
-
-  function removeTheoryBlock(index: number) {
-    setTheoryBlocks((prev) => prev.filter((_, i) => i !== index).map((b, i) => ({ ...b, order_index: i })));
-  }
-
-  function moveTheoryBlock(index: number, dir: -1 | 1) {
-    const next = index + dir;
-    if (next < 0 || next >= theoryBlocks.length) return;
-    setTheoryBlocks((prev) => {
-      const arr = [...prev];
-      [arr[index], arr[next]] = [arr[next], arr[index]];
-      return arr.map((b, i) => ({ ...b, order_index: i }));
-    });
-  }
-
-  function updateTheoryBlock(index: number, patch: Partial<CreateTheoryBlock>) {
-    setTheoryBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)));
-  }
-
-  async function handleTheoryImageUpload(index: number, file: File) {
-    setUploadError(null);
-    setUploadingImageIndex(index);
-    const formData = new FormData();
-    formData.set("file", file);
-    const result = await uploadTheoryImage(formData);
-    setUploadingImageIndex(null);
-    if (result.ok) {
-      updateTheoryBlock(index, { content: result.url });
-    } else {
-      setUploadError(result.error);
-    }
-  }
-
   async function onSubmit(data: CreateQuizFormValues) {
     setResult(null);
     const res = await createQuiz({
@@ -214,6 +186,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         order_index: pi,
         questions: p.questions.map((q, qi) => ({
           question_title: q.question_title,
+          question_image_url: q.question_image_url || null,
           explanation: q.explanation || null,
           order_index: qi,
           options:
@@ -236,7 +209,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
         description: "",
         pages: [defaultPage(0)],
       });
-      setTheoryBlocks([]);
+      clearTheoryBlocks();
     }
   }
 
@@ -318,6 +291,7 @@ export function AdminScreen({ quizzes }: AdminScreenProps) {
                   pageIndex={pIndex}
                   defaultOption={defaultOption}
                   defaultQuestion={defaultQuestion}
+                  quizId={undefined}
                   onRemove={() => pagesArray.remove(pIndex)}
                   canRemove={pagesArray.fields.length > 1}
                 />

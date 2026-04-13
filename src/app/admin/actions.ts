@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
 
 /** Storage bucket for quiz theory images (public read, admin write) */
-const THEORY_IMAGES_BUCKET = "Eanglish";
+const IMAGES_BUCKET = "Eanglish";
 
 /** Extract Storage file path from a public URL (e.g. .../object/public/BUCKET/path). Returns null if not our bucket URL. */
 function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
@@ -41,6 +41,7 @@ export type CreateQuizInput = {
     order_index: number;
     questions: {
       question_title: string;
+      question_image_url?: string | null;
       explanation?: string | null;
       order_index: number;
       options: { option_text: string; is_correct: boolean; gap_index?: number }[];
@@ -106,7 +107,8 @@ export async function createQuiz(data: CreateQuizInput) {
         .from("questions")
         .insert({
           page_id: quizPage.id,
-          question_title: q.question_title,
+          question_title: q.question_title || "",
+          question_image_url: q.question_image_url || null,
           explanation: q.explanation || null,
           order_index: q.order_index,
         })
@@ -166,6 +168,7 @@ export type UpdateQuizInput = {
     questions: {
       id?: string;
       question_title: string;
+      question_image_url?: string | null;
       explanation?: string | null;
       order_index: number;
       options: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }[];
@@ -242,7 +245,8 @@ export async function updateQuiz(data: UpdateQuizInput) {
         const { error: up } = await supabase
           .from("questions")
           .update({
-            question_title: q.question_title,
+          question_title: q.question_title || "",
+          question_image_url: q.question_image_url || null,
             explanation: q.explanation || null,
             order_index: q.order_index,
           })
@@ -253,7 +257,8 @@ export async function updateQuiz(data: UpdateQuizInput) {
           .from("questions")
           .insert({
             page_id: pageId,
-            question_title: q.question_title,
+            question_title: q.question_title || "",
+            question_image_url: q.question_image_url || null,
             explanation: q.explanation || null,
             order_index: q.order_index,
           })
@@ -371,12 +376,12 @@ export async function updateQuiz(data: UpdateQuizInput) {
     for (const row of toDelB) {
       const block = row as { id: string; type: string; content: string | null };
       if (block.type === "image" && block.content) {
-        const path = getStoragePathFromPublicUrl(block.content, THEORY_IMAGES_BUCKET);
+        const path = getStoragePathFromPublicUrl(block.content, IMAGES_BUCKET);
         if (path) pathsToRemove.push(path);
       }
     }
     if (pathsToRemove.length > 0) {
-      const { error: storageErr } = await supabase.storage.from(THEORY_IMAGES_BUCKET).remove(pathsToRemove);
+      const { error: storageErr } = await supabase.storage.from(IMAGES_BUCKET).remove(pathsToRemove);
       if (storageErr) return { ok: false, error: storageErr.message };
     }
     const { error: del } = await supabase.from("theory_blocks").delete().in("id", toDelB.map((x) => x.id));
@@ -409,11 +414,12 @@ export async function uploadTheoryImage(
 
   const supabase = await createServerClient();
   const quizId = (formData.get("quizId") as string)?.trim() || "draft";
+  const folder = (formData.get("folder") as string | null)?.trim() || "theory";
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "image";
   const ext = safeName.includes(".") ? safeName.slice(safeName.lastIndexOf(".")) : ".jpg";
-  const path = `theory/${quizId}/${crypto.randomUUID()}${ext}`;
+  const path = `${folder}/${quizId}/${crypto.randomUUID()}${ext}`;
 
-  const { error } = await supabase.storage.from(THEORY_IMAGES_BUCKET).upload(path, file, {
+  const { error } = await supabase.storage.from(IMAGES_BUCKET).upload(path, file, {
     contentType: file.type,
     upsert: false,
   });
@@ -422,7 +428,7 @@ export async function uploadTheoryImage(
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from(THEORY_IMAGES_BUCKET).getPublicUrl(path);
+  } = supabase.storage.from(IMAGES_BUCKET).getPublicUrl(path);
   return { ok: true, url: publicUrl };
 }
 
@@ -443,9 +449,9 @@ export async function deleteTheoryBlock(
   if (fetchErr || !block) return { ok: false, error: fetchErr?.message ?? "Block not found" };
 
   if (block.type === "image" && block.content) {
-    const path = getStoragePathFromPublicUrl(block.content, THEORY_IMAGES_BUCKET);
+    const path = getStoragePathFromPublicUrl(block.content, IMAGES_BUCKET);
     if (path) {
-      const { error: storageErr } = await supabase.storage.from(THEORY_IMAGES_BUCKET).remove([path]);
+      const { error: storageErr } = await supabase.storage.from(IMAGES_BUCKET).remove([path]);
       if (storageErr) return { ok: false, error: storageErr.message };
     }
   }
@@ -512,6 +518,48 @@ export async function deleteQuestion(
 
   const { error } = await supabase.from("questions").delete().eq("id", questionId);
   if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  return { ok: true };
+}
+
+/** Remove only question image (db field + storage file). Immediate update. */
+export async function deleteQuestionImage(
+  questionId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: q, error: qErr } = await supabase
+    .from("questions")
+    .select("id, page_id, question_image_url")
+    .eq("id", questionId)
+    .single();
+
+  if (qErr || !q) return { ok: false, error: qErr?.message ?? "Question not found" };
+
+  let quizId: string | null = null;
+  if (q.page_id) {
+    const { data: p } = await supabase.from("quiz_pages").select("quiz_id").eq("id", q.page_id).single();
+    quizId = p?.quiz_id ?? null;
+  }
+
+  if (q.question_image_url) {
+    const path = getStoragePathFromPublicUrl(q.question_image_url, IMAGES_BUCKET);
+    if (path) {
+      const { error: storageErr } = await supabase.storage.from(IMAGES_BUCKET).remove([path]);
+      if (storageErr) return { ok: false, error: storageErr.message };
+    }
+  }
+
+  const { error: upErr } = await supabase
+    .from("questions")
+    .update({ question_image_url: null })
+    .eq("id", questionId);
+  if (upErr) return { ok: false, error: upErr.message };
 
   revalidatePath("/");
   revalidatePath("/admin");
