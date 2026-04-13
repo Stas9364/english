@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   updateQuiz,
   deleteQuizPage,
@@ -86,6 +87,7 @@ interface EditQuizScreenProps {
 }
 
 export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], topics }: EditQuizScreenProps) {
+  const router = useRouter();
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const {
@@ -223,13 +225,13 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], t
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Edit quiz</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/quiz/${quiz.slug}`} target="_blank" rel="noopener noreferrer">
+          <Button asChild>
+            <Link href={`/quiz/${quiz.slug}`}>
               View quiz
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin">Back to admin</Link>
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            Back to topic
           </Button>
         </div>
       </div>

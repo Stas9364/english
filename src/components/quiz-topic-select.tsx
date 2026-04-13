@@ -1,10 +1,9 @@
 import { Label } from "@/components/ui/label";
-import type { QuizTopicOption } from "@/hooks/use-quiz-topics";
 
 interface QuizTopicSelectProps {
   value: string;
   onChange: (value: string) => void;
-  topics: QuizTopicOption[];
+  topics: { id: string; name: string }[];
   isLoading?: boolean;
   error?: string | null;
 }

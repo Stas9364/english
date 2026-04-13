@@ -80,7 +80,7 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
           </div>
           {isAdmin && (
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/">Back to quizzes</Link>
+              <Link href="/admin">Back to topics</Link>
             </Button>
           )}
         </div>

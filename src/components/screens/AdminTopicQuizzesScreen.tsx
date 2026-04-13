@@ -25,11 +25,11 @@ export function AdminTopicQuizzesScreen({ topic, quizzes }: AdminTopicQuizzesScr
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost">
-            <Link href="/admin">Back to topics</Link>
-          </Button>
           <Button asChild>
             <Link href="/admin/create">Create quiz</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/admin">Back to topics</Link>
           </Button>
         </div>
       </div>

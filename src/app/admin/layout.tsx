@@ -34,7 +34,7 @@ export default async function AdminLayout({
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/">Back to quizzes</Link>
+                <Link href="/admin">Back to topics</Link>
               </Button>
             </CardContent>
           </Card>
@@ -49,10 +49,10 @@ export default async function AdminLayout({
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <h1 className="font-semibold">Admin</h1>
           <div>
-
+{/*     
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/">Back to quizzes</Link>
-            </Button>
+              <Link href="/">Back to topics</Link>
+            </Button> */}
 
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/guide">Guide</Link>
