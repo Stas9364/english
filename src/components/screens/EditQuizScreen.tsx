@@ -23,6 +23,7 @@ import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useQuizAiGeneration, type GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
 import { useTheoryBlocks } from "@/hooks/use-theory-blocks";
+import { PageContainer } from "@/components/page-container";
 import { PageBlock } from "@/components/page-block/page-block";
 import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import type { UseFormReturn } from "react-hook-form";
@@ -213,7 +214,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+    <PageContainer className="space-y-8">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Edit quiz</h2>
         <div className="flex gap-2">
@@ -432,6 +433,6 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
           </form>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

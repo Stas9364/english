@@ -1,10 +1,11 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { PageContainer } from "@/components/page-container";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function QuizLoading() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <PageContainer className="sm:px-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-9 w-32" />
@@ -28,7 +29,7 @@ export default function QuizLoading() {
         <div className="mt-8 flex justify-center">
           <Skeleton className="h-10 w-40" />
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

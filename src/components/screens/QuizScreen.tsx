@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { PageContainer } from "@/components/page-container";
 import { TheoryImage } from "@/components/theory-image";
 import type { QuizWithPages, TheoryBlock } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <PageContainer className="sm:px-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{quiz.title}</h1>
@@ -130,7 +131,7 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
               <Card key={block.id}>
                 <CardContent>
                   {block.type === "text" ? (
-                    <div className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                    <div className="whitespace-pre-wrap wrap-break-word text-sm text-muted-foreground">
                       {block.content}
                     </div>
                   ) : (
@@ -272,7 +273,7 @@ export function QuizScreen({ quiz, theoryBlocks = [], isAdmin = false }: QuizScr
             )}
           </>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

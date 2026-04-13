@@ -56,7 +56,7 @@ export function AdminChatWidget() {
         className="inset-0 left-0 top-0 h-full w-full max-w-none translate-x-0 translate-y-0 flex min-h-0 flex-col overflow-hidden rounded-none border-0 p-0"
         title="Your own chat"
       >
-        <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden">
+        <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden">
           <header className="flex shrink-0 items-center justify-between border-b px-4 py-3">
             <h2 className="text-lg font-semibold">Your own chat</h2>
             <div className="flex items-center gap-1">

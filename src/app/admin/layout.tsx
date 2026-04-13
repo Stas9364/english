@@ -46,7 +46,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <h1 className="font-semibold">Admin</h1>
           <div>
 

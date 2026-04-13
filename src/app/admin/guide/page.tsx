@@ -1,11 +1,12 @@
 "use server";
 
 import Link from "next/link";
+import { PageContainer } from "@/components/page-container";
 import { GuideToc } from "@/components/guide-toc";
 
 export default async function AdminGuidePage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+    <PageContainer className="max-w-5xl space-y-6">
       <header className="space-y-1">
         <Link
           href="/admin"
@@ -774,7 +775,7 @@ export default async function AdminGuidePage() {
       </section>
         </main>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

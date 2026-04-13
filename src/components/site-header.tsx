@@ -9,7 +9,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
         <span className="text-sm font-medium">English quizzes</span>
         <nav className="flex items-center gap-1">
           {isAdmin && (
