@@ -31,6 +31,7 @@ export type TheoryBlockInput = {
 };
 
 export type CreateQuizInput = {
+  topic_id: string;
   title: string;
   description: string;
   slug: string;
@@ -50,6 +51,68 @@ export type CreateQuizInput = {
   theoryBlocks?: Omit<TheoryBlockInput, "id">[];
 };
 
+/** Lightweight topics list for topic select in quiz forms. */
+export async function getTopicsForQuizForm(): Promise<
+  { ok: true; data: { id: string; name: string }[] } | { ok: false; error: string }
+> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("topics")
+    .select("id, name")
+    .order("order_index", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: (data ?? []) as { id: string; name: string }[] };
+}
+
+function slugifyTopicName(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Create topic with unique slug. */
+export async function createTopic(payload: {
+  name: string;
+  description?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const name = payload.name.trim();
+  if (!name) return { ok: false, error: "Topic name is required" };
+  const description = payload.description?.trim() ?? "";
+
+  const supabase = await createServerClient();
+  const baseSlug = slugifyTopicName(name) || "topic";
+  let slug = baseSlug;
+  let suffix = 2;
+
+  while (true) {
+    const { error } = await supabase.from("topics").insert({
+      name,
+      slug,
+      description: description || null,
+    });
+
+    if (!error) break;
+    if (error.code === "23505") {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+      continue;
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function createQuiz(data: CreateQuizInput) {
   const supabase = await createServerClient();
 
@@ -61,6 +124,7 @@ export async function createQuiz(data: CreateQuizInput) {
     const result = await supabase
       .from("quizzes")
       .insert({
+        topic_id: data.topic_id,
         title: data.title,
         description: data.description || null,
         slug,
@@ -156,6 +220,7 @@ export async function createQuiz(data: CreateQuizInput) {
 
 export type UpdateQuizInput = {
   quizId: string;
+  topic_id: string;
   title: string;
   description: string;
   slug: string;
@@ -183,6 +248,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
   const { error: quizError } = await supabase
     .from("quizzes")
     .update({
+      topic_id: data.topic_id,
       title: data.title,
       description: data.description || null,
       slug: data.slug.trim(),
@@ -591,5 +657,59 @@ export async function deleteOption(
   revalidatePath("/");
   revalidatePath("/admin");
   if (quizId) revalidatePath(`/admin/quiz/${quizId}`);
+  return { ok: true };
+}
+
+/** Update topic fields. */
+export async function updateTopic(
+  topicId: string,
+  payload: { name: string; description?: string | null }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const nextName = payload.name.trim();
+  if (!nextName) return { ok: false, error: "Topic name is required" };
+  const nextDescription = payload.description?.trim() ?? "";
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from("topics")
+    .update({ name: nextName, description: nextDescription || null })
+    .eq("id", topicId);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Delete topic (allowed only when there are no quizzes in it). */
+export async function deleteTopic(
+  topicId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
+  const supabase = await createServerClient();
+  const { data: topic } = await supabase
+    .from("topics")
+    .select("slug")
+    .eq("id", topicId)
+    .single();
+
+  const { error } = await supabase.from("topics").delete().eq("id", topicId);
+  if (error) {
+    if (error.code === "23503") {
+      return {
+        ok: false,
+        error: "Topic has quizzes. Move or delete quizzes first.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin");
+  if (topic?.slug) revalidatePath(`/admin/${topic.slug}`);
   return { ok: true };
 }

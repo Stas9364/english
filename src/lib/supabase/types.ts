@@ -1,9 +1,20 @@
 /** Тип страницы квиза: один правильный, несколько, ввод текста, выбор в пропусках или соответствие */
 export type TestType = "single" | "multiple" | "input" | "select_gaps" | "matching";
 
+/** Тема квизов (одна тема -> много квизов) */
+export interface Topic {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  order_index: number;
+  created_at: string;
+}
+
 /** Квиз (общее задание) */
 export interface Quiz {
   id: string;
+  topic_id: string;
   title: string;
   description: string | null;
   slug: string;

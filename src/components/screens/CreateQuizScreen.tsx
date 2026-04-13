@@ -3,7 +3,7 @@
 import type { TestType } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
-import { useFieldArray, useForm, type UseFormReturn } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { PageBlock, type PageBlockFormValues } from '../page-block/page-block';
 import { QuizAiGenerationBlock } from '../quiz-ai-generation-block';
 import { QuizTheoryBlocksEditor } from '../quiz-theory-blocks-editor';
@@ -18,6 +18,8 @@ import { createQuizFormSchema, type CreateQuizFormValues } from '@/lib/quiz-page
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createQuiz } from '@/app/admin/actions';
 import { Label } from '../ui/label';
+import { QuizTopicSelect } from "@/components/quiz-topic-select";
+import { useMemo } from "react";
 
 function slugify(title: string): string {
     const s = title
@@ -70,7 +72,11 @@ function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefi
     return true;
 }
 
-export function CreateQuizScreen() {
+interface CreateQuizScreenProps {
+    topics: { id: string; name: string }[];
+}
+
+export function CreateQuizScreen({ topics }: CreateQuizScreenProps) {
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
     const {
         theoryBlocks,
@@ -93,10 +99,16 @@ export function CreateQuizScreen() {
     const ai = useQuizAiGeneration();
     // Первая удачная генерация заменяет страницы, последующие — добавляют в конец.
     const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
+    const defaultTopicId = useMemo(() => {
+        if (topics.length === 0) return "";
+        const otherTopic = topics.find((t) => t.name.trim().toLowerCase() === "other");
+        return otherTopic?.id ?? topics[0].id;
+    }, [topics]);
 
     const form = useForm<CreateQuizFormValues>({
         resolver: zodResolver(createQuizFormSchema),
         defaultValues: {
+            topic_id: defaultTopicId,
             title: "",
             description: "",
             pages: [defaultPage(0)],
@@ -107,6 +119,7 @@ export function CreateQuizScreen() {
         control: form.control,
         name: "pages",
     });
+    const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
 
     function mapGeneratedPagesToForm(pages: { type: TestType; title?: string | null; questions: { question_title: string; explanation?: string | null; options: { option_text: string; is_correct: boolean; gap_index?: number }[] }[] }[]) {
         return pages.map((p, pi) => ({
@@ -169,6 +182,7 @@ export function CreateQuizScreen() {
     async function onSubmit(data: CreateQuizFormValues) {
         setResult(null);
         const res = await createQuiz({
+            topic_id: data.topic_id,
             title: data.title,
             description: data.description,
             slug: slugify(data.title),
@@ -198,6 +212,7 @@ export function CreateQuizScreen() {
         setResult(res);
         if (res.ok) {
             form.reset({
+                topic_id: form.getValues("topic_id"),
                 title: "",
                 description: "",
                 pages: [defaultPage(0)],
@@ -215,6 +230,15 @@ export function CreateQuizScreen() {
             </CardHeader>
             <CardContent>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <div className="space-y-2">
+                        <QuizTopicSelect
+                            value={selectedTopicId}
+                            onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
+                            topics={topics}
+                            isLoading={false}
+                            error={form.formState.errors.topic_id?.message}
+                        />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="title">Quiz title</Label>
                         <Input

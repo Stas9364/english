@@ -140,6 +140,7 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
 const createPageSchema = withQuizPageRefine(quizPageBaseObject);
 
 export const createQuizFormSchema = z.object({
+  topic_id: z.string().uuid("Select topic"),
   title: z.string().min(1, "Title is required"),
   description: z.string(),
   pages: z.array(createPageSchema).min(1, "Add at least one page"),
@@ -164,6 +165,7 @@ const editPageSchema = withQuizPageRefine(
 );
 
 export const editQuizFormSchema = z.object({
+  topic_id: z.string().uuid("Select topic"),
   title: z.string().min(1, "Title is required"),
   description: z.string(),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9_-]+$/i, "Slug: letters, numbers, - and _ only"),

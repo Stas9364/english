@@ -5,7 +5,37 @@ import type {
   QuizWithPages,
   QuizPageWithDetails,
   TheoryBlock,
+  Topic,
 } from "./types";
+
+/** Список тем для админки и фильтрации */
+export async function getTopics(
+  supabase: SupabaseClient
+): Promise<Topic[]> {
+  const { data, error } = await supabase
+    .from("topics")
+    .select("id, name, slug, description, order_index, created_at")
+    .order("order_index", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Topic[];
+}
+
+/** Тема по slug */
+export async function getTopicBySlug(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<Topic | null> {
+  const { data, error } = await supabase
+    .from("topics")
+    .select("id, name, slug, description, order_index, created_at")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) return null;
+  return data as Topic;
+}
 
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
@@ -13,7 +43,25 @@ export async function getQuizzes(
 ): Promise<Quiz[]> {
   const { data, error } = await supabase
     .from("quizzes")
-    .select("id, title, description, slug, created_at")
+    .select("id, topic_id, title, description, slug, created_at")
+    .order("title", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Quiz[];
+}
+
+/** Квизы по topic slug (для /admin/[topicSlug]) */
+export async function getQuizzesByTopicSlug(
+  supabase: SupabaseClient,
+  topicSlug: string
+): Promise<Quiz[]> {
+  const topic = await getTopicBySlug(supabase, topicSlug);
+  if (!topic) return [];
+
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("id, topic_id, title, description, slug, created_at")
+    .eq("topic_id", topic.id)
     .order("title", { ascending: true });
 
   if (error) throw error;
@@ -27,7 +75,7 @@ export async function getQuizWithPages(
 ): Promise<QuizWithPages | null> {
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
-    .select("id, title, description, slug, created_at")
+    .select("id, topic_id, title, description, slug, created_at")
     .eq("id", quizId)
     .single();
 
@@ -101,7 +149,7 @@ export async function getQuizWithPagesBySlug(
 ): Promise<QuizWithPages | null> {
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
-    .select("id, title, description, slug, created_at")
+    .select("id, topic_id, title, description, slug, created_at")
     .eq("slug", slug)
     .single();
 

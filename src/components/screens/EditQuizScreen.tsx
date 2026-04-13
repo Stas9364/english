@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import {
@@ -28,6 +28,7 @@ import { PageBlock } from "@/components/page-block/page-block";
 import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
+import { QuizTopicSelect } from "@/components/quiz-topic-select";
 
 type GenerateOk = GenerateQuizSuccess;
 function defaultOption(option?: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }, gapIndex?: number) {
@@ -81,9 +82,10 @@ type TabId = "details" | "theory";
 interface EditQuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
+  topics: { id: string; name: string }[];
 }
 
-export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }: EditQuizScreenProps) {
+export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [], topics }: EditQuizScreenProps) {
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const {
@@ -110,6 +112,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
   const form = useForm<EditQuizFormValues>({
     resolver: zodResolver(editQuizFormSchema),
     defaultValues: {
+      topic_id: quiz.topic_id,
       title: quiz.title,
       description: quiz.description ?? "",
       slug: quiz.slug,
@@ -123,6 +126,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     control: form.control,
     name: "pages",
   });
+  const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
 
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -165,6 +169,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
     setResult(null);
     const res = await updateQuiz({
       quizId: quiz.id,
+      topic_id: data.topic_id,
       title: data.title,
       description: data.description,
       slug: data.slug,
@@ -257,6 +262,7 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
               Theory
             </button>
           </div>
+          
           <CardTitle className="pt-2">
             {activeTab === "details" ? "Quiz details" : "Theory"}
           </CardTitle>
@@ -270,6 +276,15 @@ export function EditQuizScreen({ quiz, theoryBlocks: initialTheoryBlocks = [] }:
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {activeTab === "details" && (
               <>
+                <div className="space-y-2">
+                  <QuizTopicSelect
+                    value={selectedTopicId}
+                    onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
+                    topics={topics}
+                    isLoading={false}
+                    error={form.formState.errors.topic_id?.message}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="title">Quiz title</Label>
                   <Input
