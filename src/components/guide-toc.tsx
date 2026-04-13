@@ -6,6 +6,14 @@ import { cn } from "@/lib/utils";
 const sections = [
   { id: "how-quiz-works", label: "Как устроен квиз", items: [] },
   {
+    id: "topics-and-binding",
+    label: "Топики и привязка",
+    items: [
+      { id: "topics-create", label: "Создание топика" },
+      { id: "topics-bind-create-edit", label: "Привязка в Create/Edit" },
+    ],
+  },
+  {
     id: "ai-generation",
     label: "Автогенерация (AI)",
     items: [

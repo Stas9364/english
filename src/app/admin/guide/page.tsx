@@ -55,6 +55,49 @@ export default async function AdminGuidePage() {
         </p>
       </section>
 
+      <section id="topics-and-binding" className="space-y-3 scroll-mt-6">
+        <h2 className="text-xl font-semibold">Топики и привязка квизов</h2>
+        <p className="text-base">
+          В админке каждый квиз привязан к одному топику. Топики используются для группировки квизов в блоке{" "}
+          <strong>Topics</strong> на странице <code>/admin</code> и в списках по адресу <code>/admin/[topicSlug]</code>.
+        </p>
+
+        <h3 id="topics-create" className="text-lg font-semibold scroll-mt-6">Как создать топик</h3>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            Откройте страницу <code>/admin</code> и найдите карточку <strong>Topics</strong>.
+          </li>
+          <li>
+            Заполните <strong>New topic name</strong> (обязательно).
+          </li>
+          <li>
+            При необходимости заполните <strong>New topic description (optional)</strong>.
+          </li>
+          <li>
+            Нажмите <strong>Create</strong> — новый топик появится в списке.
+          </li>
+        </ol>
+
+        <h3 id="topics-bind-create-edit" className="text-lg font-semibold scroll-mt-6">Как привязать топик к квизу</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            В форме <strong>Create quiz</strong> сверху есть поле <strong>Topic</strong> — выберите нужный топик перед сохранением.
+          </li>
+          <li>
+            В форме <strong>Edit quiz</strong> (вкладка <strong>Details and pages</strong>) поле <strong>Topic</strong> также доступно:
+            можно поменять топик уже существующего квиза и сохранить кнопкой <strong>Save changes</strong>.
+          </li>
+          <li>
+            После сохранения квиз будет отображаться в выбранной категории топика.
+          </li>
+        </ul>
+
+        <p className="text-base text-muted-foreground">
+          По умолчанию в форме создания выбирается топик <strong>other</strong> (если такой топик существует). Если его нет, подставляется
+          первый доступный топик из списка.
+        </p>
+      </section>
+
       <section id="ai-generation" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Автогенерация страниц (AI generation)</h2>
         <p className="text-base">
@@ -193,6 +236,10 @@ export default async function AdminGuidePage() {
 
         <h3 id="create-quiz-step-1" className="text-lg font-semibold scroll-mt-6">Шаг 1. Основные поля</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>Topic</strong> (обязательно) — категория, к которой будет относиться квиз.
+            По умолчанию подставляется <strong>other</strong> (если есть в списке).
+          </li>
           <li>
             <strong>Quiz title</strong> (обязательно) — название квиза, например «Present Simple». Оно отображается на главной и в
             начале теста.
@@ -522,6 +569,9 @@ export default async function AdminGuidePage() {
 
         <h3 id="edit-quiz-details-pages" className="text-lg font-semibold scroll-mt-6">Вкладка «Details and pages»</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Поле <strong>Topic</strong> — можно изменить категорию квиза и перенести его в другой топик.
+          </li>
           <li>Поля <strong>Quiz title</strong>, <strong>Description</strong>.</li>
           <li>
             Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, пример, вопросы; для каждого типа — свои
@@ -617,6 +667,13 @@ export default async function AdminGuidePage() {
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td className="border px-2 py-1">Топик квиза</td>
+                <td className="border px-2 py-1">
+                  Topic (в форме Create/Edit; по умолчанию <strong>other</strong>, если есть)
+                </td>
+                <td className="border px-2 py-1">Да</td>
+              </tr>
               <tr>
                 <td className="border px-2 py-1">Название квиза</td>
                 <td className="border px-2 py-1">Quiz title</td>
