@@ -61,16 +61,16 @@ function defaultPage(pageIndex: number) {
 
 function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefined): boolean {
     if (!page) return false;
-    if (page.type !== "single") return false;
     if ((page.title ?? "").trim() !== "") return false;
     if ((page.example ?? "").trim() !== "") return false;
     if (!page.questions || page.questions.length !== 1) return false;
     const q = page.questions[0];
     if ((q.question_title ?? "").trim() !== "") return false;
     if ((q.explanation ?? "").trim() !== "") return false;
-    if (!q.options || q.options.length !== 1) return false;
-    const o = q.options[0];
-    if ((o.option_text ?? "").trim() !== "") return false;
+    if (q.question_image_url && q.question_image_url.trim() !== "") return false;
+    if (!q.options || q.options.length === 0) return true;
+    const hasAnyFilledOption = q.options.some((o) => (o.option_text ?? "").trim() !== "");
+    if (hasAnyFilledOption) return false;
     return true;
 }
 

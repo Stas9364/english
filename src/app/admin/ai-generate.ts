@@ -144,24 +144,121 @@ function gapCountFromTitle(title: string): number {
   return Math.max(1, count);
 }
 
-function normalizeGeneratedDraft(draft: z.infer<typeof GeneratedDraftSchema>): {
+function isLikelyConnectedTextTask(customTask?: string): boolean {
+  const text = (customTask ?? "").trim();
+  if (!text) return false;
+  const nonEmptyLines = text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  const hasInlineNumberedGaps = /\d+\s*\([^)]*\/[^)]*\)/.test(text);
+  const hasManyListLines = nonEmptyLines.length >= 6;
+  return text.length >= 250 && hasInlineNumberedGaps && !hasManyListLines;
+}
+
+function buildInputQuestionTitleFromCustomTask(customTask?: string): string {
+  const src = (customTask ?? "").replace(/\r\n/g, "\n").trim();
+  if (!src) return "";
+  // Convert "1(...)" / "2 (...)" markers into visible input gaps,
+  // but keep the bracket hints "(may/never/know)" unchanged.
+  return src.replace(/(^|\s)\d+\s*\(/g, "$1[[]] (");
+}
+
+function extractOrderedLineHints(customTask?: string): string[] {
+  const text = (customTask ?? "").trim();
+  if (!text) return [];
+  const hints: string[] = [];
+  const lines = text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    const m = line.match(/\/[^(]*\(([^)]+)\)/);
+    const hint = (m?.[1] ?? "").toString().trim();
+    if (hint) hints.push(hint);
+  }
+  return hints;
+}
+
+function extractGapHintsFromTitle(title: string): string[] {
+  const hints: string[] = [];
+  const re = /\[\[\]\]\s*\(([^)]+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(title)) !== null) {
+    const hint = (m[1] ?? "").toString().trim();
+    hints.push(hint);
+  }
+  return hints;
+}
+
+function normalizeGeneratedDraft(
+  draft: z.infer<typeof GeneratedDraftSchema>,
+  opts?: { customTask?: string; forceSingleInputQuestion?: boolean }
+): {
   pages: GeneratedPageForCreate[];
   theoryBlocks?: GeneratedTheoryBlockForCreate[];
 } {
   const pages: GeneratedPageForCreate[] = [];
+  const forceSingleInputQuestion =
+    !!opts?.forceSingleInputQuestion || isLikelyConnectedTextTask(opts?.customTask);
+  const orderedLineHints = extractOrderedLineHints(opts?.customTask);
+  let inputHintCursor = 0;
 
   for (let pi = 0; pi < draft.pages.length; pi++) {
     const p = draft.pages[pi] as GeneratedPage;
     const type = p.type;
-    const pageTitle = (p.title ?? "")?.toString().trim();
+    const rawPageTitle = (p.title ?? "")?.toString().trim();
+    let pageTitle = rawPageTitle;
 
     const questions: GeneratedPageForCreate["questions"] = [];
-    const qs = Array.isArray(p.questions) ? p.questions : [];
+    let qs = Array.isArray(p.questions) ? p.questions : [];
+    if (type === "input" && forceSingleInputQuestion && qs.length > 1) {
+      const titleParts: string[] = [];
+      if (rawPageTitle && rawPageTitle.includes("[[]]")) titleParts.push(rawPageTitle);
+      for (const q of qs) {
+        const qt = (q?.question_title ?? "").toString().trim();
+        if (qt) titleParts.push(qt);
+      }
+      const mergedQuestionTitle = titleParts.join(" ").replace(/\s+/g, " ").trim();
+      const mergedOptions = qs.flatMap((q) =>
+        Array.isArray(q?.options)
+          ? q.options.map((o) => ({
+              option_text: (o?.option_text ?? "").toString(),
+              is_correct: !!o?.is_correct,
+              gap_index: Number.isFinite(o?.gap_index as number) ? (o?.gap_index as number) : undefined,
+            }))
+          : []
+      );
+      qs = [{ question_title: mergedQuestionTitle, explanation: null, options: mergedOptions }];
+      // For connected custom text, keep exercise text inside the question and avoid duplicating it in page title.
+      pageTitle = rawPageTitle && !rawPageTitle.includes("[[]]") ? rawPageTitle : "";
+    }
+    if (type === "input" && forceSingleInputQuestion) {
+      const canonical = buildInputQuestionTitleFromCustomTask(opts?.customTask);
+      if (canonical) {
+        if (qs.length === 0) {
+          qs = [{ question_title: canonical, explanation: null, options: [] }];
+        } else {
+          qs[0] = { ...qs[0], question_title: canonical };
+        }
+        if (qs.length > 1) qs = [qs[0]];
+        pageTitle = "";
+      }
+    }
 
     for (let qi = 0; qi < qs.length; qi++) {
       const q = qs[qi] as GeneratedQuestion;
-      const question_title = (q.question_title ?? "").toString().trim();
+      let question_title = (q.question_title ?? "").toString().trim();
       if (!question_title) continue;
+      if (type === "input" && !forceSingleInputQuestion && !/\([^)]*\)/.test(question_title)) {
+        const hint = orderedLineHints[inputHintCursor] ?? "";
+        if (hint) {
+          question_title = question_title.includes("[[]]")
+            ? question_title.replace("[[]]", `[[]] (${hint})`)
+            : `${question_title} (${hint})`;
+        }
+      }
+      if (type === "input") inputHintCursor++;
 
       const explanation = (q.explanation ?? "")?.toString().trim();
 
@@ -182,15 +279,57 @@ function normalizeGeneratedDraft(draft: z.infer<typeof GeneratedDraftSchema>): {
 
       if (isGapBased) {
         const gaps = gapCountFromTitle(question_title);
+        const gapHints = isInput ? extractGapHintsFromTitle(question_title) : [];
         const byGap = new Map<number, { option_text: string; is_correct: boolean; gap_index?: number }[]>();
         for (let g = 0; g < gaps; g++) byGap.set(g, []);
+        const noGapIndexOptions: { option_text: string; is_correct: boolean; gap_index?: number }[] = [];
+        const outOfRangeGapOptions: { option_text: string; is_correct: boolean; gap_index?: number }[] = [];
         for (const o of optionsTrimmed) {
-          const gi = o.gap_index ?? 0;
-          if (!byGap.has(gi)) continue;
+          if (o.gap_index === undefined) {
+            noGapIndexOptions.push(o);
+            continue;
+          }
+          const gi = o.gap_index;
+          if (!byGap.has(gi)) {
+            if (isInput) outOfRangeGapOptions.push(o);
+            continue;
+          }
           byGap.get(gi)!.push({ option_text: o.option_text, is_correct: isInput ? true : o.is_correct, gap_index: gi });
+        }
+
+        // Gemini sometimes omits gap_index for input answers; distribute those answers
+        // to missing gaps first so validation can still succeed for well-formed content.
+        if (isInput && (noGapIndexOptions.length > 0 || outOfRangeGapOptions.length > 0)) {
+          const recoverableOptions = [...noGapIndexOptions, ...outOfRangeGapOptions];
+          let cursor = 0;
+          for (let g = 0; g < gaps && cursor < recoverableOptions.length; g++) {
+            const list = byGap.get(g) ?? [];
+            if (list.length > 0) continue;
+            const o = recoverableOptions[cursor++];
+            list.push({ option_text: o.option_text, is_correct: true, gap_index: g });
+            byGap.set(g, list);
+          }
+          while (cursor < recoverableOptions.length) {
+            const o = recoverableOptions[cursor++];
+            const list0 = byGap.get(0) ?? [];
+            list0.push({ option_text: o.option_text, is_correct: true, gap_index: 0 });
+            byGap.set(0, list0);
+          }
+        } else {
+          for (const o of noGapIndexOptions) {
+            const gi = 0;
+            if (!byGap.has(gi)) continue;
+            byGap.get(gi)!.push({ option_text: o.option_text, is_correct: isInput ? true : o.is_correct, gap_index: gi });
+          }
         }
         for (let g = 0; g < gaps; g++) {
           const list = byGap.get(g) ?? [];
+          if (isInput && list.length === 0 && forceSingleInputQuestion) {
+            const hint = (gapHints[g] ?? "").trim();
+            const fallback = hint || "answer";
+            list.push({ option_text: fallback, is_correct: true, gap_index: g });
+            byGap.set(g, list);
+          }
           if (list.length === 0) {
             throw new Error(
               type === "input"
@@ -276,11 +415,21 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     `}`,
     ``,
     `Rules:`,
+    `- CRITICAL PAGE RULE: return EXACTLY ${params.pageCount} item(s) in "pages" array. Do not return more, do not return less.`,
+    params.pageCount === 1
+      ? `- For this request, "pages" must contain exactly ONE object. Even if the instruction has many exercises/items, keep them as multiple questions inside that single page.`
+      : null,
     `- "type" must be one of: ${allowed}`,
     singleType ? `- In this request ALL pages MUST have type = "${singleType}". Do not use any other page types.` : null,
     customTask
       ? `- Do NOT create more questions than are explicitly present or requested in the instruction. If the instruction contains N questions/examples, keep exactly those (you may split or restructure them to fit the schema, but do not invent extra questions). Ignore any default questions-per-page limits if they conflict with the instruction.`
       : `- Create exactly ${params.pageCount} pages, each with exactly ${params.questionsPerPage} questions.`,
+    customTask
+      ? `- SLASH PRESERVATION RULE: if the instruction contains fragments separated by "/" (e.g. "he / look", "I / make"), treat BOTH sides as required source material. Do NOT drop, omit, or replace either side; keep both parts represented in the generated question.`
+      : null,
+    customTask
+      ? `- CONNECTED TEXT RULE: if the instruction provides one continuous/coherent text block (paragraph), keep it as ONE question in the quiz. Do NOT split it into multiple questions or break it into sentence-level items unless the instruction explicitly asks for that split.`
+      : null,
     `- question_title must be concise and must NOT contain HTML.`,
     `- GLOBAL GAP RULE: whenever you use "[[]]" in question_title (for ANY page type), brackets must stay EMPTY. Never put any word, answer, hint, translation, or placeholder text inside them. Correct: "[[]]". Incorrect: "[[goes]]", "[[answer]]", "[[...]]".`,
     `- For type "single": options length 3-5, exactly one is_correct=true.`,
@@ -289,7 +438,11 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     `- For type "input":`,
     `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
     `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
-    `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options.`,
+    `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
+    `  - If a question has N gaps, you MUST provide at least one option for every gap_index from 0..N-1. Missing gap_index is invalid.`,
+    customTask
+      ? `  - For custom connected text, preserve the original text almost verbatim: only replace numbered markers like "1(...)" with "[[]] (...)" and keep the text inside round brackets exactly as provided (do NOT delete, shorten, or rewrite bracket content).`
+      : null,
     `- For type "select_gaps": question_title must include one or more "[[]]" gaps. options are choices; set gap_index (0-based). For each gap, provide 3-5 options and at least one is_correct=true.`,
     `- If there are N gaps in the title, you MUST provide at least one option for each gap_index from 0..N-1.`,
     ``,
@@ -408,7 +561,7 @@ export async function generateQuizPages(
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
     const signal =
       typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -507,7 +660,13 @@ export async function generateQuizPages(
     }
     let normalized: ReturnType<typeof normalizeGeneratedDraft>;
     try {
-      normalized = normalizeGeneratedDraft(draft);
+      normalized = normalizeGeneratedDraft(draft, {
+        customTask: parsedParams.customTask,
+        forceSingleInputQuestion:
+          hasCustomTask &&
+          parsedParams.allowedTypes.includes("input") &&
+          isLikelyConnectedTextTask(parsedParams.customTask),
+      });
     } catch (e) {
       logGenerateError(requestId, "normalize_generated_draft", {
         topic: parsedParams.topic,
