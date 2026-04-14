@@ -3,6 +3,8 @@
 import { z } from "zod";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
 
+const GEMINI_MODEL = "gemma-3n-e4b-it";
+
 export type GenerateQuizPagesParams = {
   topic: string;
   level: string;
@@ -361,7 +363,8 @@ export async function generateQuizPages(
   const prompt = buildGeneratePrompt(parsedParams);
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
     const signal =
       typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any

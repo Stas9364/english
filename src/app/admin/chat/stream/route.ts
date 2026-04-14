@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getIsAdmin } from "@/lib/supabase";
 import type { ChatMessage } from "@/app/admin/chat-action";
 
+const GEMINI_MODEL = "gemma-3n-e4b-it";
+
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_HISTORY_MESSAGES = 10;
 
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
   }
   contents.push({ parts: [{ text: message }] });
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-12b-it:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
   let geminiRes: Response;
   try {
