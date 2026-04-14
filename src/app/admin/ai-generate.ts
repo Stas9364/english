@@ -3,7 +3,8 @@
 import { z } from "zod";
 import type { TestType, TheoryBlockType } from "@/lib/supabase";
 
-const GEMINI_MODEL = "gemma-3n-e4b-it";
+const GEMINI_MODEL = "gemini-3-flash-preview";
+// const GEMINI_MODEL = "gemma-3n-e4b-it";
 
 export type GenerateQuizPagesParams = {
   topic: string;
