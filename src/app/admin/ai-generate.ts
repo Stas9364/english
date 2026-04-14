@@ -232,6 +232,32 @@ function extractGapHintsFromTitle(title: string): string[] {
   return hints;
 }
 
+function buildFallbackDraftForInputCustomTask(customTask?: string): z.infer<typeof GeneratedDraftSchema> | null {
+  const questionTitle = buildInputQuestionTitleFromCustomTask(customTask);
+  if (!questionTitle) return null;
+  const hints = extractGapHintsFromTitle(questionTitle);
+  const options = hints.map((hint, i) => ({
+    option_text: hint || "answer",
+    is_correct: true,
+    gap_index: i,
+  }));
+  return {
+    pages: [
+      {
+        type: "input",
+        title: null,
+        questions: [
+          {
+            question_title: questionTitle,
+            explanation: null,
+            options,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function normalizeGeneratedDraft(
   draft: z.infer<typeof GeneratedDraftSchema>,
   opts?: { customTask?: string; forceSingleInputQuestion?: boolean }
@@ -644,11 +670,34 @@ export async function generateQuizPages(
     try {
       draftUnknown = parseModelJson(text);
     } catch (e) {
+      const hasCustomTask = !!(parsedParams.customTask && parsedParams.customTask.trim().length > 0);
+      const canUseInputFallback =
+        hasCustomTask &&
+        parsedParams.allowedTypes.length === 1 &&
+        parsedParams.allowedTypes[0] === "input" &&
+        isLikelyConnectedTextTask(parsedParams.customTask);
+      if (canUseInputFallback) {
+        const fallbackDraft = buildFallbackDraftForInputCustomTask(parsedParams.customTask);
+        if (fallbackDraft) {
+          logGenerateError(requestId, "json_parse_fallback_used", {
+            reason: "connected_custom_task_input",
+            responsePreview: text.slice(0, 400),
+          });
+          draftUnknown = fallbackDraft;
+        } else {
+          logGenerateError(requestId, "json_parse", {
+            responsePreview: text.slice(0, 1200),
+            error: toSerializableError(e),
+          });
+          return { ok: false, error: "Model did not return valid JSON" };
+        }
+      } else {
       logGenerateError(requestId, "json_parse", {
         responsePreview: text.slice(0, 1200),
         error: toSerializableError(e),
       });
       return { ok: false, error: "Model did not return valid JSON" };
+      }
     }
 
     let draft: z.infer<typeof GeneratedDraftSchema>;
