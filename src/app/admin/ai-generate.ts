@@ -142,10 +142,15 @@ function extractFirstJsonObject(text: string): string | null {
 function stripMarkdownCodeFences(text: string): string {
   const s = (text ?? "").trim();
   if (!s) return s;
-  // ```json ... ``` or ``` ... ```
+  // Full fenced block: ```json ... ``` or ``` ... ```
   const fenced = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   if (fenced?.[1]) return fenced[1].trim();
-  return s;
+
+  // Tolerant mode: sometimes model sends only opening fence without closing.
+  // Remove leading ```json / ``` and optional trailing ``` if present.
+  let out = s.replace(/^```(?:json)?\s*/i, "");
+  out = out.replace(/\s*```$/i, "");
+  return out.trim();
 }
 
 function parseModelJson(text: string): unknown {
