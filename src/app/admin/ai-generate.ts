@@ -139,6 +139,42 @@ function extractFirstJsonObject(text: string): string | null {
   return null;
 }
 
+function stripMarkdownCodeFences(text: string): string {
+  const s = (text ?? "").trim();
+  if (!s) return s;
+  // ```json ... ``` or ``` ... ```
+  const fenced = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced?.[1]) return fenced[1].trim();
+  return s;
+}
+
+function parseModelJson(text: string): unknown {
+  const candidates: string[] = [];
+  const trimmed = (text ?? "").trim();
+  if (trimmed) candidates.push(trimmed);
+
+  const unfenced = stripMarkdownCodeFences(trimmed);
+  if (unfenced && unfenced !== trimmed) candidates.push(unfenced);
+
+  for (const c of [...candidates]) {
+    const extracted = extractFirstJsonObject(c);
+    if (extracted && extracted !== c) candidates.push(extracted);
+  }
+
+  let lastError: unknown = null;
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    if (!c || seen.has(c)) continue;
+    seen.add(c);
+    try {
+      return JSON.parse(c);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Model did not return valid JSON");
+}
+
 function gapCountFromTitle(title: string): number {
   const count = Math.max(0, (title ?? "").split("[[]]").length - 1);
   return Math.max(1, count);
@@ -599,11 +635,9 @@ export async function generateQuizPages(
       json?.candidates?.[0]?.content?.parts?.map((p: GeminiPart) => (typeof p?.text === "string" ? p.text : "")).filter(Boolean) ??
       [];
     const text = textParts.join("\n").trim();
-    const jsonStr = extractFirstJsonObject(text) ?? text;
-
     let draftUnknown: unknown;
     try {
-      draftUnknown = JSON.parse(jsonStr);
+      draftUnknown = parseModelJson(text);
     } catch (e) {
       logGenerateError(requestId, "json_parse", {
         responsePreview: text.slice(0, 1200),
