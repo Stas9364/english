@@ -49,6 +49,35 @@ type GenerateOk = {
 
 type GenerateErr = { ok: false; error: string };
 
+type GenerateLogMeta = Record<string, unknown>;
+
+function toSerializableError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { error };
+}
+
+function logGenerateError(requestId: string, stage: string, meta?: GenerateLogMeta): void {
+  const payload = {
+    tag: "generateQuizPages:error",
+    requestId,
+    stage,
+    ts: new Date().toISOString(),
+    ...(meta ?? {}),
+  };
+  try {
+    // Vercel reliably indexes one-line stderr JSON payloads.
+    console.error(JSON.stringify(payload));
+  } catch {
+    console.error("[generateQuizPages:error]", payload);
+  }
+}
+
 const GeneratedDraftSchema = z.object({
   pages: z.array(
     z.object({
@@ -288,6 +317,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
 export async function generateQuizPages(
   params: GenerateQuizPagesParams
 ): Promise<GenerateOk | GenerateErr> {
+  const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
   const MAX_PAGES = 20;
   const MAX_QUESTIONS_PER_PAGE = 20;
   const MAX_TOTAL_QUESTIONS = 200;
@@ -350,6 +380,17 @@ export async function generateQuizPages(
       pageCount: 1,
     };
   } catch (e) {
+    logGenerateError(requestId, "params_validation", {
+      paramsPreview: {
+        topic: typeof params?.topic === "string" ? params.topic.slice(0, 200) : undefined,
+        level: typeof params?.level === "string" ? params.level : undefined,
+        language: params?.language,
+        pageCount: params?.pageCount,
+        questionsPerPage: params?.questionsPerPage,
+        allowedTypes: params?.allowedTypes,
+      },
+      error: toSerializableError(e),
+    });
     if (e instanceof z.ZodError) {
       const first = e.issues?.[0];
       return { ok: false, error: first?.message ?? "Invalid generation parameters" };
@@ -358,7 +399,10 @@ export async function generateQuizPages(
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { ok: false, error: "GEMINI_API_KEY is not configured" };
+  if (!apiKey) {
+    logGenerateError(requestId, "missing_api_key");
+    return { ok: false, error: "GEMINI_API_KEY is not configured" };
+  }
 
   const prompt = buildGeneratePrompt(parsedParams);
 
@@ -385,6 +429,7 @@ export async function generateQuizPages(
     });
 
     if (!resp.ok) {
+      logGenerateError(requestId, "gemini_http_error", { status: resp.status });
       if (resp.status === 401 || resp.status === 403) {
         return { ok: false, error: "Gemini authorization failed. Check GEMINI_API_KEY." };
       }
@@ -406,31 +451,87 @@ export async function generateQuizPages(
     let draftUnknown: unknown;
     try {
       draftUnknown = JSON.parse(jsonStr);
-    } catch {
+    } catch (e) {
+      logGenerateError(requestId, "json_parse", {
+        responsePreview: text.slice(0, 1200),
+        error: toSerializableError(e),
+      });
       return { ok: false, error: "Model did not return valid JSON" };
     }
 
-    const draft = GeneratedDraftSchema.parse(draftUnknown);
+    let draft: z.infer<typeof GeneratedDraftSchema>;
+    try {
+      draft = GeneratedDraftSchema.parse(draftUnknown);
+    } catch (e) {
+      logGenerateError(requestId, "draft_schema_parse", {
+        draftPreview:
+          draftUnknown && typeof draftUnknown === "object"
+            ? JSON.stringify(draftUnknown).slice(0, 2000)
+            : draftUnknown,
+        error: toSerializableError(e),
+      });
+      throw e;
+    }
     const allowed = new Set(parsedParams.allowedTypes);
     const hasCustomTask = !!(parsedParams.customTask && parsedParams.customTask.trim().length > 0);
     if (draft.pages.length !== parsedParams.pageCount) {
+      logGenerateError(requestId, "page_count_mismatch", {
+        returnedPageCount: draft.pages.length,
+        expectedPageCount: parsedParams.pageCount,
+      });
       return { ok: false, error: `Model returned ${draft.pages.length} pages, expected ${parsedParams.pageCount}` };
     }
     for (let i = 0; i < draft.pages.length; i++) {
       const p = draft.pages[i];
       if (!allowed.has(p.type as TestType)) {
+        logGenerateError(requestId, "disallowed_page_type", {
+          pageIndex: i,
+          pageType: p.type,
+          allowedTypes: parsedParams.allowedTypes,
+        });
         return { ok: false, error: `Model returned disallowed page type: ${p.type}` };
       }
       if (!hasCustomTask && p.questions.length !== parsedParams.questionsPerPage) {
+        logGenerateError(requestId, "question_count_mismatch", {
+          pageIndex: i,
+          returnedQuestionCount: p.questions.length,
+          expectedQuestionCount: parsedParams.questionsPerPage,
+          pageType: p.type,
+          pageTitle: p.title,
+        });
         return {
           ok: false,
           error: `Model returned ${p.questions.length} questions on page ${i + 1}, expected ${parsedParams.questionsPerPage}`,
         };
       }
     }
-    const normalized = normalizeGeneratedDraft(draft);
+    let normalized: ReturnType<typeof normalizeGeneratedDraft>;
+    try {
+      normalized = normalizeGeneratedDraft(draft);
+    } catch (e) {
+      logGenerateError(requestId, "normalize_generated_draft", {
+        topic: parsedParams.topic,
+        level: parsedParams.level,
+        language: parsedParams.language ?? "EN",
+        allowedTypes: parsedParams.allowedTypes,
+        pageCount: parsedParams.pageCount,
+        questionsPerPage: parsedParams.questionsPerPage,
+        pagesPreview: draft.pages.slice(0, 2),
+        error: toSerializableError(e),
+      });
+      throw e;
+    }
     return { ok: true, pages: normalized.pages, ...(normalized.theoryBlocks ? { theoryBlocks: normalized.theoryBlocks } : {}) };
   } catch (e) {
+    logGenerateError(requestId, "generate_quiz_pages_catch", {
+      topic: params.topic,
+      level: params.level,
+      language: params.language ?? "EN",
+      allowedTypes: params.allowedTypes,
+      pageCount: params.pageCount,
+      questionsPerPage: params.questionsPerPage,
+      error: toSerializableError(e),
+    });
     if (e instanceof z.ZodError) {
       return { ok: false, error: "Model returned JSON in an unexpected format" };
     }
