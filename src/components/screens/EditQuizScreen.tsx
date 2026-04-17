@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block";
+import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useQuizAiGeneration, type GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
 import { useTheoryBlocks } from "@/hooks/use-theory-blocks";

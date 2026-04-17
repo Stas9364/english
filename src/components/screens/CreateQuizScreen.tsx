@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
 import { useFieldArray, useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { PageBlock, type PageBlockFormValues } from '../page-block/page-block';
-import { QuizAiGenerationBlock } from '../quiz-ai-generation-block';
+import { QuizAiGenerationBlock } from '../quiz-ai-generation-block/quiz-ai-generation-block';
 import { QuizTheoryBlocksEditor } from '../quiz-theory-blocks-editor';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
@@ -231,124 +231,124 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                     <Link href={`/admin/${chapter}`}>Back to topics</Link>
                 </Button>
             </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>Create quiz</CardTitle>
-                <CardDescription>
-                    Add title, description (general task), then add one or more pages. Each page has one question type (single choice, multiple choice, text input, or dropdown in gaps).
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <div className="space-y-2">
-                        <QuizTopicSelect
-                            value={selectedTopicId}
-                            onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
-                            topics={topics}
-                            isLoading={false}
-                            error={form.formState.errors.topic_id?.message}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="title">Quiz title</Label>
-                        <Input
-                            id="title"
-                            {...form.register("title")}
-                            placeholder="e.g. Present Simple"
-                            className={cn(form.formState.errors.title && "border-destructive")}
-                        />
-                        {form.formState.errors.title && (
-                            <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="description">General task / instructions</Label>
-                        <Input
-                            id="description"
-                            {...form.register("description")}
-                            placeholder="What respondents need to do (shown at the start of the quiz)"
-                        />
-                    </div>
-
-                    <QuizAiGenerationBlock
-                        topic={ai.topic}
-                        level={ai.level}
-                        language={ai.language}
-                        questionsPerPage={String(ai.questionsPerPage)}
-                        selectedType={ai.selectedType as TestType}
-                        customTask={ai.customTask}
-                        style={ai.style}
-                        constraints={ai.constraints}
-                        lexicon={ai.lexicon}
-                        bannedTopics={ai.bannedTopics}
-                        onTopicChange={ai.setTopic}
-                        onLevelChange={ai.setLevel}
-                        onLanguageChange={ai.setLanguage}
-                        onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                        onSelectedTypeChange={ai.setSelectedType}
-                        onCustomTaskChange={ai.setCustomTask}
-                        onStyleChange={ai.setStyle}
-                        onConstraintsChange={ai.setConstraints}
-                        onLexiconChange={ai.setLexicon}
-                        onBannedTopicsChange={ai.setBannedTopics}
-                        isGenerating={ai.isGenerating}
-                        onGenerate={handleGeneratePages}
-                        generatedSummary={genStatus.state === "success" ? genStatus.message : null}
-                        errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
-                    />
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <Label>Pages</Label>
-                            <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
-                        </div>
-                        {pagesArray.fields.map((field, pIndex) => (
-                            <PageBlock
-                                key={field.id}
-                                form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                                pageIndex={pIndex}
-                                defaultOption={defaultOption}
-                                defaultQuestion={defaultQuestion}
-                                quizId={undefined}
-                                onRemove={() => pagesArray.remove(pIndex)}
-                                canRemove={pagesArray.fields.length > 1}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create quiz</CardTitle>
+                    <CardDescription>
+                        Add title, description (general task), then add one or more pages. Each page has one question type (single choice, multiple choice, text input, or dropdown in gaps).
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <div className="space-y-2">
+                            <QuizTopicSelect
+                                value={selectedTopicId}
+                                onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
+                                topics={topics}
+                                isLoading={false}
+                                error={form.formState.errors.topic_id?.message}
                             />
-                        ))}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => pagesArray.append(defaultPage(pagesArray.fields.length))}
-                        >
-                            <Plus className="size-4" /> Add page
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="title">Quiz title</Label>
+                            <Input
+                                id="title"
+                                {...form.register("title")}
+                                placeholder="e.g. Present Simple"
+                                className={cn(form.formState.errors.title && "border-destructive")}
+                            />
+                            {form.formState.errors.title && (
+                                <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">General task / instructions</Label>
+                            <Input
+                                id="description"
+                                {...form.register("description")}
+                                placeholder="What respondents need to do (shown at the start of the quiz)"
+                            />
+                        </div>
+
+                        <QuizAiGenerationBlock
+                            topic={ai.topic}
+                            level={ai.level}
+                            language={ai.language}
+                            questionsPerPage={String(ai.questionsPerPage)}
+                            selectedType={ai.selectedType as TestType}
+                            customTask={ai.customTask}
+                            style={ai.style}
+                            constraints={ai.constraints}
+                            lexicon={ai.lexicon}
+                            bannedTopics={ai.bannedTopics}
+                            onTopicChange={ai.setTopic}
+                            onLevelChange={ai.setLevel}
+                            onLanguageChange={ai.setLanguage}
+                            onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
+                            onSelectedTypeChange={ai.setSelectedType}
+                            onCustomTaskChange={ai.setCustomTask}
+                            onStyleChange={ai.setStyle}
+                            onConstraintsChange={ai.setConstraints}
+                            onLexiconChange={ai.setLexicon}
+                            onBannedTopicsChange={ai.setBannedTopics}
+                            isGenerating={ai.isGenerating}
+                            onGenerate={handleGeneratePages}
+                            generatedSummary={genStatus.state === "success" ? genStatus.message : null}
+                            errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
+                        />
+
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-2">
+                                <Label>Pages</Label>
+                                <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
+                            </div>
+                            {pagesArray.fields.map((field, pIndex) => (
+                                <PageBlock
+                                    key={field.id}
+                                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                                    pageIndex={pIndex}
+                                    defaultOption={defaultOption}
+                                    defaultQuestion={defaultQuestion}
+                                    quizId={undefined}
+                                    onRemove={() => pagesArray.remove(pIndex)}
+                                    canRemove={pagesArray.fields.length > 1}
+                                />
+                            ))}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => pagesArray.append(defaultPage(pagesArray.fields.length))}
+                            >
+                                <Plus className="size-4" /> Add page
+                            </Button>
+                        </div>
+
+                        <QuizTheoryBlocksEditor
+                            blocks={theoryBlocks}
+                            uploadingImageIndex={uploadingImageIndex}
+                            uploadError={uploadError}
+                            onAddBlock={(type) => addTheoryBlock(type)}
+                            onRemoveBlock={(index) => removeTheoryBlock(index)}
+                            onMoveBlock={(index, dir) => moveTheoryBlock(index, dir)}
+                            onUpdateBlock={(index, patch) => updateTheoryBlock(index, patch)}
+                            onUploadImage={handleTheoryImageUpload}
+                        />
+
+                        {result && (
+                            <Alert variant={result.ok ? "default" : "destructive"}>
+                                <AlertDescription>
+                                    {result.ok ? "Quiz created successfully." : result.error}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting ? "Saving…" : "Create quiz"}
                         </Button>
-                    </div>
-
-                    <QuizTheoryBlocksEditor
-                        blocks={theoryBlocks}
-                        uploadingImageIndex={uploadingImageIndex}
-                        uploadError={uploadError}
-                        onAddBlock={(type) => addTheoryBlock(type)}
-                        onRemoveBlock={(index) => removeTheoryBlock(index)}
-                        onMoveBlock={(index, dir) => moveTheoryBlock(index, dir)}
-                        onUpdateBlock={(index, patch) => updateTheoryBlock(index, patch)}
-                        onUploadImage={handleTheoryImageUpload}
-                    />
-
-                    {result && (
-                        <Alert variant={result.ok ? "default" : "destructive"}>
-                            <AlertDescription>
-                                {result.ok ? "Quiz created successfully." : result.error}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                        {form.formState.isSubmitting ? "Saving…" : "Create quiz"}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+                    </form>
+                </CardContent>
+            </Card>
         </>
     );
 }
