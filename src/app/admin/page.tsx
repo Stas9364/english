@@ -1,5 +1,8 @@
 import { AdminChapterHub } from "@/components/admin-chapter-hub";
+import { createServerClient, getAdminChapters } from "@/lib/supabase";
 
-export default function AdminPage() {
-  return <AdminChapterHub />;
+export default async function AdminPage() {
+  const supabase = await createServerClient();
+  const chapters = await getAdminChapters(supabase);
+  return <AdminChapterHub chapters={chapters} />;
 }

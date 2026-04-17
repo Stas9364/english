@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { isChapter } from "@/lib/chapters";
-import { createServerClient, getQuizWithPagesBySlug, getTheoryBlocks, getIsAdmin } from "@/lib/supabase";
+import { createServerClient, getQuizWithPagesBySlug, getTheoryBlocks, getIsAdmin, getTopicMetaById } from "@/lib/supabase";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 
 interface QuizPageProps {
@@ -22,12 +21,12 @@ export default async function QuizPage({ params }: QuizPageProps) {
 
   const [theoryBlocks, topicRow] = await Promise.all([
     getTheoryBlocks(supabase, quiz.id),
-    supabase.from("topics").select("slug, chapter").eq("id", quiz.topic_id).single(),
+    getTopicMetaById(supabase, quiz.topic_id),
   ]);
 
   const adminBackHref =
-    topicRow.data && isChapter(topicRow.data.chapter)
-      ? `/admin/${topicRow.data.chapter}/${topicRow.data.slug}`
+    topicRow
+      ? `/admin/${topicRow.chapter}/${topicRow.slug}`
       : "/admin";
 
   return (

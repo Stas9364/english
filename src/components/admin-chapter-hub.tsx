@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { CHAPTERS, CHAPTER_LABELS } from "@/lib/chapters";
 import { PageContainer } from "@/components/page-container";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { AdminChapter } from "@/lib/supabase";
 
-export function AdminChapterHub() {
+interface AdminChapterHubProps {
+  chapters: AdminChapter[];
+}
+
+export function AdminChapterHub({ chapters }: AdminChapterHubProps) {
   return (
     <PageContainer className="space-y-8">
       <div className="space-y-2">
@@ -12,16 +16,16 @@ export function AdminChapterHub() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {CHAPTERS.map((chapter) => (
+        {chapters.map((chapter) => (
           <Link
-            key={chapter}
-            href={`/admin/${chapter}`}
+            key={chapter.id}
+            href={`/admin/${chapter.key}`}
             className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Card className="h-full transition-shadow hover:border-primary/60 hover:shadow-md">
               <CardHeader className="gap-1">
                 <CardTitle className="text-lg transition-colors group-hover:text-primary">
-                  {CHAPTER_LABELS[chapter]}
+                  {chapter.name}
                 </CardTitle>
                 <CardDescription>Open topics and quizzes in this section.</CardDescription>
               </CardHeader>

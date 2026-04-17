@@ -9,17 +9,18 @@ import { PageContainer } from "@/components/page-container";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CHAPTER_LABELS, type Chapter } from "@/lib/chapters";
+import type { Chapter } from "@/lib/chapters";
 import type { Topic } from "@/lib/supabase";
 import Link from "next/link";
 import { useTopicEditing } from "@/hooks/use-topic-editing";
 
 interface AdminScreenProps {
   chapter: Chapter;
+  chapterName: string;
   topics: Topic[];
 }
 
-export function AdminScreen({ chapter, topics }: AdminScreenProps) {
+export function AdminScreen({ chapter, chapterName, topics }: AdminScreenProps) {
   const router = useRouter();
   const {
     editingTopicId,
@@ -36,7 +37,7 @@ export function AdminScreen({ chapter, topics }: AdminScreenProps) {
   return (
     <PageContainer className="space-y-8">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold tracking-tight">{CHAPTER_LABELS[chapter]}</h2>
+        <h2 className="text-xl font-semibold tracking-tight">{chapterName}</h2>
         <Button asChild variant="ghost">
           <Link href="/admin">Back to sections</Link>
         </Button>

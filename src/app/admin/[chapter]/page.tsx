@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { isChapter } from "@/lib/chapters";
-import { createServerClient, getTopicsByChapter } from "@/lib/supabase";
+import { createServerClient, getAdminChapterByKey, getTopicsByChapter } from "@/lib/supabase";
 import { AdminScreen } from "@/components/screens/AdminScreen";
 
 interface AdminChapterPageProps {
@@ -8,12 +7,16 @@ interface AdminChapterPageProps {
 }
 
 export default async function AdminChapterPage({ params }: AdminChapterPageProps) {
-  const { chapter: chapterParam } = await params;
+  const { chapter: chapterParam } = await params;  
   const chapter = decodeURIComponent(chapterParam).trim();
-  if (!isChapter(chapter)) notFound();
+  if (!chapter) notFound();  
 
   const supabase = await createServerClient();
+  
+  const chapterMeta = await getAdminChapterByKey(supabase, chapter);
+  if (!chapterMeta) notFound();
+
   const topics = await getTopicsByChapter(supabase, chapter);
 
-  return <AdminScreen chapter={chapter} topics={topics} />;
+  return <AdminScreen chapter={chapter} chapterName={chapterMeta.name} topics={topics} />;
 }

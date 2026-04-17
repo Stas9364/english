@@ -2,10 +2,13 @@ export { createClient } from "./client";
 export { createServerClient } from "./server";
 export { getCurrentUser, getIsAdmin } from "./auth";
 export {
+  getAdminChapters,
+  getAdminChapterByKey,
   getTopics,
   getTopicBySlug,
   getTopicsByChapter,
   getTopicBySlugAndChapter,
+  getTopicMetaById,
   getQuizzes,
   getQuizzesByTopicSlug,
   getQuizzesByTopicSlugAndChapter,
@@ -14,6 +17,7 @@ export {
   getTheoryBlocks,
 } from "./queries";
 export type {
+  AdminChapter,
   Topic,
   Quiz,
   QuizPage,

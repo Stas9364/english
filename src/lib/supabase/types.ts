@@ -14,6 +14,14 @@ export interface Topic {
   created_at: string;
 }
 
+/** Раздел админки (глава), источник истины — таблица `chapters` */
+export interface AdminChapter {
+  id: string;
+  key: string;
+  name: string;
+  order_index: number;
+}
+
 /** Квиз (общее задание) */
 export interface Quiz {
   id: string;

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { isChapter } from "@/lib/chapters";
 import {
   createServerClient,
   getQuizWithPages,
   getTheoryBlocks,
+  getTopicMetaById,
   getTopicsByChapter,
 } from "@/lib/supabase";
 import { EditQuizScreen } from "@/components/screens/EditQuizScreen";
@@ -18,13 +18,8 @@ export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
   const quiz = await getQuizWithPages(supabase, id);
   if (!quiz) notFound();
 
-  const { data: topicMeta } = await supabase
-    .from("topics")
-    .select("slug, chapter")
-    .eq("id", quiz.topic_id)
-    .single();
-
-  if (!topicMeta || !isChapter(topicMeta.chapter)) notFound();
+  const topicMeta = await getTopicMetaById(supabase, quiz.topic_id);
+  if (!topicMeta) notFound();
 
   const backToTopicHref = `/admin/${topicMeta.chapter}/${topicMeta.slug}`;
 

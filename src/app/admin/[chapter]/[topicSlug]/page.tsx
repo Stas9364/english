@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { isChapter } from "@/lib/chapters";
 import {
+  getAdminChapterByKey,
   createServerClient,
   getQuizzesByTopicSlugAndChapter,
   getTopicBySlugAndChapter,
@@ -15,9 +15,13 @@ export default async function AdminTopicPage({ params }: AdminTopicPageProps) {
   const { chapter: chapterParam, topicSlug: topicSlugParam } = await params;
   const chapter = decodeURIComponent(chapterParam).trim();
   const topicSlug = decodeURIComponent(topicSlugParam).trim();
-  if (!isChapter(chapter) || !topicSlug) notFound();
+  if (!chapter || !topicSlug) notFound();
 
   const supabase = await createServerClient();
+
+  const chapterMeta = await getAdminChapterByKey(supabase, chapter);
+  if (!chapterMeta) notFound();
+
   const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
   if (!topic) notFound();
 
