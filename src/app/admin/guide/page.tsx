@@ -99,6 +99,39 @@ export default async function AdminGuidePage() {
         </p>
       </section>
 
+      <section id="listening-mode" className="space-y-3 scroll-mt-6">
+        <h2 className="text-xl font-semibold">Режим Listening</h2>
+        <p className="text-base">
+          Для раздела <code>listening</code> используется отдельный режим конструктора: «клип + текст с пропусками». Он упрощает
+          форму и убирает лишние элементы, которые не нужны для listening-квизов.
+        </p>
+
+        <h3 id="listening-mode-create" className="text-lg font-semibold scroll-mt-6">Создание Listening‑квиза</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li><strong>YouTube video URL</strong> обязателен.</li>
+          <li>Тип страницы фиксирован как <strong>Text input</strong>.</li>
+          <li>
+            Скрыты блоки и кнопки: <strong>AI generation</strong>, <strong>Add page</strong>, <strong>Add question</strong>,{" "}
+            <strong>Page title</strong>, <strong>Example</strong>, <strong>Question image</strong>.
+          </li>
+          <li>Блок вопросов отображается как <strong>Lyrics</strong>.</li>
+        </ul>
+
+        <h3 id="listening-mode-edit" className="text-lg font-semibold scroll-mt-6">Редактирование Listening‑квиза</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            На вкладке <strong>Details and pages</strong> доступно поле <strong>YouTube video URL</strong>, и оно также обязательно.
+          </li>
+          <li>Ограничения конструктора те же, что и при создании (фиксированный input и скрытые лишние контролы).</li>
+        </ul>
+
+        <h3 id="listening-mode-student" className="text-lg font-semibold scroll-mt-6">Прохождение Listening‑квиза</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>Видеоклип выводится отдельным плеером по ссылке из listening‑meta.</li>
+          <li>На широких экранах плеер закреплён слева, а текст задания и ответы прокручиваются справа.</li>
+        </ul>
+      </section>
+
       <section id="ai-generation" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Автогенерация страниц (AI generation)</h2>
         <p className="text-base">
@@ -249,11 +282,18 @@ export default async function AdminGuidePage() {
             <strong>Description (optional)</strong> — краткое описание или инструкция. Показывается пользователю перед началом и
             при необходимости на странице.
           </li>
+          <li>
+            Для <code>listening</code> дополнительно обязательно поле <strong>YouTube video URL</strong>.
+          </li>
         </ul>
 
         <h3 id="create-quiz-step-2" className="text-lg font-semibold scroll-mt-6">Шаг 2. Страницы</h3>
         <p className="text-base">
           Под полями квиза идёт блок <strong>Pages</strong>.
+        </p>
+        <p className="text-base text-muted-foreground">
+          Для <code>listening</code> страница всегда одна и всегда типа <strong>Text input</strong>; кнопка <strong>Add page</strong>{" "}
+          и переключатель типа страницы скрыты.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
@@ -316,6 +356,9 @@ export default async function AdminGuidePage() {
         <p className="text-base">
           Внутри каждой страницы — блок <strong>Questions</strong>.
         </p>
+        <p className="text-base text-muted-foreground">
+          В <code>listening</code> этот блок отображается как <strong>Lyrics</strong>; кнопка <strong>Add question</strong> скрыта.
+        </p>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
             Вопросов на странице должно быть <strong>хотя бы один</strong>.
@@ -343,6 +386,9 @@ export default async function AdminGuidePage() {
         <p className="text-xs text-muted-foreground">
           После загрузки в карточке вопроса появится предпросмотр. Кнопка <strong>Remove image</strong> удаляет изображение после
           подтверждения.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          В режиме <code>listening</code> блок <strong>Question image</strong> скрыт.
         </p>
         <p className="text-xs text-muted-foreground">
           Иконка корзины рядом с «Question 1», «Question 2» удаляет вопрос сразу после подтверждения. Удалить можно только если
@@ -574,7 +620,10 @@ export default async function AdminGuidePage() {
           <li>
             Поле <strong>Topic</strong> — можно изменить категорию квиза и перенести его в другой топик.
           </li>
-          <li>Поля <strong>Quiz title</strong>, <strong>Description</strong>.</li>
+          <li>
+            Поля <strong>Quiz title</strong>, <strong>Description</strong>; для <code>listening</code> дополнительно{" "}
+            <strong>YouTube video URL</strong>.
+          </li>
           <li>
             Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, пример, вопросы; для каждого типа — свои
             поля (варианты, правильные ответы для Text input, варианты по пропускам для Dropdown in gaps, пары «справа / слева»
@@ -587,6 +636,11 @@ export default async function AdminGuidePage() {
           <li>
             <strong>Add page</strong> / <strong>Add question</strong> / <strong>Add option</strong> (или{" "}
             <strong>Add correct answer</strong>) — добавление элементов.
+          </li>
+          <li>
+            Для <code>listening</code> скрыты: AI‑генерация, <strong>Add page</strong>, <strong>Add question</strong>,{" "}
+            <strong>Page title</strong>, <strong>Example</strong>, <strong>Question image</strong>; тип страницы фиксирован как{" "}
+            <strong>Text input</strong>.
           </li>
           <li>
             Иконки корзины удаляют страницу, вопрос или вариант сразу после подтверждения (изменения в БД и, для изображений

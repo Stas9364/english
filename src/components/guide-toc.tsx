@@ -14,6 +14,15 @@ const sections = [
     ],
   },
   {
+    id: "listening-mode",
+    label: "Режим Listening",
+    items: [
+      { id: "listening-mode-create", label: "Создание Listening" },
+      { id: "listening-mode-edit", label: "Редактирование Listening" },
+      { id: "listening-mode-student", label: "Прохождение Listening" },
+    ],
+  },
+  {
     id: "ai-generation",
     label: "Автогенерация (AI)",
     items: [
