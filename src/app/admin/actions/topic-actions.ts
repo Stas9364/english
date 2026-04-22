@@ -64,6 +64,8 @@ export async function createTopic(payload: {
       name,
       slug,
       description: description || null,
+      // Legacy compatibility: keep text chapter in sync with chapter_id.
+      chapter: payload.chapter,
       chapter_id: chapterRow.id,
     });
 

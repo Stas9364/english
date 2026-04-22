@@ -26,6 +26,8 @@ interface QuestionItemCardProps {
     onUploadQuestionImage: (qIndex: number, file: File) => void | Promise<void>;
     onConfirmDeleteOption?: (oIndex: number) => void | Promise<boolean>;
     onRemoveImage?: () => void | Promise<boolean>;
+    hideQuestionImageBlock?: boolean;
+    hideQuestionTitle?: boolean;
 }
 
 export function QuestionItemCard({
@@ -41,6 +43,8 @@ export function QuestionItemCard({
     onUploadQuestionImage,
     onConfirmDeleteOption,
     onRemoveImage,
+    hideQuestionImageBlock = false,
+    hideQuestionTitle = false,
 }: QuestionItemCardProps) {
     const questionImage = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_image_url`) ?? "";
     const uploadTarget = `${pageIndex}-${qIndex}`;
@@ -62,7 +66,11 @@ export function QuestionItemCard({
         <Card className="border-muted transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-primary focus-within:bg-muted/40 focus-within:ring-2 focus-within:ring-primary/20 focus-within:ring-offset-2">
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Question {qIndex + 1}</CardTitle>
+                    {!hideQuestionTitle ? (
+                        <CardTitle className="text-sm">Question {qIndex + 1}</CardTitle>
+                    ) : (
+                        <div />
+                    )}
                     <ConfirmDeletePopover
                         title="Delete question?"
                         onConfirm={onRemove}
@@ -128,36 +136,38 @@ export function QuestionItemCard({
                     )}
                 </div>
 
-                <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-foreground">Question image (optional)</Label>
-                    <Input
-                        type="file"
-                        accept="image/*"
-                        disabled={form.formState.isSubmitting || uploadingQuestionTarget === uploadTarget}
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) void onUploadQuestionImage(qIndex, file);
-                            e.currentTarget.value = "";
-                        }}
-                    />
-                    {uploadError && uploadingQuestionTarget === null && (
-                        <p className="text-sm text-destructive">{uploadError}</p>
-                    )}
-                    {questionImage ? (
-                        <div className="space-y-2">
-                            <TheoryImage src={questionImage} alt={`Question ${qIndex + 1}`} />
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={isRemovingImage || form.formState.isSubmitting}
-                                onClick={() => void handleRemoveImage()}
-                            >
-                                {isRemovingImage ? "Removing..." : "Remove image"}
-                            </Button>
-                        </div>
-                    ) : null}
-                </div>
+                {!hideQuestionImageBlock && (
+                    <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-foreground">Question image (optional)</Label>
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            disabled={form.formState.isSubmitting || uploadingQuestionTarget === uploadTarget}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) void onUploadQuestionImage(qIndex, file);
+                                e.currentTarget.value = "";
+                            }}
+                        />
+                        {uploadError && uploadingQuestionTarget === null && (
+                            <p className="text-sm text-destructive">{uploadError}</p>
+                        )}
+                        {questionImage ? (
+                            <div className="space-y-2">
+                                <TheoryImage src={questionImage} alt={`Question ${qIndex + 1}`} />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isRemovingImage || form.formState.isSubmitting}
+                                    onClick={() => void handleRemoveImage()}
+                                >
+                                    {isRemovingImage ? "Removing..." : "Remove image"}
+                                </Button>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
 
                 <div className="space-y-2 border-t border-border/60 pt-4">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

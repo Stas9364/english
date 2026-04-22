@@ -20,6 +20,7 @@ export type {
   AdminChapter,
   Topic,
   Quiz,
+  QuizVideo,
   QuizPage,
   Question,
   Option,

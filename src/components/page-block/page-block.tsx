@@ -55,6 +55,11 @@ export interface PageBlockProps {
   onConfirmDeleteQuestion?: (pageIndex: number, qIndex: number) => Promise<boolean>;
   onConfirmDeleteOption?: (pageIndex: number, qIndex: number, oIndex: number) => Promise<boolean>;
   onConfirmRemoveQuestionImage?: (pageIndex: number, qIndex: number) => Promise<boolean>;
+  hidePageTypeSelect?: boolean;
+  hidePageTitleFields?: boolean;
+  hideAddQuestionButton?: boolean;
+  hideQuestionImageBlock?: boolean;
+  useLyricsTerminology?: boolean;
 }
 
 
@@ -73,6 +78,11 @@ export function PageBlock({
   onConfirmDeleteQuestion,
   onConfirmDeleteOption,
   onConfirmRemoveQuestionImage,
+  hidePageTypeSelect = false,
+  hidePageTitleFields = false,
+  hideAddQuestionButton = false,
+  hideQuestionImageBlock = false,
+  useLyricsTerminology = false,
 }: PageBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { uploadingTarget: uploadingQuestionTarget, uploadError, uploadForTarget } = useImageUpload<string>({
@@ -140,14 +150,18 @@ export function PageBlock({
       </CardHeader>
       {isExpanded && (
         <CardContent className="space-y-4">
-          <PageTypeSelect form={form} pageIndex={pageIndex} defaultOption={defaultOption} />
-          <PageTitleFields form={form} pageIndex={pageIndex} />
+          {!hidePageTypeSelect && (
+            <PageTypeSelect form={form} pageIndex={pageIndex} defaultOption={defaultOption} />
+          )}
+          {!hidePageTitleFields && (
+            <PageTitleFields form={form} pageIndex={pageIndex} />
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <Label>Questions</Label>
+              <Label>{useLyricsTerminology ? "Lyrics" : "Questions"}</Label>
               <span className="text-sm text-muted-foreground">
-                Questions: {questionsArray.fields.length}
+                {useLyricsTerminology ? "Lines" : "Questions"}: {questionsArray.fields.length}
               </span>
             </div>
             {questionsArray.fields.map((qField, qIndex) => (
@@ -173,24 +187,28 @@ export function PageBlock({
                     ? () => onConfirmRemoveQuestionImage(pageIndex, qIndex)
                     : undefined
                 }
+                hideQuestionImageBlock={hideQuestionImageBlock}
+                hideQuestionTitle={useLyricsTerminology}
               />
             ))}
             <div className="flex justify-between items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  questionsArray.append(
-                    defaultQuestion(
-                      questionsArray.fields.length,
-                      pageType
-                    ) as PageBlockFormValues["pages"][0]["questions"][0]
-                  )
-                }
-              >
-                <Plus className="size-4" /> Add question
-              </Button>
+              {!hideAddQuestionButton && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    questionsArray.append(
+                      defaultQuestion(
+                        questionsArray.fields.length,
+                        pageType
+                      ) as PageBlockFormValues["pages"][0]["questions"][0]
+                    )
+                  }
+                >
+                  <Plus className="size-4" /> Add question
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"

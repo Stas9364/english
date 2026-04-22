@@ -2,6 +2,10 @@
 
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
+import {
+  deleteQuizListeningMetaByQuizId,
+  upsertQuizListeningMetaByQuizId,
+} from "@/lib/supabase/quiz-listenings-meta-queries";
 import { revalidatePath } from "next/cache";
 import {
   extractTopicChapterKey,
@@ -12,18 +16,66 @@ import {
 } from "./shared";
 import type { CreateQuizInput, UpdateQuizInput } from "./types";
 
-export async function createQuiz(data: CreateQuizInput) {
-  const supabase = await createServerClient();
+function isListeningChapter(chapterKey: string): boolean {
+  return chapterKey.trim().toLowerCase() === "listening";
+}
 
+function validateListeningQuizPayload(input: {
+  isListening: boolean;
+  videoUrl: string;
+  pages: Array<{ type: string }>;
+}): string | null {
+  if (!input.isListening) return null;
+
+  if (!input.videoUrl) {
+    return "Listening quiz requires a video URL";
+  }
+
+  const hasNonInputPage = input.pages.some((p) => p.type !== "input");
+  if (hasNonInputPage) {
+    return "Listening quiz supports only input page type";
+  }
+
+  return null;
+}
+
+async function getTopicChapterKeyByTopicId(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  topicId: string
+): Promise<{ ok: true; chapterKey: string } | { ok: false; error: string }> {
   const { data: topicRow, error: topicFetchError } = await supabase
     .from("topics")
     .select("chapters:chapters!topics_chapter_id_fkey!inner(key)")
-    .eq("id", data.topic_id)
+    .eq("id", topicId)
     .single();
 
   const topicChapter = extractTopicChapterKey(topicRow);
-  if (topicFetchError || !topicChapter || topicChapter !== data.chapter) {
+  if (topicFetchError || !topicChapter) {
+    return { ok: false, error: "Topic not found" };
+  }
+
+  return { ok: true, chapterKey: topicChapter };
+}
+
+export async function createQuiz(data: CreateQuizInput) {
+  const supabase = await createServerClient();
+
+  const topicChapterResult = await getTopicChapterKeyByTopicId(supabase, data.topic_id);
+  if (!topicChapterResult.ok) {
+    return { ok: false, error: topicChapterResult.error };
+  }
+  const topicChapter = topicChapterResult.chapterKey;
+  if (topicChapter !== data.chapter) {
     return { ok: false, error: "Topic does not belong to this section" };
+  }
+  const normalizedVideoUrl = data.video_url?.trim() ?? "";
+  const listeningValidationError = validateListeningQuizPayload({
+    isListening: isListeningChapter(topicChapter),
+    videoUrl: normalizedVideoUrl,
+    pages: data.pages,
+  });
+  if (listeningValidationError) {
+    return { ok: false, error: listeningValidationError };
   }
 
   let slug = data.slug.trim();
@@ -141,6 +193,17 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
+  if (normalizedVideoUrl) {
+    try {
+      await upsertQuizListeningMetaByQuizId(supabase, {
+        quiz_id: quiz.id,
+        url: normalizedVideoUrl,
+      });
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Failed to save listening meta" };
+    }
+  }
+
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/${data.chapter}`);
@@ -150,6 +213,21 @@ export async function createQuiz(data: CreateQuizInput) {
 
 export async function updateQuiz(data: UpdateQuizInput) {
   const supabase = await createServerClient();
+  const normalizedVideoUrl = data.video_url?.trim() ?? "";
+
+  const topicChapterResult = await getTopicChapterKeyByTopicId(supabase, data.topic_id);
+  if (!topicChapterResult.ok) {
+    return { ok: false, error: topicChapterResult.error };
+  }
+  const topicChapter = topicChapterResult.chapterKey;
+  const listeningValidationError = validateListeningQuizPayload({
+    isListening: isListeningChapter(topicChapter),
+    videoUrl: normalizedVideoUrl,
+    pages: data.pages,
+  });
+  if (listeningValidationError) {
+    return { ok: false, error: listeningValidationError };
+  }
 
   const { data: beforeQuiz } = await supabase
     .from("quizzes")
@@ -386,6 +464,31 @@ export async function updateQuiz(data: UpdateQuizInput) {
         toDelB.map((x) => x.id)
       );
     if (del) return { ok: false, error: del.message };
+  }
+
+  const isListening = isListeningChapter(topicChapter);
+  if (isListening) {
+    try {
+      await upsertQuizListeningMetaByQuizId(supabase, {
+        quiz_id: data.quizId,
+        url: normalizedVideoUrl,
+      });
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Failed to update listening meta" };
+    }
+  } else if (data.video_url !== undefined) {
+    try {
+      if (normalizedVideoUrl) {
+        await upsertQuizListeningMetaByQuizId(supabase, {
+          quiz_id: data.quizId,
+          url: normalizedVideoUrl,
+        });
+      } else {
+        await deleteQuizListeningMetaByQuizId(supabase, data.quizId);
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Failed to update listening meta" };
+    }
   }
 
   revalidatePath("/");

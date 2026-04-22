@@ -15,6 +15,8 @@ export type CreateQuizInput = {
   title: string;
   description: string;
   slug: string;
+  /** Listening clip URL (YouTube). Optional for non-listening quizzes. */
+  video_url?: string;
   pages: {
     type: TestType;
     title?: string | null;
@@ -37,6 +39,13 @@ export type UpdateQuizInput = {
   title: string;
   description: string;
   slug: string;
+  /**
+   * Listening clip URL (YouTube).
+   * - undefined: keep current value as is
+   * - empty string: delete current meta
+   * - non-empty string: upsert meta
+   */
+  video_url?: string;
   pages: {
     id?: string;
     type: TestType;

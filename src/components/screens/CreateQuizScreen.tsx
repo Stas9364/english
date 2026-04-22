@@ -49,13 +49,13 @@ function defaultQuestion(orderIndex: number, pageType?: TestType) {
     };
 }
 
-function defaultPage(pageIndex: number) {
+function defaultPage(pageIndex: number, forcedType: TestType = "single") {
     return {
-        type: "single" as TestType,
+        type: forcedType,
         title: "",
         example: "",
         order_index: pageIndex,
-        questions: [defaultQuestion(0)],
+        questions: [defaultQuestion(0, forcedType)],
     };
 }
 
@@ -80,7 +80,9 @@ interface CreateQuizScreenProps {
 }
 
 export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
+    const isListeningChapter = chapter.trim().toLowerCase() === "listening";
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
+    const [videoUrl, setVideoUrl] = useState("");
     const {
         theoryBlocks,
         uploadingImageIndex,
@@ -114,7 +116,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
             topic_id: defaultTopicId,
             title: "",
             description: "",
-            pages: [defaultPage(0)],
+            pages: [defaultPage(0, isListeningChapter ? "input" : "single")],
         },
     });
 
@@ -184,12 +186,19 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
 
     async function onSubmit(data: CreateQuizFormValues) {
         setResult(null);
+        const normalizedVideoUrl = videoUrl.trim();
+        if (isListeningChapter && !normalizedVideoUrl) {
+            setResult({ ok: false, error: "YouTube video URL is required for listening quizzes." });
+            return;
+        }
+
         const res = await createQuiz({
             chapter,
             topic_id: data.topic_id,
             title: data.title,
             description: data.description,
             slug: slugify(data.title),
+            video_url: normalizedVideoUrl || undefined,
             pages: data.pages.map((p, pi) => ({
                 type: p.type,
                 title: p.title || null,
@@ -219,8 +228,9 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                 topic_id: form.getValues("topic_id"),
                 title: "",
                 description: "",
-                pages: [defaultPage(0)],
+                pages: [defaultPage(0, isListeningChapter ? "input" : "single")],
             });
+            setVideoUrl("");
             clearTheoryBlocks();
         }
     }
@@ -261,6 +271,20 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                                 <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
                             )}
                         </div>
+                        {isListeningChapter && (
+                            <div className="space-y-2">
+                                <Label htmlFor="video_url">YouTube video URL</Label>
+                                <Input
+                                    id="video_url"
+                                    value={videoUrl}
+                                    onChange={(e) => setVideoUrl(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Required for listening quizzes.
+                                </p>
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="description">General task / instructions</Label>
                             <Input
@@ -270,32 +294,34 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                             />
                         </div>
 
-                        <QuizAiGenerationBlock
-                            topic={ai.topic}
-                            level={ai.level}
-                            language={ai.language}
-                            questionsPerPage={String(ai.questionsPerPage)}
-                            selectedType={ai.selectedType as TestType}
-                            customTask={ai.customTask}
-                            style={ai.style}
-                            constraints={ai.constraints}
-                            lexicon={ai.lexicon}
-                            bannedTopics={ai.bannedTopics}
-                            onTopicChange={ai.setTopic}
-                            onLevelChange={ai.setLevel}
-                            onLanguageChange={ai.setLanguage}
-                            onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                            onSelectedTypeChange={ai.setSelectedType}
-                            onCustomTaskChange={ai.setCustomTask}
-                            onStyleChange={ai.setStyle}
-                            onConstraintsChange={ai.setConstraints}
-                            onLexiconChange={ai.setLexicon}
-                            onBannedTopicsChange={ai.setBannedTopics}
-                            isGenerating={ai.isGenerating}
-                            onGenerate={handleGeneratePages}
-                            generatedSummary={genStatus.state === "success" ? genStatus.message : null}
-                            errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
-                        />
+                        {!isListeningChapter && (
+                            <QuizAiGenerationBlock
+                                topic={ai.topic}
+                                level={ai.level}
+                                language={ai.language}
+                                questionsPerPage={String(ai.questionsPerPage)}
+                                selectedType={ai.selectedType as TestType}
+                                customTask={ai.customTask}
+                                style={ai.style}
+                                constraints={ai.constraints}
+                                lexicon={ai.lexicon}
+                                bannedTopics={ai.bannedTopics}
+                                onTopicChange={ai.setTopic}
+                                onLevelChange={ai.setLevel}
+                                onLanguageChange={ai.setLanguage}
+                                onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
+                                onSelectedTypeChange={ai.setSelectedType}
+                                onCustomTaskChange={ai.setCustomTask}
+                                onStyleChange={ai.setStyle}
+                                onConstraintsChange={ai.setConstraints}
+                                onLexiconChange={ai.setLexicon}
+                                onBannedTopicsChange={ai.setBannedTopics}
+                                isGenerating={ai.isGenerating}
+                                onGenerate={handleGeneratePages}
+                                generatedSummary={genStatus.state === "success" ? genStatus.message : null}
+                                errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
+                            />
+                        )}
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between gap-2">
@@ -312,16 +338,23 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                                     quizId={undefined}
                                     onRemove={() => pagesArray.remove(pIndex)}
                                     canRemove={pagesArray.fields.length > 1}
+                                    hidePageTypeSelect={isListeningChapter}
+                                    hidePageTitleFields={isListeningChapter}
+                                    hideAddQuestionButton={isListeningChapter}
+                                    hideQuestionImageBlock={isListeningChapter}
+                                    useLyricsTerminology={isListeningChapter}
                                 />
                             ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => pagesArray.append(defaultPage(pagesArray.fields.length))}
-                            >
-                                <Plus className="size-4" /> Add page
-                            </Button>
+                            {!isListeningChapter && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => pagesArray.append(defaultPage(pagesArray.fields.length))}
+                                >
+                                    <Plus className="size-4" /> Add page
+                                </Button>
+                            )}
                         </div>
 
                         <QuizTheoryBlocksEditor

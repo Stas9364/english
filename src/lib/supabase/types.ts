@@ -32,6 +32,14 @@ export interface Quiz {
   created_at: string;
 }
 
+/** Мета listening-квиза: ссылка на клип */
+export interface QuizVideo {
+  id: string;
+  quiz_id: string;
+  url: string;
+  created_at: string;
+}
+
 /** Страница квиза (один тип вопросов на странице) */
 export interface QuizPage {
   id: string;
@@ -76,6 +84,7 @@ export interface QuizPageWithDetails extends QuizPage {
 /** Квиз со всеми страницами (для прохождения и админки) */
 export interface QuizWithPages extends Quiz {
   pages: QuizPageWithDetails[];
+  video: QuizVideo | null;
 }
 
 /** Тип блока теории: текст или изображение (URL) */

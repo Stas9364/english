@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Chapter } from "@/lib/chapters";
 import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
 import { getTopicBySlug, getTopicBySlugAndChapter } from "./topics-queries";
+import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
 
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
@@ -65,6 +66,7 @@ export async function getQuizWithPages(
     .single();
 
   if (quizError || !quiz) return null;
+  const video = await getQuizListeningMetaByQuizId(supabase, quizId);
 
   const { data: pagesData, error: pagesError } = await supabase
     .from("quiz_pages")
@@ -76,7 +78,7 @@ export async function getQuizWithPages(
 
   const pageIds = (pagesData ?? []).map((p) => p.id);
   if (pageIds.length === 0) {
-    return { ...(quiz as Quiz), pages: [] } as QuizWithPages;
+    return { ...(quiz as Quiz), pages: [], video } as QuizWithPages;
   }
 
   const { data: questions, error: questionsError } = await supabase
@@ -126,7 +128,7 @@ export async function getQuizWithPages(
     questions: questionsByPage[p.id] ?? [],
   }));
 
-  return { ...(quiz as Quiz), pages } as QuizWithPages;
+  return { ...(quiz as Quiz), pages, video } as QuizWithPages;
 }
 
 /** Квиз по slug (для маршрута /quiz/[slug]) */

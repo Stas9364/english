@@ -12,6 +12,7 @@ import {
   deleteOption,
 } from "@/app/admin/actions";
 import type { QuizWithPages, TestType, TheoryBlock, TheoryBlockType } from "@/lib/supabase";
+import type { Chapter } from "@/lib/chapters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,8 +64,24 @@ function defaultQuestionForBlock(orderIndex: number) {
   return defaultQuestion(undefined, orderIndex);
 }
 
-function defaultPage(p?: { id?: string; type: TestType; title?: string | null; example?: string | null; questions: { id?: string; question_title: string; question_image_url?: string | null; explanation?: string | null; options: { id?: string; option_text: string; is_correct: boolean }[] }[] }, pageIndex?: number) {
-  const type = p?.type ?? "single";
+function defaultPage(
+  p?: {
+    id?: string;
+    type: TestType;
+    title?: string | null;
+    example?: string | null;
+    questions: {
+      id?: string;
+      question_title: string;
+      question_image_url?: string | null;
+      explanation?: string | null;
+      options: { id?: string; option_text: string; is_correct: boolean }[];
+    }[];
+  },
+  pageIndex?: number,
+  forcedType?: TestType
+) {
+  const type = forcedType ?? p?.type ?? "single";
   return {
     id: p?.id,
     type,
@@ -83,6 +100,7 @@ interface EditQuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
   topics: { id: string; name: string }[];
+  chapter?: Chapter;
   /** Ссылка «назад к списку квизов темы» (по умолчанию хаб админки) */
   backToTopicHref?: string;
 }
@@ -91,9 +109,12 @@ export function EditQuizScreen({
   quiz,
   theoryBlocks: initialTheoryBlocks = [],
   topics,
+  chapter,
   backToTopicHref = "/admin",
 }: EditQuizScreenProps) {
+  const isListeningChapter = (chapter ?? "").trim().toLowerCase() === "listening";
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [videoUrl, setVideoUrl] = useState(quiz.video?.url ?? "");
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const {
     theoryBlocks,
@@ -124,8 +145,14 @@ export function EditQuizScreen({
       description: quiz.description ?? "",
       slug: quiz.slug,
       pages: quiz.pages?.length
-        ? quiz.pages.map((p, i) => defaultPage({ id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions }, i))
-        : [defaultPage(undefined, 0)],
+        ? quiz.pages.map((p, i) =>
+            defaultPage(
+              { id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions },
+              i,
+              isListeningChapter ? "input" : undefined
+            )
+          )
+        : [defaultPage(undefined, 0, isListeningChapter ? "input" : undefined)],
     },
   });
 
@@ -148,7 +175,7 @@ export function EditQuizScreen({
         pagesArray.append(
           defaultPage(
             {
-              type: p.type,
+              type: isListeningChapter ? "input" : p.type,
               title: p.title ?? null,
               questions: p.questions.map((q) => ({
                 question_title: q.question_title,
@@ -161,7 +188,8 @@ export function EditQuizScreen({
                 })),
               })),
             },
-            startIndex + i
+            startIndex + i,
+            isListeningChapter ? "input" : undefined
           )
         );
       });
@@ -174,12 +202,19 @@ export function EditQuizScreen({
 
   async function onSubmit(data: EditQuizFormValues) {
     setResult(null);
+    const normalizedVideoUrl = videoUrl.trim();
+    if (isListeningChapter && !normalizedVideoUrl) {
+      setResult({ ok: false, error: "YouTube video URL is required for listening quizzes." });
+      return;
+    }
+
     const res = await updateQuiz({
       quizId: quiz.id,
       topic_id: data.topic_id,
       title: data.title,
       description: data.description,
       slug: data.slug,
+      video_url: normalizedVideoUrl || undefined,
       pages: data.pages.map((p, pi) => ({
         id: p.id,
         type: p.type,
@@ -304,6 +339,20 @@ export function EditQuizScreen({
                     <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
                   )}
                 </div>
+                {isListeningChapter && (
+                  <div className="space-y-2">
+                    <Label htmlFor="video_url">YouTube video URL</Label>
+                    <Input
+                      id="video_url"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Required for listening quizzes.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="description">General task / instructions</Label>
                   <Input
@@ -318,42 +367,44 @@ export function EditQuizScreen({
                     <Label>Pages</Label>
                     <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
                   </div>
-                  <QuizAiGenerationBlock
-                    topic={ai.topic}
-                    level={ai.level}
-                    language={ai.language}
-                    questionsPerPage={String(ai.questionsPerPage)}
-                    selectedType={ai.selectedType as TestType}
-                    customTask={ai.customTask}
-                    style={ai.style}
-                    constraints={ai.constraints}
-                    lexicon={ai.lexicon}
-                    bannedTopics={ai.bannedTopics}
-                    onTopicChange={ai.setTopic}
-                    onLevelChange={ai.setLevel}
-                    onLanguageChange={ai.setLanguage}
-                    onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                    onSelectedTypeChange={ai.setSelectedType}
-                    onCustomTaskChange={ai.setCustomTask}
-                    onStyleChange={ai.setStyle}
-                    onConstraintsChange={ai.setConstraints}
-                    onLexiconChange={ai.setLexicon}
-                    onBannedTopicsChange={ai.setBannedTopics}
-                    isGenerating={ai.isGenerating}
-                    onGenerate={handleGenerate}
-                    generatedSummary={
-                      generatedDraft
-                        ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
-                          (acc, p) => acc + (p.questions?.length ?? 0),
-                          0
-                        )}.` +
-                        (generatedDraft.theoryBlocks?.length
-                          ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
-                          : "")
-                        : null
-                    }
-                    errorMessage={ai.errorMessage}
-                  />
+                  {!isListeningChapter && (
+                    <QuizAiGenerationBlock
+                      topic={ai.topic}
+                      level={ai.level}
+                      language={ai.language}
+                      questionsPerPage={String(ai.questionsPerPage)}
+                      selectedType={ai.selectedType as TestType}
+                      customTask={ai.customTask}
+                      style={ai.style}
+                      constraints={ai.constraints}
+                      lexicon={ai.lexicon}
+                      bannedTopics={ai.bannedTopics}
+                      onTopicChange={ai.setTopic}
+                      onLevelChange={ai.setLevel}
+                      onLanguageChange={ai.setLanguage}
+                      onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
+                      onSelectedTypeChange={ai.setSelectedType}
+                      onCustomTaskChange={ai.setCustomTask}
+                      onStyleChange={ai.setStyle}
+                      onConstraintsChange={ai.setConstraints}
+                      onLexiconChange={ai.setLexicon}
+                      onBannedTopicsChange={ai.setBannedTopics}
+                      isGenerating={ai.isGenerating}
+                      onGenerate={handleGenerate}
+                      generatedSummary={
+                        generatedDraft
+                          ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
+                            (acc, p) => acc + (p.questions?.length ?? 0),
+                            0
+                          )}.` +
+                          (generatedDraft.theoryBlocks?.length
+                            ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
+                            : "")
+                          : null
+                      }
+                      errorMessage={ai.errorMessage}
+                    />
+                  )}
                   {pagesArray.fields.map((field, pIndex) => (
                     <div
                       key={field.id}
@@ -377,6 +428,11 @@ export function EditQuizScreen({
                         }}
                         canMoveUp={pIndex > 0}
                         canMoveDown={pIndex < pagesArray.fields.length - 1}
+                        hidePageTypeSelect={isListeningChapter}
+                        hidePageTitleFields={isListeningChapter}
+                        hideAddQuestionButton={isListeningChapter}
+                        hideQuestionImageBlock={isListeningChapter}
+                        useLyricsTerminology={isListeningChapter}
                         onConfirmDeleteQuestion={async (pi, qIndex) => {
                           const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
                           if (q?.id) {
@@ -414,14 +470,20 @@ export function EditQuizScreen({
                       />
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => pagesArray.append(defaultPage(undefined, pagesArray.fields.length))}
-                  >
-                    <Plus className="size-4" /> Add page
-                  </Button>
+                  {!isListeningChapter && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        pagesArray.append(
+                          defaultPage(undefined, pagesArray.fields.length, isListeningChapter ? "input" : undefined)
+                        )
+                      }
+                    >
+                      <Plus className="size-4" /> Add page
+                    </Button>
+                  )}
                 </div>
               </>
             )}

@@ -33,6 +33,7 @@ export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
       quiz={quiz}
       theoryBlocks={theoryBlocks}
       topics={topics}
+      chapter={topicMeta.chapter}
       backToTopicHref={backToTopicHref}
     />
   );

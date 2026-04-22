@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Chapter } from "@/lib/chapters";
 import type { Topic } from "./types";
 
-export const TOPIC_SELECT =
+const TOPIC_SELECT =
   "id, name, slug, description, order_index, chapter, created_at";
 
 /** Список тем для админки и фильтрации */
