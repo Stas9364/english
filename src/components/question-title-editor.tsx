@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import DefaultEditor from "react-simple-wysiwyg";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,11 @@ export function QuestionTitleEditor({
   className,
 }: QuestionTitleEditorProps) {
   const hasFocusedRef = useRef(false);
+  const [draftValue, setDraftValue] = useState(value);
+
+  useEffect(() => {
+    setDraftValue(value);
+  }, [value]);
 
   function handleContainerRef(node: HTMLDivElement | null) {
     if (!node || !autoFocus || disabled || hasFocusedRef.current) return;
@@ -57,18 +62,25 @@ export function QuestionTitleEditor({
     document.execCommand("insertLineBreak");
   }
 
+  function handleBlur() {
+    if (draftValue !== value) {
+      onChange(draftValue);
+    }
+    onBlur?.();
+  }
+
   return (
     <div ref={handleContainerRef} className={cn("w-full min-w-0", className)}>
       <DefaultEditor
         id={id}
         name={name}
-        value={value}
+        value={draftValue}
         disabled={disabled}
         placeholder={placeholder}
         aria-invalid={invalid || undefined}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => setDraftValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={onBlur}
+        onBlur={handleBlur}
         containerProps={{
           className: cn(
             "border-input bg-background w-full min-w-0 overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow]",
