@@ -6,6 +6,7 @@ import {
   deleteQuizListeningMetaByQuizId,
   upsertQuizListeningMetaByQuizId,
 } from "@/lib/supabase/quiz-listenings-meta-queries";
+import { countGapMarkers } from "@/lib/quiz-gap-markers";
 import { revalidatePath } from "next/cache";
 import {
   extractTopicChapterKey,
@@ -34,6 +35,26 @@ function validateListeningQuizPayload(input: {
   const hasNonInputPage = input.pages.some((p) => p.type !== "input");
   if (hasNonInputPage) {
     return "Listening quiz supports only input page type";
+  }
+
+  return null;
+}
+
+function validateSelectGapsMarkers(input: {
+  pages: Array<{
+    type: string;
+    questions: Array<{ question_title?: string | null }>;
+  }>;
+}): string | null {
+  for (let pi = 0; pi < input.pages.length; pi++) {
+    const page = input.pages[pi];
+    if (page.type !== "select_gaps") continue;
+
+    for (let qi = 0; qi < page.questions.length; qi++) {
+      if (countGapMarkers(page.questions[qi].question_title) === 0) {
+        return `Dropdown in gaps page ${pi + 1}, question ${qi + 1} must contain at least one [[]] marker`;
+      }
+    }
   }
 
   return null;
@@ -76,6 +97,10 @@ export async function createQuiz(data: CreateQuizInput) {
   });
   if (listeningValidationError) {
     return { ok: false, error: listeningValidationError };
+  }
+  const selectGapsValidationError = validateSelectGapsMarkers({ pages: data.pages });
+  if (selectGapsValidationError) {
+    return { ok: false, error: selectGapsValidationError };
   }
 
   let slug = data.slug.trim();
@@ -227,6 +252,10 @@ export async function updateQuiz(data: UpdateQuizInput) {
   });
   if (listeningValidationError) {
     return { ok: false, error: listeningValidationError };
+  }
+  const selectGapsValidationError = validateSelectGapsMarkers({ pages: data.pages });
+  if (selectGapsValidationError) {
+    return { ok: false, error: selectGapsValidationError };
   }
 
   const { data: beforeQuiz } = await supabase

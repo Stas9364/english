@@ -1,6 +1,7 @@
 "use client";
 
 import { z } from "zod";
+import { countGapMarkers } from "@/lib/quiz-gap-markers";
 
 export const quizOptionSchema = z.object({
   option_text: z.string(),
@@ -51,7 +52,7 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
       for (let i = 0; i < p.questions.length; i++) {
         const q = p.questions[i];
         ensureQuestionContent(q, i);
-        const gapCount = Math.max(1, Math.max(0, ((q.question_title ?? "").split("[[]]").length - 1)));
+        const gapCount = Math.max(1, countGapMarkers(q.question_title));
         const missingGaps: number[] = [];
         for (let g = 0; g < gapCount; g++) {
           const hasAnswer = (q.options ?? []).some(
@@ -74,7 +75,15 @@ export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T 
       for (let i = 0; i < p.questions.length; i++) {
         const q = p.questions[i];
         ensureQuestionContent(q, i);
-        const gapCount = Math.max(1, Math.max(0, ((q.question_title ?? "").split("[[]]").length - 1)));
+        const gapCount = countGapMarkers(q.question_title);
+        if (gapCount === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Dropdown in gaps questions must contain at least one [[]] marker",
+            path: ["questions", i, "question_title"],
+          });
+          continue;
+        }
         const missingGaps: number[] = [];
         const missingCorrect: number[] = [];
         for (let g = 0; g < gapCount; g++) {

@@ -1,9 +1,9 @@
 import type { QuestionWithOptions } from './supabase';
+import { countGapMarkers } from './quiz-gap-markers';
 
 /** Number of [[]] gaps in the question title. 0 if none. */
 export function getGapCount(title: string): number {
-    if (!title?.includes("[[]]")) return 0;
-    return Math.max(0, title.split("[[]]").length - 1);
+    return countGapMarkers(title);
 }
 
 /** For input questions: stored answers length = Math.max(1, getGapCount). */

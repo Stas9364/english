@@ -55,7 +55,7 @@ export function QuizScreen({
     score,
     hasNextPage,
     hasPrevPage,
-  } = useQuizProgress(quiz);
+  } = useQuizProgress(quiz);  
 
   const hasTheory = theoryBlocks.length > 0;
   const totalQuestionsOnPage = currentPage.questions.length;
