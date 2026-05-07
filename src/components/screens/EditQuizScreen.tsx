@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -30,6 +30,15 @@ import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
 import { QuizTopicSelect } from "@/components/quiz-topic-select";
+import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
+import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot-restore-dialog";
+import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
+import {
+  getEditQuizSnapshotKey,
+  QUIZ_LOCAL_SNAPSHOT_VERSION,
+  readQuizLocalSnapshot,
+  type QuizLocalSnapshot,
+} from "@/lib/quiz-local-snapshot";
 
 type GenerateOk = GenerateQuizSuccess;
 function defaultOption(option?: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }, gapIndex?: number) {
@@ -126,6 +135,7 @@ export function EditQuizScreen({
     updateTheoryBlock,
     handleTheoryImageUpload,
     appendTheoryBlocks,
+    replaceTheoryBlocks,
   } = useTheoryBlocks({
     quizId: quiz.id,
     initialBlocks: initialTheoryBlocks,
@@ -136,6 +146,7 @@ export function EditQuizScreen({
     initialQuestionsPerPage: 3,
   });
   const [generatedDraft, setGeneratedDraft] = useState<GenerateOk | null>(null);
+  const [pendingSnapshot, setPendingSnapshot] = useState<QuizLocalSnapshot<EditQuizFormValues> | null>(null);
 
   const form = useForm<EditQuizFormValues>({
     resolver: zodResolver(editQuizFormSchema),
@@ -161,8 +172,51 @@ export function EditQuizScreen({
     name: "pages",
   });
   const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
+  const snapshotKey = useMemo(() => getEditQuizSnapshotKey(quiz.id), [quiz.id]);
+  const snapshotAutosave = useQuizLocalSnapshotAutosave<EditQuizFormValues>({
+    storageKey: snapshotKey,
+    form,
+    videoUrl,
+    theoryBlocks,
+    buildSnapshot: () => ({
+      version: QUIZ_LOCAL_SNAPSHOT_VERSION,
+      mode: "edit",
+      chapter,
+      quizId: quiz.id,
+      updatedAt: Date.now(),
+      formValues: form.getValues(),
+      videoUrl,
+      theoryBlocks,
+    }),
+  });
+  const markSnapshotRestored = snapshotAutosave.markRestored;
 
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const snapshot = readQuizLocalSnapshot<EditQuizFormValues>(snapshotKey, {
+      mode: "edit",
+      quizId: quiz.id,
+    });
+
+    if (snapshot) {
+      queueMicrotask(() => setPendingSnapshot(snapshot));
+    }
+  }, [quiz.id, snapshotKey]);
+
+  function keepDatabaseVersion() {
+    setPendingSnapshot(null);
+  }
+
+  function applyPendingSnapshot() {
+    if (!pendingSnapshot) return;
+
+    form.reset(pendingSnapshot.formValues);
+    setVideoUrl(pendingSnapshot.videoUrl ?? "");
+    replaceTheoryBlocks(pendingSnapshot.theoryBlocks ?? []);
+    setPendingSnapshot(null);
+    markSnapshotRestored();
+  }
 
   async function handleGenerate(topicOverride: string) {
     ai.setTopic(topicOverride);
@@ -241,6 +295,9 @@ export function EditQuizScreen({
       console.log("[EditQuiz] updateQuiz response:", res);
     }
     setResult(res);
+    if (res.ok) {
+      snapshotAutosave.clearSnapshot({ pauseMs: 1000 });
+    }
   }
 
   function handleAddTheoryBlock(type: TheoryBlockType) {
@@ -262,6 +319,18 @@ export function EditQuizScreen({
 
   return (
     <PageContainer className="space-y-8">
+      <QuizLocalSnapshotIndicator
+        status={snapshotAutosave.status}
+        savedAt={snapshotAutosave.savedAt}
+        error={snapshotAutosave.error}
+        onDiscard={snapshotAutosave.discardSnapshot}
+      />
+      <QuizLocalSnapshotRestoreDialog
+        open={!!pendingSnapshot}
+        updatedAt={pendingSnapshot?.updatedAt}
+        onKeepCurrent={keepDatabaseVersion}
+        onApplySnapshot={applyPendingSnapshot}
+      />
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Edit quiz</h2>
         <div className="flex gap-2">

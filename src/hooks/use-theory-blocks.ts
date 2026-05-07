@@ -81,6 +81,10 @@ export function useTheoryBlocks({ quizId, initialBlocks = [], onActionError }: U
     setTheoryBlocks((prev) => [...prev, ...blocks.map((block, i) => ({ ...block, order_index: prev.length + i }))]);
   }, []);
 
+  const replaceTheoryBlocks = useCallback((blocks: TheoryBlockInput[]) => {
+    setTheoryBlocks(blocks.map((block, i) => ({ ...block, order_index: i })));
+  }, []);
+
   const clearTheoryBlocks = useCallback(() => {
     setTheoryBlocks([]);
   }, []);
@@ -96,6 +100,7 @@ export function useTheoryBlocks({ quizId, initialBlocks = [], onActionError }: U
     updateTheoryBlock,
     handleTheoryImageUpload,
     appendTheoryBlocks,
+    replaceTheoryBlocks,
     clearTheoryBlocks,
   };
 }

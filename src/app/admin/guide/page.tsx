@@ -711,6 +711,87 @@ export default async function AdminGuidePage() {
         </div>
       </section>
 
+      <section id="local-snapshots" className="space-y-3 scroll-mt-6">
+        <h2 className="text-xl font-semibold">Локальные снапшоты формы</h2>
+        <p className="text-base">
+          Во время создания и редактирования квиза форма дополнительно сохраняет локальный снапшот в браузере. Это защита от
+          случайного обновления страницы, закрытия вкладки или перехода назад до нажатия <strong>Create quiz</strong> /{" "}
+          <strong>Save changes</strong>.
+        </p>
+
+        <h3 id="local-snapshots-when" className="text-lg font-semibold scroll-mt-6">Когда происходит сохранение</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            После любого изменения формы запускается debounce-таймер на <strong>900 мс</strong>.
+          </li>
+          <li>
+            Если за эти 900 мс пользователь снова меняет поле, таймер сбрасывается и отсчёт начинается заново.
+          </li>
+          <li>
+            Когда изменений нет 900 мс подряд, текущий снимок формы записывается в <code>localStorage</code>.
+          </li>
+          <li>
+            Изменения, которые живут отдельно от основной формы, тоже запускают сохранение: <strong>YouTube video URL</strong> и
+            блоки теории.
+          </li>
+          <li>
+            Перед полной перезагрузкой, закрытием вкладки или уходом со страницы дополнительно срабатывает мгновенный flush через
+            события <code>beforeunload</code> и <code>pagehide</code>. Он отменяет ожидающий debounce и сразу записывает последний
+            снапшот в <code>localStorage</code>.
+          </li>
+        </ul>
+
+        <p className="text-base">
+          Пока идёт debounce, в правом верхнем углу показывается плавающая кнопка-индикатор <strong>Saving snapshot...</strong>.
+          После успешной локальной записи она меняется на <strong>Snapshot saved locally</strong>. Если снапшот восстановлен,
+          индикатор показывает <strong>Snapshot restored</strong>. При ошибке записи отображается <strong>Snapshot error</strong>.
+          По нажатию на эту кнопку открывается popover с временем последнего локального сохранения и действием{" "}
+          <strong>Discard snapshot</strong> для ручной очистки.
+        </p>
+
+        <h3 id="local-snapshots-restore" className="text-lg font-semibold scroll-mt-6">Как происходит восстановление</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            На странице создания квиза найденный снапшот восстанавливается автоматически: форма, video URL и теория возвращаются
+            в состояние последнего локального сохранения.
+          </li>
+          <li>
+            На странице редактирования квиза восстановление не применяется сразу. Если для этого квиза есть локальный снапшот,
+            появляется модальное окно с выбором: оставить данные, загруженные из БД, или применить локальный снапшот.
+          </li>
+          <li>
+            Для создания ключ снапшота привязан к разделу: например, черновики разных разделов не смешиваются.
+          </li>
+          <li>
+            Для редактирования ключ привязан к id квиза, поэтому снапшот одного квиза не применяется к другому.
+          </li>
+          <li>
+            Если локальные данные повреждены или имеют неподдерживаемую версию, они игнорируются и такой невалидный снапшот
+            удаляется.
+          </li>
+        </ul>
+
+        <h3 id="local-snapshots-clear" className="text-lg font-semibold scroll-mt-6">Когда снапшот очищается</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            После успешного сохранения нового квиза в БД кнопкой <strong>Create quiz</strong> очищается create-снапшот.
+          </li>
+          <li>
+            После успешного обновления существующего квиза в БД кнопкой <strong>Save changes</strong> очищается edit-снапшот этого
+            квиза.
+          </li>
+          <li>
+            Если сервер вернул ошибку или форма не прошла валидацию, снапшот остаётся в <code>localStorage</code>.
+          </li>
+          <li>
+            Снапшот также можно удалить вручную через действие <strong>Discard snapshot</strong> в плавающем индикаторе.
+          </li>
+          <li>
+            Автоматической очистки по времени нет: валидный снапшот хранится до успешного сохранения в БД или ручного удаления.
+          </li>
+        </ul>
+      </section>
+
       <section id="cheatsheet" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Краткая памятка</h2>
         <div className="overflow-x-auto">

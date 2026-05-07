@@ -54,6 +54,15 @@ const sections = [
     ],
   },
   { id: "delete-save", label: "Удаление и сохранение", items: [] },
+  {
+    id: "local-snapshots",
+    label: "Локальные снапшоты",
+    items: [
+      { id: "local-snapshots-when", label: "Когда сохраняется" },
+      { id: "local-snapshots-restore", label: "Восстановление" },
+      { id: "local-snapshots-clear", label: "Очистка" },
+    ],
+  },
   { id: "cheatsheet", label: "Краткая памятка", items: [] },
   {
     id: "ai-chat",

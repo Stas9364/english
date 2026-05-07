@@ -12,7 +12,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { useTheoryBlocks } from '@/hooks/use-theory-blocks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuizAiGeneration } from '@/hooks/use-quiz-ai-generation';
 import { createQuizFormSchema, type CreateQuizFormValues } from '@/lib/quiz-page-schema';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,13 @@ import { Label } from '../ui/label';
 import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { useMemo } from "react";
 import Link from "next/link";
+import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
+import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
+import {
+    getCreateQuizSnapshotKey,
+    QUIZ_LOCAL_SNAPSHOT_VERSION,
+    readQuizLocalSnapshot,
+} from "@/lib/quiz-local-snapshot";
 
 function slugify(title: string): string {
     const s = title
@@ -92,6 +99,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
         moveTheoryBlock,
         updateTheoryBlock,
         handleTheoryImageUpload,
+        replaceTheoryBlocks,
         clearTheoryBlocks,
     } = useTheoryBlocks({});
     const [genStatus, setGenStatus] = useState<
@@ -125,6 +133,39 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
         name: "pages",
     });
     const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
+    const snapshotKey = useMemo(() => getCreateQuizSnapshotKey(chapter), [chapter]);
+    const snapshotAutosave = useQuizLocalSnapshotAutosave<CreateQuizFormValues>({
+        storageKey: snapshotKey,
+        form,
+        videoUrl,
+        theoryBlocks,
+        buildSnapshot: () => ({
+            version: QUIZ_LOCAL_SNAPSHOT_VERSION,
+            mode: "create",
+            chapter,
+            updatedAt: Date.now(),
+            formValues: form.getValues(),
+            videoUrl,
+            theoryBlocks,
+        }),
+    });
+    const markSnapshotRestored = snapshotAutosave.markRestored;
+
+    useEffect(() => {
+        const snapshot = readQuizLocalSnapshot<CreateQuizFormValues>(snapshotKey, {
+            mode: "create",
+            chapter,
+        });
+
+        if (!snapshot) return;
+
+        queueMicrotask(() => {
+            form.reset(snapshot.formValues);
+            setVideoUrl(snapshot.videoUrl ?? "");
+            replaceTheoryBlocks(snapshot.theoryBlocks ?? []);
+            markSnapshotRestored();
+        });
+    }, [chapter, form, markSnapshotRestored, replaceTheoryBlocks, snapshotKey]);
 
     function mapGeneratedPagesToForm(pages: { type: TestType; title?: string | null; questions: { question_title: string; explanation?: string | null; options: { option_text: string; is_correct: boolean; gap_index?: number }[] }[] }[]) {
         return pages.map((p, pi) => ({
@@ -224,6 +265,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
         }
         setResult(res);
         if (res.ok) {
+            snapshotAutosave.clearSnapshot({ pauseMs: 1000 });
             form.reset({
                 topic_id: form.getValues("topic_id"),
                 title: "",
@@ -236,6 +278,12 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     }
     return (
         <>
+            <QuizLocalSnapshotIndicator
+                status={snapshotAutosave.status}
+                savedAt={snapshotAutosave.savedAt}
+                error={snapshotAutosave.error}
+                onDiscard={snapshotAutosave.discardSnapshot}
+            />
             <div className="mb-4">
                 <Button asChild variant="ghost" size="sm">
                     <Link href={`/admin/${chapter}`}>Back to topics</Link>
