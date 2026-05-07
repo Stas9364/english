@@ -97,7 +97,6 @@ export function QuestionItemCard({
                     <QuestionTitleEditor
                         value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
                         onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
-                        onBlur={() => form.trigger(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
                         disabled={form.formState.isSubmitting}
                         autoFocus={autoFocusTitle}
                         onAutoFocusDone={onTitleAutoFocusDone}

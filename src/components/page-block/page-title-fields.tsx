@@ -16,7 +16,6 @@ export function PageTitleFields({ form, pageIndex }: PageTitleFieldsProps) {
                 <QuestionTitleEditor
                     value={form.watch(`pages.${pageIndex}.title`) ?? ''}
                     onChange={(html) => form.setValue(`pages.${pageIndex}.title`, html)}
-                    onBlur={() => form.trigger(`pages.${pageIndex}.title`)}
                     disabled={form.formState.isSubmitting}
                     invalid={!!form.formState.errors.pages?.[pageIndex]?.title}
                 />

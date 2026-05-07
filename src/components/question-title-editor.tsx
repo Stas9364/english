@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import DefaultEditor from "react-simple-wysiwyg";
+import { useDebouncedDraftValue } from "@/hooks/use-debounced-draft-value";
 import { cn } from "@/lib/utils";
 
 export interface QuestionTitleEditorProps {
   value: string;
   onChange: (html: string) => void;
-  onBlur?: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
   onAutoFocusDone?: () => void;
@@ -19,6 +19,8 @@ export interface QuestionTitleEditorProps {
   className?: string;
 }
 
+const SAVE_DELAY_MS = 500;
+
 /**
  * Rich-text редактор для текста вопроса (HTML в value).
  * Для типов с пропусками `[[]]` вставляйте маркеры как обычный текст.
@@ -26,7 +28,6 @@ export interface QuestionTitleEditorProps {
 export function QuestionTitleEditor({
   value,
   onChange,
-  onBlur,
   disabled,
   autoFocus = false,
   onAutoFocusDone,
@@ -37,11 +38,11 @@ export function QuestionTitleEditor({
   className,
 }: QuestionTitleEditorProps) {
   const hasFocusedRef = useRef(false);
-  const [draftValue, setDraftValue] = useState(value);
-
-  useEffect(() => {
-    setDraftValue(value);
-  }, [value]);
+  const [draftValue, setDraftValue] = useDebouncedDraftValue({
+    value,
+    onChange,
+    delayMs: SAVE_DELAY_MS,
+  });
 
   function handleContainerRef(node: HTMLDivElement | null) {
     if (!node || !autoFocus || disabled || hasFocusedRef.current) return;
@@ -62,13 +63,6 @@ export function QuestionTitleEditor({
     document.execCommand("insertLineBreak");
   }
 
-  function handleBlur() {
-    if (draftValue !== value) {
-      onChange(draftValue);
-    }
-    onBlur?.();
-  }
-
   return (
     <div ref={handleContainerRef} className={cn("w-full min-w-0", className)}>
       <DefaultEditor
@@ -80,7 +74,6 @@ export function QuestionTitleEditor({
         aria-invalid={invalid || undefined}
         onChange={(e) => setDraftValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
         containerProps={{
           className: cn(
             "border-input bg-background w-full min-w-0 overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow]",
