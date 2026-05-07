@@ -4,6 +4,8 @@ import type { TheoryBlockInput } from "@/app/admin/actions";
 import type { Chapter } from "@/lib/chapters";
 
 export const QUIZ_LOCAL_SNAPSHOT_VERSION = 1;
+export const CREATE_QUIZ_SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const CREATE_QUIZ_SNAPSHOT_KEY_PREFIX = "quiz-create-draft:";
 
 export type QuizLocalSnapshotMode = "create" | "edit";
 
@@ -33,7 +35,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function getCreateQuizSnapshotKey(chapter: Chapter): string {
-  return `quiz-create-draft:${chapter}`;
+  return `${CREATE_QUIZ_SNAPSHOT_KEY_PREFIX}${chapter}`;
 }
 
 export function getEditQuizSnapshotKey(quizId: string): string {
@@ -77,4 +79,27 @@ export function writeQuizLocalSnapshot<TFormValues>(
 export function removeQuizLocalSnapshot(key: string): void {
   if (!canUseLocalStorage()) return;
   window.localStorage.removeItem(key);
+}
+
+export function removeStaleCreateQuizSnapshots(now = Date.now()): void {
+  if (!canUseLocalStorage()) return;
+
+  const keys = Array.from({ length: window.localStorage.length }, (_, index) =>
+    window.localStorage.key(index)
+  ).filter((key): key is string => !!key && key.startsWith(CREATE_QUIZ_SNAPSHOT_KEY_PREFIX));
+
+  for (const key of keys) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isRecord(parsed) || typeof parsed.updatedAt !== "number") continue;
+      if (now - parsed.updatedAt > CREATE_QUIZ_SNAPSHOT_MAX_AGE_MS) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
 }

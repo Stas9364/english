@@ -28,6 +28,7 @@ import {
     getCreateQuizSnapshotKey,
     QUIZ_LOCAL_SNAPSHOT_VERSION,
     readQuizLocalSnapshot,
+    removeStaleCreateQuizSnapshots,
 } from "@/lib/quiz-local-snapshot";
 
 function slugify(title: string): string {
@@ -152,6 +153,8 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     const markSnapshotRestored = snapshotAutosave.markRestored;
 
     useEffect(() => {
+        removeStaleCreateQuizSnapshots();
+
         const snapshot = readQuizLocalSnapshot<CreateQuizFormValues>(snapshotKey, {
             mode: "create",
             chapter,
