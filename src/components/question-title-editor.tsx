@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import DefaultEditor from "react-simple-wysiwyg";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,8 @@ export interface QuestionTitleEditorProps {
   onChange: (html: string) => void;
   onBlur?: () => void;
   disabled?: boolean;
+  autoFocus?: boolean;
+  onAutoFocusDone?: () => void;
   /** Визуально подсветить ошибку валидации (как у shadcn Input). */
   invalid?: boolean;
   id?: string;
@@ -26,12 +28,27 @@ export function QuestionTitleEditor({
   onChange,
   onBlur,
   disabled,
+  autoFocus = false,
+  onAutoFocusDone,
   invalid,
   id,
   name,
   placeholder = "Use [[]] where the user should type or choose",
   className,
 }: QuestionTitleEditorProps) {
+  const hasFocusedRef = useRef(false);
+
+  function handleContainerRef(node: HTMLDivElement | null) {
+    if (!node || !autoFocus || disabled || hasFocusedRef.current) return;
+    requestAnimationFrame(() => {
+      const editor = node.querySelector<HTMLElement>('[contenteditable="true"]');
+      if (!editor) return;
+      editor.focus();
+      hasFocusedRef.current = true;
+      onAutoFocusDone?.();
+    });
+  }
+
   /** В `contenteditable` на базе `<div>` Enter по умолчанию даёт `<div><br></div>`; вставляем мягкий перенос. */
   function handleKeyDown(e: KeyboardEvent<HTMLElement>) {
     if (e.key !== "Enter" || e.shiftKey) return;
@@ -41,7 +58,7 @@ export function QuestionTitleEditor({
   }
 
   return (
-    <div className={cn("w-full min-w-0", className)}>
+    <div ref={handleContainerRef} className={cn("w-full min-w-0", className)}>
       <DefaultEditor
         id={id}
         name={name}

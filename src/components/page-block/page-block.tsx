@@ -85,6 +85,7 @@ export function PageBlock({
   useLyricsTerminology = false,
 }: PageBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [pendingFocusQuestionIndex, setPendingFocusQuestionIndex] = useState<number | null>(null);
   const { uploadingTarget: uploadingQuestionTarget, uploadError, uploadForTarget } = useImageUpload<string>({
     uploadImage: uploadTheoryImage,
     baseFields: quizId ? { quizId } : undefined,
@@ -189,6 +190,8 @@ export function PageBlock({
                 }
                 hideQuestionImageBlock={hideQuestionImageBlock}
                 hideQuestionTitle={useLyricsTerminology}
+                autoFocusTitle={qIndex === pendingFocusQuestionIndex}
+                onTitleAutoFocusDone={() => setPendingFocusQuestionIndex(null)}
               />
             ))}
             <div className="flex justify-between items-center gap-2">
@@ -197,14 +200,16 @@ export function PageBlock({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() =>
+                  onClick={() => {
+                    const newQuestionIndex = questionsArray.fields.length;
+                    setPendingFocusQuestionIndex(newQuestionIndex);
                     questionsArray.append(
                       defaultQuestion(
                         questionsArray.fields.length,
                         pageType
                       ) as PageBlockFormValues["pages"][0]["questions"][0]
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Plus className="size-4" /> Add question
                 </Button>

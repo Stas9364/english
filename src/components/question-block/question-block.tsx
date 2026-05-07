@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { TheoryImage } from "@/components/theory-image";
 import { getCorrectTextsByGap, getGapCount, getPerGapCorrectness, getPerGapCorrectnessSelectGaps, isTextAnswerCorrect } from '@/lib/question-block-utils';
+import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import type { QuestionWithOptions } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -45,6 +46,7 @@ function QuestionBlockImpl({
   const textIncorrect = isText && checked && textCorrect === false;
 
   const title = question.question_title ?? "";
+  const safeTitleHtml = sanitizeQuestionTitleHtml(title);
   const gapCount = getGapCount(title);
   const hasInlineGaps = gapCount >= 1 && title.includes("[[]]");
   const parts = hasInlineGaps ? title.split("[[]]") : [];
@@ -60,7 +62,13 @@ function QuestionBlockImpl({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-medium">
-            {showQuestionNumber ? `${index}. ` : ""}{hasInlineGaps && (isText || isSelectGaps) ? "" : title}
+            {showQuestionNumber ? `${index}. ` : ""}
+            {hasInlineGaps && (isText || isSelectGaps) ? "" : (
+              <span
+                className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit [&_ul]:my-0 [&_ul]:pl-5 [&_ol]:my-0 [&_ol]:pl-5"
+                dangerouslySetInnerHTML={{ __html: safeTitleHtml }}
+              />
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

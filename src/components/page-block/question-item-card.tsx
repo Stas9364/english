@@ -1,5 +1,4 @@
 import type { TestType } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
 import { Trash2 } from 'lucide-react';
 import { UseFormReturn } from 'react-hook-form';
 import { useState } from 'react';
@@ -28,6 +27,8 @@ interface QuestionItemCardProps {
     onRemoveImage?: () => void | Promise<boolean>;
     hideQuestionImageBlock?: boolean;
     hideQuestionTitle?: boolean;
+    autoFocusTitle?: boolean;
+    onTitleAutoFocusDone?: () => void;
 }
 
 export function QuestionItemCard({
@@ -45,6 +46,8 @@ export function QuestionItemCard({
     onRemoveImage,
     hideQuestionImageBlock = false,
     hideQuestionTitle = false,
+    autoFocusTitle = false,
+    onTitleAutoFocusDone,
 }: QuestionItemCardProps) {
     const questionImage = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_image_url`) ?? "";
     const uploadTarget = `${pageIndex}-${qIndex}`;
@@ -91,41 +94,22 @@ export function QuestionItemCard({
                                 ? "Right column (question)"
                                 : "Question text"}
                     </Label>
-                    {pageType === "input" || pageType === "select_gaps" ? (
-                        <>
-                            {/* <textarea
-                  {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                  placeholder="Use [[]] where the user should type or choose"
-                  rows={4}
-                  className={cn(
-                    "placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-y min-h-[80px]",
-                    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                    "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-                    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                    form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title &&
-                    "border-destructive"
-                  )}
-                /> */}
-                            <QuestionTitleEditor
-                                value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                                onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
-                                onBlur={() => form.trigger(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                                disabled={form.formState.isSubmitting}
-                                invalid={
-                                    !!form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title
-                                }
-                            />
-                        </>
-                    ) : (
-                        <Input
-                            {...form.register(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
-                            placeholder={pageType === "matching" ? "Text shown on the right (or upload image below)" : "Enter the question (or upload image below)"}
-                            className={cn(
-                                form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title &&
-                                "border-destructive"
-                            )}
-                        />
-                    )}
+                    <QuestionTitleEditor
+                        value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                        onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
+                        onBlur={() => form.trigger(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                        disabled={form.formState.isSubmitting}
+                        autoFocus={autoFocusTitle}
+                        onAutoFocusDone={onTitleAutoFocusDone}
+                        placeholder={pageType === "input" || pageType === "select_gaps"
+                            ? "Use [[]] where the user should type or choose"
+                            : pageType === "matching"
+                                ? "Text shown on the right (or upload image below)"
+                                : "Enter the question (or upload image below)"}
+                        invalid={
+                            !!form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title
+                        }
+                    />
                     {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && (
                         <p className="text-sm text-destructive">
                             {

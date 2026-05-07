@@ -5,6 +5,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import type { QuestionWithOptions } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
+import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import { cn } from "@/lib/utils";
 import { MatchingRightSlot } from "@/components/matching-right-slot";
 
@@ -50,7 +51,10 @@ export function MatchingBlock({
           <ul className="flex flex-col gap-2">
             {questions.map((q) => (
               <li key={q.id} className={cn(rowClass, "font-medium")}>
-                <span className="break-words">{q.question_title}</span>
+                <span
+                  className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit"
+                  dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(q.question_title ?? "") }}
+                />
               </li>
             ))}
           </ul>
@@ -79,7 +83,12 @@ export function MatchingBlock({
               .filter((q) => (q.explanation ?? "").trim())
               .map((q) => (
                 <Alert key={q.id} variant="default" className="mt-4">
-                  <AlertTitle>{q.question_title}</AlertTitle>
+                  <AlertTitle>
+                    <span
+                      className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit"
+                      dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(q.question_title ?? "") }}
+                    />
+                  </AlertTitle>
                   <AlertDescription>{q.explanation}</AlertDescription>
                 </Alert>
               ))}
