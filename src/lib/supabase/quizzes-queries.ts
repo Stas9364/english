@@ -5,7 +5,8 @@ import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
 import { getTopicBySlug, getTopicBySlugAndChapter } from "./topics-queries";
 import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
 
-const QUIZZES_TAG = "quizzes";
+const QUIZZES_LIST_TAG = "quizzes:list";
+const getQuizBySlugTag = (slug: string) => `quizzes:slug:${slug.trim().toLowerCase()}`;
 
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
@@ -22,7 +23,7 @@ export async function getQuizzes(
       return (data ?? []) as Quiz[];
     },
     ["quizzes:list"],
-    { tags: [QUIZZES_TAG] }
+    { tags: [QUIZZES_LIST_TAG] }
   );
 
   return getQuizzesCached();
@@ -30,7 +31,12 @@ export async function getQuizzes(
 
 /** Инвалидация кэша списка квизов по тегу */
 export function revalidateQuizzes() {
-  revalidateTag(QUIZZES_TAG, "max");
+  revalidateTag(QUIZZES_LIST_TAG, "max");
+}
+
+/** Инвалидация кэша квиза по slug */
+export function revalidateQuizBySlug(slug: string) {
+  revalidateTag(getQuizBySlugTag(slug), "max");
 }
 
 /** Квизы по topic slug (legacy: без фильтра по разделу) */
@@ -152,12 +158,21 @@ export async function getQuizWithPagesBySlug(
   supabase: SupabaseClient,
   slug: string
 ): Promise<QuizWithPages | null> {
-  const { data: quiz, error: quizError } = await supabase
-    .from("quizzes")
-    .select("id, topic_id, title, description, slug, created_at")
-    .eq("slug", slug)
-    .single();
+  const quizSlugTag = getQuizBySlugTag(slug);
+  const getQuizWithPagesBySlugCached = unstable_cache(
+    async (quizSlug: string): Promise<QuizWithPages | null> => {
+      const { data: quiz, error: quizError } = await supabase
+        .from("quizzes")
+        .select("id, topic_id, title, description, slug, created_at")
+        .eq("slug", quizSlug)
+        .single();
 
-  if (quizError || !quiz) return null;
-  return getQuizWithPages(supabase, quiz.id);
+      if (quizError || !quiz) return null;
+      return getQuizWithPages(supabase, quiz.id);
+    },
+    ["quizzes:with-pages-by-slug"],
+    { tags: [quizSlugTag] }
+  );
+
+  return getQuizWithPagesBySlugCached(slug);
 }

@@ -2,6 +2,7 @@
 
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
+import { revalidateQuizBySlug, revalidateQuizzes } from "@/lib/supabase/quizzes-queries";
 import {
   deleteQuizListeningMetaByQuizId,
   upsertQuizListeningMetaByQuizId,
@@ -232,6 +233,8 @@ export async function createQuiz(data: CreateQuizInput) {
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/${data.chapter}`);
+  revalidateQuizzes();
+  revalidateQuizBySlug(slug);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
 }
@@ -260,7 +263,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
 
   const { data: beforeQuiz } = await supabase
     .from("quizzes")
-    .select("topic_id")
+    .select("topic_id, slug")
     .eq("id", data.quizId)
     .single();
 
@@ -523,6 +526,9 @@ export async function updateQuiz(data: UpdateQuizInput) {
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/admin/quiz/${data.quizId}`);
+  revalidateQuizzes();
+  if (beforeQuiz?.slug) revalidateQuizBySlug(beforeQuiz.slug);
+  revalidateQuizBySlug(data.slug);
   await revalidateAdminPathsForTopicId(supabase, beforeQuiz?.topic_id);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
@@ -538,7 +544,7 @@ export async function deleteQuiz(
   const supabase = await createServerClient();
   const { data: quizRow } = await supabase
     .from("quizzes")
-    .select("topic_id")
+    .select("topic_id, slug")
     .eq("id", quizId)
     .single();
 
@@ -547,6 +553,8 @@ export async function deleteQuiz(
 
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidateQuizzes();
+  if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
   await revalidateAdminPathsForTopicId(supabase, quizRow?.topic_id);
   return { ok: true };
 }
