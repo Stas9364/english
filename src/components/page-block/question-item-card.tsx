@@ -95,6 +95,8 @@ export function QuestionItemCard({
                                 : "Question text"}
                     </Label>
                     <QuestionTitleEditor
+                        id={`question-title-${pageIndex}-${qIndex}`}
+                        name={`pages.${pageIndex}.questions.${qIndex}.question_title`}
                         value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
                         onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
                         disabled={form.formState.isSubmitting}

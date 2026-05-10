@@ -33,6 +33,7 @@ import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
 import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot-restore-dialog";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
+import { useEditQuizInvalidFocus } from "@/hooks/use-edit-quiz-invalid-focus";
 import {
   getEditQuizSnapshotKey,
   QUIZ_LOCAL_SNAPSHOT_VERSION,
@@ -166,6 +167,7 @@ export function EditQuizScreen({
         : [defaultPage(undefined, 0, isListeningChapter ? "input" : undefined)],
     },
   });
+  const { onInvalid } = useEditQuizInvalidFocus(form);
 
   const pagesArray = useFieldArray({
     control: form.control,
@@ -384,7 +386,7 @@ export function EditQuizScreen({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
             {activeTab === "details" && (
               <>
                 <div className="space-y-2">

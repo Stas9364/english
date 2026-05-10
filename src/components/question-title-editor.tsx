@@ -64,7 +64,11 @@ export function QuestionTitleEditor({
   }
 
   return (
-    <div ref={handleContainerRef} className={cn("w-full min-w-0", className)}>
+    <div
+      ref={handleContainerRef}
+      data-question-title-editor-id={id}
+      className={cn("w-full min-w-0", className)}
+    >
       <DefaultEditor
         id={id}
         name={name}
