@@ -3,6 +3,7 @@
 import type { Chapter } from "@/lib/chapters";
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
+import { revalidateTopicMetaById } from "@/lib/supabase/topics-queries";
 import { revalidatePath } from "next/cache";
 import { extractTopicChapterKey } from "./shared";
 
@@ -58,18 +59,26 @@ export async function createTopic(payload: {
   const baseSlug = slugifyTopicName(name) || "topic";
   let slug = baseSlug;
   let suffix = 2;
+  let createdTopicId: string | null = null;
 
   while (true) {
-    const { error } = await supabase.from("topics").insert({
-      name,
-      slug,
-      description: description || null,
-      // Legacy compatibility: keep text chapter in sync with chapter_id.
-      chapter: payload.chapter,
-      chapter_id: chapterRow.id,
-    });
+    const { data: insertedTopic, error } = await supabase
+      .from("topics")
+      .insert({
+        name,
+        slug,
+        description: description || null,
+        // Legacy compatibility: keep text chapter in sync with chapter_id.
+        chapter: payload.chapter,
+        chapter_id: chapterRow.id,
+      })
+      .select("id")
+      .single();
 
-    if (!error) break;
+    if (!error) {
+      createdTopicId = insertedTopic?.id ?? null;
+      break;
+    }
     if (error.code === "23505") {
       slug = `${baseSlug}-${suffix}`;
       suffix += 1;
@@ -80,6 +89,7 @@ export async function createTopic(payload: {
 
   revalidatePath("/admin");
   revalidatePath(`/admin/${payload.chapter}`);
+  if (createdTopicId) revalidateTopicMetaById(createdTopicId);
   return { ok: true };
 }
 
@@ -110,6 +120,7 @@ export async function updateTopic(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/admin");
+  revalidateTopicMetaById(topicId);
   const existingChapter = extractTopicChapterKey(existing);
   if (existing && existingChapter) {
     revalidatePath(`/admin/${existingChapter}`);
@@ -144,6 +155,7 @@ export async function deleteTopic(
   }
 
   revalidatePath("/admin");
+  revalidateTopicMetaById(topicId);
   const topicChapter = extractTopicChapterKey(topic);
   if (topic && topicChapter) {
     revalidatePath(`/admin/${topicChapter}`);

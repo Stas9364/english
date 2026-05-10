@@ -3,6 +3,7 @@
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
 import { revalidateQuizBySlug, revalidateQuizzes } from "@/lib/supabase/quizzes-queries";
+import { revalidateTheoryBlocksByQuizId } from "@/lib/supabase/theory-queries";
 import {
   deleteQuizListeningMetaByQuizId,
   upsertQuizListeningMetaByQuizId,
@@ -234,6 +235,7 @@ export async function createQuiz(data: CreateQuizInput) {
   revalidatePath("/admin");
   revalidatePath(`/admin/${data.chapter}`);
   revalidateQuizzes();
+  revalidateTheoryBlocksByQuizId(quiz.id);
   revalidateQuizBySlug(slug);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
@@ -527,6 +529,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
   revalidatePath("/admin");
   revalidatePath(`/admin/quiz/${data.quizId}`);
   revalidateQuizzes();
+  revalidateTheoryBlocksByQuizId(data.quizId);
   if (beforeQuiz?.slug) revalidateQuizBySlug(beforeQuiz.slug);
   revalidateQuizBySlug(data.slug);
   await revalidateAdminPathsForTopicId(supabase, beforeQuiz?.topic_id);
@@ -554,6 +557,7 @@ export async function deleteQuiz(
   revalidatePath("/");
   revalidatePath("/admin");
   revalidateQuizzes();
+  revalidateTheoryBlocksByQuizId(quizId);
   if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
   await revalidateAdminPathsForTopicId(supabase, quizRow?.topic_id);
   return { ok: true };

@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { revalidateTag, unstable_cache } from "next/cache";
 import type { Chapter } from "@/lib/chapters";
 import type { Topic } from "./types";
 
 const TOPIC_SELECT =
   "id, name, slug, description, order_index, chapter, created_at";
+const getTopicMetaTag = (topicId: string) => `topics:meta:id:${topicId}`;
 
 /** Список тем для админки и фильтрации */
 export async function getTopics(
@@ -72,12 +74,25 @@ export async function getTopicMetaById(
   supabase: SupabaseClient,
   topicId: string
 ): Promise<Pick<Topic, "slug" | "chapter"> | null> {
-  const { data, error } = await supabase
-    .from("topics")
-    .select("slug, chapter")
-    .eq("id", topicId)
-    .single();
+  const topicMetaTag = getTopicMetaTag(topicId);
+  const getTopicMetaByIdCached = unstable_cache(
+    async (targetTopicId: string): Promise<Pick<Topic, "slug" | "chapter"> | null> => {
+      const { data, error } = await supabase
+        .from("topics")
+        .select("slug, chapter")
+        .eq("id", targetTopicId)
+        .single();
 
-  if (error || !data) return null;
-  return data as Pick<Topic, "slug" | "chapter">;
+      if (error || !data) return null;
+      return data as Pick<Topic, "slug" | "chapter">;
+    },
+    ["topics:meta-by-id"],
+    { tags: [topicMetaTag] }
+  );
+
+  return getTopicMetaByIdCached(topicId);
+}
+
+export function revalidateTopicMetaById(topicId: string) {
+  revalidateTag(getTopicMetaTag(topicId), "max");
 }
