@@ -2,9 +2,9 @@
 
 import type { TestType } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
 import { useFieldArray, useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { PageBlock, type PageBlockFormValues } from '../page-block/page-block';
+import { QuizPagesTabStrip } from "../page-block/quiz-pages-tab-strip";
 import { QuizAiGenerationBlock } from '../quiz-ai-generation-block/quiz-ai-generation-block';
 import { QuizTheoryBlocksEditor } from '../quiz-theory-blocks-editor';
 import { Alert, AlertDescription } from '../ui/alert';
@@ -89,6 +89,7 @@ interface CreateQuizScreenProps {
 
 export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     const isListeningChapter = chapter.trim().toLowerCase() === "listening";
+    const [activePageIndex, setActivePageIndex] = useState(0);
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
     const [videoUrl, setVideoUrl] = useState("");
     const {
@@ -134,6 +135,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
         name: "pages",
     });
     const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
+    const watchedPages = useWatch({ control: form.control, name: "pages" }) ?? [];
     const snapshotKey = useMemo(() => getCreateQuizSnapshotKey(chapter), [chapter]);
     const snapshotAutosave = useQuizLocalSnapshotAutosave<CreateQuizFormValues>({
         storageKey: snapshotKey,
@@ -208,6 +210,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
             if (shouldReplaceFirst) {
                 // Первая генерация и форма ещё в дефолтном пустом состоянии — заменяем.
                 pagesArray.replace(mapped);
+                setActivePageIndex(Math.max(0, mapped.length - 1));
             } else {
                 // Если страница уже заполнена ИЛИ генерация не первая — всегда добавляем в конец.
                 const appended = [
@@ -215,6 +218,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                     ...mapped.map((p, i) => ({ ...p, order_index: current.length + i })),
                 ] as CreateQuizFormValues["pages"];
                 pagesArray.replace(appended);
+                setActivePageIndex(current.length + mapped.length - 1);
             }
             setHasGeneratedOnce(true);
 
@@ -275,6 +279,7 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                 description: "",
                 pages: [defaultPage(0, isListeningChapter ? "input" : "single")],
             });
+            setActivePageIndex(0);
             setVideoUrl("");
             clearTheoryBlocks();
         }
@@ -379,33 +384,44 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
                                 <Label>Pages</Label>
                                 <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
                             </div>
+                            <QuizPagesTabStrip
+                                fieldIds={pagesArray.fields.map((f) => f.id)}
+                                titles={watchedPages.map((p) => p?.title ?? "")}
+                                activeIndex={activePageIndex}
+                                onSelect={setActivePageIndex}
+                                showAddPage={!isListeningChapter}
+                                onAddPage={() => {
+                                    const next = pagesArray.fields.length;
+                                    pagesArray.append(defaultPage(pagesArray.fields.length));
+                                    setActivePageIndex(next);
+                                }}
+                            />
                             {pagesArray.fields.map((field, pIndex) => (
-                                <PageBlock
+                                <div
                                     key={field.id}
-                                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                                    pageIndex={pIndex}
-                                    defaultOption={defaultOption}
-                                    defaultQuestion={defaultQuestion}
-                                    quizId={undefined}
-                                    onRemove={() => pagesArray.remove(pIndex)}
-                                    canRemove={pagesArray.fields.length > 1}
-                                    hidePageTypeSelect={isListeningChapter}
-                                    hidePageTitleFields={isListeningChapter}
-                                    hideAddQuestionButton={isListeningChapter}
-                                    hideQuestionImageBlock={isListeningChapter}
-                                    useLyricsTerminology={isListeningChapter}
-                                />
-                            ))}
-                            {!isListeningChapter && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => pagesArray.append(defaultPage(pagesArray.fields.length))}
+                                    className={cn(activePageIndex !== pIndex && "hidden")}
+                                    aria-hidden={activePageIndex !== pIndex}
                                 >
-                                    <Plus className="size-4" /> Add page
-                                </Button>
-                            )}
+                                    <PageBlock
+                                        form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                                        pageIndex={pIndex}
+                                        defaultOption={defaultOption}
+                                        defaultQuestion={defaultQuestion}
+                                        quizId={undefined}
+                                        onRemove={() => {
+                                            pagesArray.remove(pIndex);
+                                            setActivePageIndex(0);
+                                        }}
+                                        canRemove={pagesArray.fields.length > 1}
+                                        hidePageTypeSelect={isListeningChapter}
+                                        hidePageTitleFields={isListeningChapter}
+                                        hideAddQuestionButton={isListeningChapter}
+                                        hideQuestionImageBlock={isListeningChapter}
+                                        useLyricsTerminology={isListeningChapter}
+                                        embeddedInTabs
+                                    />
+                                </div>
+                            ))}
                         </div>
 
                         <QuizTheoryBlocksEditor

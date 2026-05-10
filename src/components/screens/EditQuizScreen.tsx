@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
@@ -27,6 +26,7 @@ import { useTheoryBlocks } from "@/hooks/use-theory-blocks";
 import { PageContainer } from "@/components/page-container";
 import { PageBlock } from "@/components/page-block/page-block";
 import type { PageBlockFormValues } from "@/components/page-block/page-block";
+import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
 import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
 import { QuizTopicSelect } from "@/components/quiz-topic-select";
@@ -167,13 +167,17 @@ export function EditQuizScreen({
         : [defaultPage(undefined, 0, isListeningChapter ? "input" : undefined)],
     },
   });
-  const { onInvalid } = useEditQuizInvalidFocus(form);
+  const [activePageIndex, setActivePageIndex] = useState(0);
+  const { onInvalid } = useEditQuizInvalidFocus(form, {
+    onFocusPage: setActivePageIndex,
+  });
 
   const pagesArray = useFieldArray({
     control: form.control,
     name: "pages",
   });
   const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
+  const watchedPages = useWatch({ control: form.control, name: "pages" }) ?? [];
   const snapshotKey = useMemo(() => getEditQuizSnapshotKey(quiz.id), [quiz.id]);
   const snapshotAutosave = useQuizLocalSnapshotAutosave<EditQuizFormValues>({
     storageKey: snapshotKey,
@@ -192,8 +196,6 @@ export function EditQuizScreen({
     }),
   });
   const markSnapshotRestored = snapshotAutosave.markRestored;
-
-  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const snapshot = readQuizLocalSnapshot<EditQuizFormValues>(snapshotKey, {
@@ -249,6 +251,7 @@ export function EditQuizScreen({
           )
         );
       });
+      setActivePageIndex(startIndex + res.pages.length - 1);
     }
     if (res.theoryBlocks?.length) {
       appendTheoryBlocks(res.theoryBlocks);
@@ -317,6 +320,7 @@ export function EditQuizScreen({
       }
     }
     pagesArray.remove(pageIndex);
+    setActivePageIndex(0);
   }
 
   return (
@@ -476,10 +480,25 @@ export function EditQuizScreen({
                       errorMessage={ai.errorMessage}
                     />
                   )}
+                  <QuizPagesTabStrip
+                    fieldIds={pagesArray.fields.map((f) => f.id)}
+                    titles={watchedPages.map((p) => p?.title ?? "")}
+                    activeIndex={activePageIndex}
+                    onSelect={setActivePageIndex}
+                    showAddPage={!isListeningChapter}
+                    onAddPage={() => {
+                      const next = pagesArray.fields.length;
+                      pagesArray.append(
+                        defaultPage(undefined, pagesArray.fields.length, isListeningChapter ? "input" : undefined)
+                      );
+                      setActivePageIndex(next);
+                    }}
+                  />
                   {pagesArray.fields.map((field, pIndex) => (
                     <div
                       key={field.id}
-                      ref={(el) => { pageRefs.current[pIndex] = el; }}
+                      className={cn(activePageIndex !== pIndex && "hidden")}
+                      aria-hidden={activePageIndex !== pIndex}
                     >
                       <PageBlock
                         form={form as unknown as UseFormReturn<PageBlockFormValues>}
@@ -491,11 +510,11 @@ export function EditQuizScreen({
                         canRemove={pagesArray.fields.length > 1}
                         onMoveUp={() => {
                           pagesArray.move(pIndex, pIndex - 1);
-                          setTimeout(() => pageRefs.current[pIndex - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                          setActivePageIndex(pIndex - 1);
                         }}
                         onMoveDown={() => {
                           pagesArray.move(pIndex, pIndex + 1);
-                          setTimeout(() => pageRefs.current[pIndex + 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+                          setActivePageIndex(pIndex + 1);
                         }}
                         canMoveUp={pIndex > 0}
                         canMoveDown={pIndex < pagesArray.fields.length - 1}
@@ -504,6 +523,7 @@ export function EditQuizScreen({
                         hideAddQuestionButton={isListeningChapter}
                         hideQuestionImageBlock={isListeningChapter}
                         useLyricsTerminology={isListeningChapter}
+                        embeddedInTabs
                         onConfirmDeleteQuestion={async (pi, qIndex) => {
                           const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
                           if (q?.id) {
@@ -541,20 +561,6 @@ export function EditQuizScreen({
                       />
                     </div>
                   ))}
-                  {!isListeningChapter && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        pagesArray.append(
-                          defaultPage(undefined, pagesArray.fields.length, isListeningChapter ? "input" : undefined)
-                        )
-                      }
-                    >
-                      <Plus className="size-4" /> Add page
-                    </Button>
-                  )}
                 </div>
               </>
             )}

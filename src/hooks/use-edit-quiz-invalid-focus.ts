@@ -37,10 +37,23 @@ function focusQuestionTitleEditor(path: string) {
   return true;
 }
 
-export function useEditQuizInvalidFocus(form: UseFormReturn<EditQuizFormValues>) {
+function pageIndexFromFieldPath(path: string): number | null {
+  const m = path.match(/^pages\.(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+export function useEditQuizInvalidFocus(
+  form: UseFormReturn<EditQuizFormValues>,
+  options?: { onFocusPage?: (pageIndex: number) => void }
+) {
   function onInvalid(errors: FieldErrors<EditQuizFormValues>) {
     const firstErrorPath = findFirstErrorPath(errors);
     if (!firstErrorPath) return;
+
+    const pageIndex = pageIndexFromFieldPath(firstErrorPath);
+    if (pageIndex !== null) {
+      options?.onFocusPage?.(pageIndex);
+    }
 
     if (focusQuestionTitleEditor(firstErrorPath)) return;
     form.setFocus(firstErrorPath as keyof EditQuizFormValues);

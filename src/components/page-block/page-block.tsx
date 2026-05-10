@@ -7,7 +7,7 @@ import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
 import { Label } from "@/components/ui/label";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import type { TestType } from "@/lib/supabase";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 import { PageTitleFields } from './page-title-fields';
@@ -60,6 +60,8 @@ export interface PageBlockProps {
   hideAddQuestionButton?: boolean;
   hideQuestionImageBlock?: boolean;
   useLyricsTerminology?: boolean;
+  /** Табы снаружи: без аккордеона и дубля заголовка страницы */
+  embeddedInTabs?: boolean;
 }
 
 
@@ -83,6 +85,7 @@ export function PageBlock({
   hideAddQuestionButton = false,
   hideQuestionImageBlock = false,
   useLyricsTerminology = false,
+  embeddedInTabs = false,
 }: PageBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [pendingFocusQuestionIndex, setPendingFocusQuestionIndex] = useState<number | null>(null);
@@ -107,30 +110,23 @@ export function PageBlock({
     form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_image_url`, url, { shouldDirty: true, shouldValidate: true });
   }
 
+  const showExpanded = embeddedInTabs || isExpanded;
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setIsExpanded((v) => !v)}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-expanded={isExpanded}
-          >
-            <span className="shrink-0">
-              {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-            </span>
-            <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
-          </button>
-          <div className="flex items-center gap-1">
+        <div className="flex w-full items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               onClick={onMoveUp}
               disabled={!canMoveUp}
+              title="Move page left"
+              aria-label="Move page left"
             >
-              <ArrowUp className="size-4" />
+              <ArrowLeft className="size-4" />
             </Button>
             <Button
               type="button"
@@ -138,18 +134,37 @@ export function PageBlock({
               size="icon-sm"
               onClick={onMoveDown}
               disabled={!canMoveDown}
+              title="Move page right"
+              aria-label="Move page right"
             >
-              <ArrowDown className="size-4" />
+              <ArrowRight className="size-4" />
             </Button>
+          </div>
+          {!embeddedInTabs ? (
+            <button
+              type="button"
+              onClick={() => setIsExpanded((v) => !v)}
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-expanded={isExpanded}
+            >
+              <span className="shrink-0">
+                {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              </span>
+              <CardTitle className="text-base">Page {pageIndex + 1}</CardTitle>
+            </button>
+          ) : (
+            <span className="min-w-0 flex-1" aria-hidden />
+          )}
+          <div className="flex shrink-0 items-center">
             <ConfirmDeletePopover title="Delete page?" onConfirm={onRemove} disabled={!canRemove}>
-              <Button type="button" variant="ghost" size="icon-sm">
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Удалить страницу">
                 <Trash2 className="size-4" />
               </Button>
             </ConfirmDeletePopover>
           </div>
         </div>
       </CardHeader>
-      {isExpanded && (
+      {showExpanded && (
         <CardContent className="space-y-4">
           {!hidePageTypeSelect && (
             <PageTypeSelect form={form} pageIndex={pageIndex} defaultOption={defaultOption} />
@@ -214,14 +229,16 @@ export function PageBlock({
                   <Plus className="size-4" /> Add question
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsExpanded(false)}
-              >
-                Collapse
-              </Button>
+              {!embeddedInTabs && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsExpanded(false)}
+                >
+                  Collapse
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

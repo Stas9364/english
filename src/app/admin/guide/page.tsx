@@ -291,17 +291,23 @@ export default async function AdminGuidePage() {
         <p className="text-base">
           Под полями квиза идёт блок <strong>Pages</strong>.
         </p>
+        <p className="text-base">
+          Страницы переключаются <strong>вкладками</strong> в один горизонтальный ряд (при нехватке места ряд переносится на
+          следующую строку). Подпись вкладки берётся из поля <strong>Page title</strong> этой страницы; если заголовок пустой,
+          показывается запасной текст <strong>Page 1</strong>, <strong>Page 2</strong> и т.д. Одновременно на экране видна только{" "}
+          <strong>одна</strong> выбранная страница — содержимое остальных скрыто, но не удаляется из формы.
+        </p>
         <p className="text-base text-muted-foreground">
           Для <code>listening</code> страница всегда одна и всегда типа <strong>Text input</strong>; кнопка <strong>Add page</strong>{" "}
           и переключатель типа страницы скрыты.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>
-            У каждой страницы есть карточка <strong>Page 1</strong>, <strong>Page 2</strong> и т.д.
+            Страниц должно быть <strong>хотя бы одна</strong>.
           </li>
           <li>
-            Страниц должно быть <strong>хотя бы одна</strong>. Добавление новой страницы — кнопка <strong>Add page</strong> внизу
-            блока «Pages».
+            Новая страница добавляется кнопкой <strong>Add page</strong> — она всегда стоит <strong>последней в ряду вкладок</strong>{" "}
+            (после всех вкладок страниц).
           </li>
         </ul>
         <p className="text-base">В каждой карточке страницы настраивается:</p>
@@ -342,14 +348,18 @@ export default async function AdminGuidePage() {
           </li>
         </ol>
         <p className="text-base">
-          В правом верхнем углу карточки страницы расположены кнопки <strong>↑</strong> и <strong>↓</strong> — они меняют порядок
-          страниц в квизе. Кнопка <strong>↑</strong> недоступна для первой страницы, <strong>↓</strong> — для последней. Новый
-          порядок применяется сразу в форме и сохраняется при нажатии <strong>Create quiz</strong> /{" "}
-          <strong>Save changes</strong>.
+          В шапке <strong>карточки активной страницы</strong> (под выбранной вкладкой) слева расположены кнопки со стрелками{" "}
+          <strong>←</strong> и <strong>→</strong> — передвинуть страницу влево или вправо в списке (и во вкладках). При наведении
+          на кнопку показывается подсказка <strong>Move page left</strong> / <strong>Move page right</strong>. Кнопка влево недоступна
+          для первой страницы, вправо — для последней. Новый порядок отражается во вкладках и сохраняется при нажатии{" "}
+          <strong>Save changes</strong> (в форме редактирования). На экране <strong>создания</strong> нового квиза эти кнопки
+          могут быть неактивны — задайте порядок страниц при создании последовательностью добавления или поменяйте порядок позже
+          в режиме редактирования.
         </p>
         <p className="text-xs text-muted-foreground">
-          Иконка корзины рядом с заголовком страницы удаляет страницу сразу после подтверждения (запись удаляется в БД). Удалить
-          можно только если страниц больше одной.
+          <strong>Удаление страницы</strong> — иконка корзины <strong>справа</strong> в той же шапке (на противоположной стороне
+          от стрелок). Удаление после подтверждения; при редактировании — также в БД. Удалить можно только если страниц больше
+          одной; после удаления активной становится первая вкладка.
         </p>
 
         <h3 id="create-quiz-step-3" className="text-lg font-semibold scroll-mt-6">Шаг 3. Вопросы внутри страницы</h3>
@@ -625,17 +635,20 @@ export default async function AdminGuidePage() {
             <strong>YouTube video URL</strong>.
           </li>
           <li>
-            Блок <strong>Pages</strong> — как при создании: тип страницы, заголовок, пример, вопросы; для каждого типа — свои
-            поля (варианты, правильные ответы для Text input, варианты по пропускам для Dropdown in gaps, пары «справа / слева»
-            для Matching).
+            Блок <strong>Pages</strong> — как при создании: страницы переключаются <strong>вкладками</strong> (текст вкладки — из
+            поля <strong>Page title</strong>, при пустом заголовке — «Page N»); под вкладкой редактируется одна выбранная страница;
+            настраиваются тип
+            страницы, заголовок, пример, вопросы и поля по типу (варианты, правильные ответы для Text input, варианты по пропускам
+            для Dropdown in gaps, пары для Matching).
           </li>
           <li>
-            Кнопки <strong>↑</strong> / <strong>↓</strong> в заголовке каждой страницы меняют её порядок в квизе. Изменение
-            применяется в форме сразу; сохраняется по нажатию <strong>Save changes</strong>.
+            В шапке карточки <strong>текущей</strong> страницы слева — стрелки <strong>←</strong> / <strong>→</strong> (подсказки при
+            наведении: Move page left / Move page right); справа — удаление страницы. Они меняют порядок страниц в квизе и
+            порядок вкладок. Изменение в форме сразу; в БД — по <strong>Save changes</strong>.
           </li>
           <li>
-            <strong>Add page</strong> / <strong>Add question</strong> / <strong>Add option</strong> (или{" "}
-            <strong>Add correct answer</strong>) — добавление элементов.
+            <strong>Add page</strong> — последняя кнопка в ряду вкладок. <strong>Add question</strong> / <strong>Add option</strong>{" "}
+            (или <strong>Add correct answer</strong>) — внутри открытой страницы.
           </li>
           <li>
             Для <code>listening</code> скрыты: AI‑генерация, <strong>Add page</strong>, <strong>Add question</strong>,{" "}
@@ -846,7 +859,9 @@ export default async function AdminGuidePage() {
               </tr>
               <tr>
                 <td className="border px-2 py-1">Порядок страниц</td>
-                <td className="border px-2 py-1">Кнопки ↑ / ↓ в заголовке карточки страницы</td>
+                <td className="border px-2 py-1">
+                  Вкладки страниц; стрелки ← / → слева в шапке карточки активной страницы (редактирование)
+                </td>
                 <td className="border px-2 py-1">Нет</td>
               </tr>
               <tr>
