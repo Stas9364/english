@@ -55,7 +55,7 @@ function QuestionBlockImpl({
   const correctTextsByGap =
     (isText || isSelectGaps) && checked ? getCorrectTextsByGap(question, isSelectGaps) : null;
 
-  const showQuestionNumber = !(isText && totalQuestionsOnPage === 1);
+  const showQuestionNumber = totalQuestionsOnPage > 2;
 
   return (
     <li>
