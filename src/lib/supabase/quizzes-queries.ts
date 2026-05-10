@@ -1,20 +1,36 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { revalidateTag, unstable_cache } from "next/cache";
 import type { Chapter } from "@/lib/chapters";
 import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
 import { getTopicBySlug, getTopicBySlugAndChapter } from "./topics-queries";
 import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
 
+const QUIZZES_TAG = "quizzes";
+
+const getQuizzesCached = unstable_cache(
+  async (supabase: SupabaseClient): Promise<Quiz[]> => {
+    const { data, error } = await supabase
+      .from("quizzes")
+      .select("id, topic_id, title, description, slug, created_at")
+      .order("title", { ascending: true });
+
+    if (error) throw error;
+    return (data ?? []) as Quiz[];
+  },
+  ["quizzes:list"],
+  { tags: [QUIZZES_TAG] }
+);
+
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
   supabase: SupabaseClient
 ): Promise<Quiz[]> {
-  const { data, error } = await supabase
-    .from("quizzes")
-    .select("id, topic_id, title, description, slug, created_at")
-    .order("title", { ascending: true });
+  return getQuizzesCached(supabase);
+}
 
-  if (error) throw error;
-  return (data ?? []) as Quiz[];
+/** Инвалидация кэша списка квизов по тегу */
+export function revalidateQuizzes() {
+  revalidateTag(QUIZZES_TAG, "max");
 }
 
 /** Квизы по topic slug (legacy: без фильтра по разделу) */
