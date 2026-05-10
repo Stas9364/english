@@ -7,25 +7,25 @@ import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
 
 const QUIZZES_TAG = "quizzes";
 
-const getQuizzesCached = unstable_cache(
-  async (supabase: SupabaseClient): Promise<Quiz[]> => {
-    const { data, error } = await supabase
-      .from("quizzes")
-      .select("id, topic_id, title, description, slug, created_at")
-      .order("title", { ascending: true });
-
-    if (error) throw error;
-    return (data ?? []) as Quiz[];
-  },
-  ["quizzes:list"],
-  { tags: [QUIZZES_TAG] }
-);
-
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
   supabase: SupabaseClient
 ): Promise<Quiz[]> {
-  return getQuizzesCached(supabase);
+  const getQuizzesCached = unstable_cache(
+    async (): Promise<Quiz[]> => {
+      const { data, error } = await supabase
+        .from("quizzes")
+        .select("id, topic_id, title, description, slug, created_at")
+        .order("title", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []) as Quiz[];
+    },
+    ["quizzes:list"],
+    { tags: [QUIZZES_TAG] }
+  );
+
+  return getQuizzesCached();
 }
 
 /** Инвалидация кэша списка квизов по тегу */
