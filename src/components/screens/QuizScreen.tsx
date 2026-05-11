@@ -13,6 +13,7 @@ import { QuizVideoPlayer } from "@/components/quiz-video-player";
 import { QuestionBlock } from "../question-block/question-block";
 import { useQuizProgress } from "@/hooks/use-quiz-progress";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
+import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 
 type ViewTab = "quiz" | "theory";
 
@@ -80,6 +81,7 @@ export function QuizScreen({
   );
 
   const hasVideo = Boolean(quiz.video?.url?.trim());
+  const safePageTitleHtml = sanitizeQuestionTitleHtml(currentPage.title ?? "");
 
   const quizMainContent = (
     <>
@@ -155,10 +157,10 @@ export function QuizScreen({
             <Card className="mb-6">
               <CardContent>
                 {(currentPage.title) && (
-                  <p className="text-2xl font-semibold whitespace-pre-line">
-                    {currentPage.title}
-                    {/* {[quiz.description, currentPage.title].filter(Boolean).join("\n\n")} */}
-                  </p>
+                  <div
+                    className="text-2xl font-semibold wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_h1]:m-0 [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:text-inherit [&_ul]:my-0 [&_ul]:pl-5 [&_ol]:my-0 [&_ol]:pl-5"
+                    dangerouslySetInnerHTML={{ __html: safePageTitleHtml }}
+                  />
                 )}
                 {currentPage.example && (
                   <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
