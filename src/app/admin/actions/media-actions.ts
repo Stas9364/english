@@ -2,7 +2,8 @@
 
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateQuizBySlug } from "@/lib/supabase/quizzes-queries";
+import { revalidateTheoryBlocksByQuizId } from "@/lib/supabase/theory-queries";
 import {
   getStoragePathFromPublicUrl,
   IMAGES_BUCKET,
@@ -74,9 +75,13 @@ export async function deleteTheoryBlock(
   const { error: del } = await supabase.from("theory_blocks").delete().eq("id", blockId);
   if (del) return { ok: false, error: del.message };
 
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath(`/admin/quiz/${block.quiz_id}`);
+  revalidateTheoryBlocksByQuizId(block.quiz_id);
+  const { data: quizRow } = await supabase
+    .from("quizzes")
+    .select("slug")
+    .eq("id", block.quiz_id)
+    .maybeSingle();
+  if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
   await revalidateAdminPathsForQuizId(supabase, block.quiz_id);
   return { ok: true };
 }
@@ -121,11 +126,14 @@ export async function deleteQuestionImage(
     .eq("id", questionId);
   if (upErr) return { ok: false, error: upErr.message };
 
-  revalidatePath("/");
-  revalidatePath("/admin");
   if (quizId) {
-    revalidatePath(`/admin/quiz/${quizId}`);
     await revalidateAdminPathsForQuizId(supabase, quizId);
+    const { data: quizRow } = await supabase
+      .from("quizzes")
+      .select("slug")
+      .eq("id", quizId)
+      .maybeSingle();
+    if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
   }
   return { ok: true };
 }

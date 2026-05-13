@@ -50,7 +50,7 @@ export function AdminQuizListCard({
                     </Link>
                   </Button>
                   <Button variant="outline" size="icon-sm" asChild title="Edit quiz">
-                    <Link href={`/admin/quiz/${quiz.id}`}>
+                    <Link href={`/admin/quiz/${quiz.slug}`}>
                       <Pencil className="size-4" />
                     </Link>
                   </Button>

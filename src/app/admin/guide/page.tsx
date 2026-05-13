@@ -617,7 +617,7 @@ export default async function AdminGuidePage() {
         <ol className="list-decimal space-y-2 pl-5 text-base">
           <li>
             Откройте топик в разделе (<code>/admin/[chapter]/[topicSlug]</code>) и нажмите ссылку на квиз или перейдите на{" "}
-            <code>/admin/quiz/[id]</code> — форма редактирования откроется по ссылке с карточки квиза.
+            <code>/admin/quiz/[slug]</code> — форма редактирования откроется по ссылке с карточки квиза.
           </li>
           <li>
             Откроется форма редактирования с <strong>двумя вкладками</strong>: <strong>Details and pages</strong> и{" "}

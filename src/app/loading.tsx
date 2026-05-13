@@ -10,7 +10,7 @@ export default function Loading() {
   return (
     <div className="min-h-screen bg-background">
       <PageContainer className="sm:px-6">
-        <Skeleton className="mb-8 h-8 w-64" />
+        <Skeleton className="mb-8 h-9 w-56 max-w-[min(100%,20rem)]" />
         <ul className="grid gap-4 sm:grid-cols-2">
           {[1, 2, 3].map((i) => (
             <li key={i}>

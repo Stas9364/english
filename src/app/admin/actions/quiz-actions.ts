@@ -2,7 +2,11 @@
 
 import { getIsAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
-import { revalidateQuizBySlug, revalidateQuizzes } from "@/lib/supabase/quizzes-queries";
+import {
+  revalidateQuizBySlug,
+  revalidateQuizzes,
+  revalidateQuizzesByTopicSlugAndChapter,
+} from "@/lib/supabase/quizzes-queries";
 import { revalidateTheoryBlocksByQuizId } from "@/lib/supabase/theory-queries";
 import {
   deleteQuizListeningMetaByQuizId,
@@ -60,6 +64,30 @@ function validateSelectGapsMarkers(input: {
   }
 
   return null;
+}
+
+async function revalidateTopicQuizListCaches(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  topicIds: Array<string | null | undefined>
+) {
+  const ids = [...new Set(topicIds.filter(Boolean))] as string[];
+  for (const tid of ids) {
+    const { data } = await supabase
+      .from("topics")
+      .select("slug, chapter")
+      .eq("id", tid)
+      .maybeSingle();
+    if (!data?.slug || !data.chapter) continue;
+    revalidateQuizzesByTopicSlugAndChapter(data.slug, data.chapter);
+  }
+}
+
+async function revalidatePublicQuizCacheByQuizId(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  quizId: string
+) {
+  const { data } = await supabase.from("quizzes").select("slug").eq("id", quizId).maybeSingle();
+  if (data?.slug) revalidateQuizBySlug(data.slug);
 }
 
 async function getTopicChapterKeyByTopicId(
@@ -232,11 +260,10 @@ export async function createQuiz(data: CreateQuizInput) {
   }
 
   revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath(`/admin/${data.chapter}`);
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(quiz.id);
   revalidateQuizBySlug(slug);
+  await revalidateTopicQuizListCaches(supabase, [data.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
 }
@@ -526,12 +553,16 @@ export async function updateQuiz(data: UpdateQuizInput) {
   }
 
   revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath(`/admin/quiz/${data.quizId}`);
+  const newSlug = data.slug.trim();
+  revalidatePath(`/admin/quiz/${newSlug}`);
+  if (beforeQuiz?.slug && beforeQuiz.slug !== newSlug) {
+    revalidatePath(`/admin/quiz/${beforeQuiz.slug}`);
+  }
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(data.quizId);
   if (beforeQuiz?.slug) revalidateQuizBySlug(beforeQuiz.slug);
-  revalidateQuizBySlug(data.slug);
+  revalidateQuizBySlug(newSlug);
+  await revalidateTopicQuizListCaches(supabase, [beforeQuiz?.topic_id, data.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, beforeQuiz?.topic_id);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
@@ -555,10 +586,10 @@ export async function deleteQuiz(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
-  revalidatePath("/admin");
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(quizId);
   if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
+  await revalidateTopicQuizListCaches(supabase, [quizRow?.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, quizRow?.topic_id);
   return { ok: true };
 }
@@ -581,11 +612,9 @@ export async function deleteQuizPage(
   const { error } = await supabase.from("quiz_pages").delete().eq("id", pageId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/");
-  revalidatePath("/admin");
   if (quizId) {
-    revalidatePath(`/admin/quiz/${quizId}`);
     await revalidateAdminPathsForQuizId(supabase, quizId);
+    await revalidatePublicQuizCacheByQuizId(supabase, quizId);
   }
   return { ok: true };
 }
@@ -616,11 +645,9 @@ export async function deleteQuestion(
   const { error } = await supabase.from("questions").delete().eq("id", questionId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/");
-  revalidatePath("/admin");
   if (quizId) {
-    revalidatePath(`/admin/quiz/${quizId}`);
     await revalidateAdminPathsForQuizId(supabase, quizId);
+    await revalidatePublicQuizCacheByQuizId(supabase, quizId);
   }
   return { ok: true };
 }
@@ -658,11 +685,9 @@ export async function deleteOption(
   const { error } = await supabase.from("options").delete().eq("id", optionId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/");
-  revalidatePath("/admin");
   if (quizId) {
-    revalidatePath(`/admin/quiz/${quizId}`);
     await revalidateAdminPathsForQuizId(supabase, quizId);
+    await revalidatePublicQuizCacheByQuizId(supabase, quizId);
   }
   return { ok: true };
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache, updateTag } from "next/cache";
 import type { AdminChapter } from "./types";
 
 const CHAPTERS_TAG = "chapters";
@@ -26,9 +26,9 @@ export async function getAdminChapters(
   return getAdminChaptersCached();
 }
 
-/** Инвалидация кэша разделов админки по тегу */
+/** Немедленный сброс тега (`updateTag` — только из Server Actions). */
 export function revalidateAdminChapters() {
-  revalidateTag(CHAPTERS_TAG, "max");
+  updateTag(CHAPTERS_TAG);
 }
 
 /** Chapter by key for dynamic `/admin/[chapter]` routes. */

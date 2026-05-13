@@ -284,9 +284,14 @@ export function QuizScreen({
             <h1 className="text-2xl font-semibold tracking-tight">{quiz.title}</h1>
           </div>
           {isAdmin && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={adminBackHref}>Back to topics</Link>
-            </Button>
+            <div>
+              <Button asChild>
+              <Link href={`/admin/quiz/${quiz.slug}`}>Edit quiz</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={adminBackHref}>Back to topics</Link>
+              </Button>
+            </div>
           )}
         </div>
 

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache, updateTag } from "next/cache";
 import type { TheoryBlock } from "./types";
 
 const getTheoryBlocksTag = (quizId: string) => `theory-blocks:quiz:${quizId}`;
@@ -11,23 +11,24 @@ export async function getTheoryBlocks(
 ): Promise<TheoryBlock[]> {
   const theoryTag = getTheoryBlocksTag(quizId);
   const getTheoryBlocksCached = unstable_cache(
-    async (targetQuizId: string): Promise<TheoryBlock[]> => {
+    async (): Promise<TheoryBlock[]> => {
       const { data, error } = await supabase
         .from("theory_blocks")
         .select("id, quiz_id, type, content, order_index, created_at")
-        .eq("quiz_id", targetQuizId)
+        .eq("quiz_id", quizId)
         .order("order_index", { ascending: true });
 
       if (error) throw error;
       return (data ?? []) as TheoryBlock[];
     },
-    ["theory-blocks:by-quiz"],
+    ["theory-blocks:by-quiz", quizId],
     { tags: [theoryTag] }
   );
 
-  return getTheoryBlocksCached(quizId);
+  return getTheoryBlocksCached();
 }
 
+/** Немедленный сброс тега (`updateTag` — только из Server Actions). */
 export function revalidateTheoryBlocksByQuizId(quizId: string) {
-  revalidateTag(getTheoryBlocksTag(quizId), "max");
+  updateTag(getTheoryBlocksTag(quizId));
 }

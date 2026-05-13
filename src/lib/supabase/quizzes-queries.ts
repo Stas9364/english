@@ -1,12 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache, updateTag } from "next/cache";
 import type { Chapter } from "@/lib/chapters";
 import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
-import { getTopicBySlug, getTopicBySlugAndChapter } from "./topics-queries";
+import { getTopicBySlugAndChapter } from "./topics-queries";
 import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
 
 const QUIZZES_LIST_TAG = "quizzes:list";
 const getQuizBySlugTag = (slug: string) => `quizzes:slug:${slug.trim().toLowerCase()}`;
+
+const getQuizzesByTopicSlugAndChapterTag = (topicSlug: string, chapter: Chapter) =>
+  `quizzes:by-topic-chapter:${String(chapter).trim().toLowerCase()}:${topicSlug.trim().toLowerCase()}`;
 
 /** Список всех квизов для главной и админки */
 export async function getQuizzes(
@@ -29,32 +32,20 @@ export async function getQuizzes(
   return getQuizzesCached();
 }
 
-/** Инвалидация кэша списка квизов по тегу */
+/** Немедленный сброс тегов Data Cache (`updateTag` — только из Server Actions). */
 export function revalidateQuizzes() {
-  revalidateTag(QUIZZES_LIST_TAG, "max");
+  updateTag(QUIZZES_LIST_TAG);
 }
 
-/** Инвалидация кэша квиза по slug */
 export function revalidateQuizBySlug(slug: string) {
-  revalidateTag(getQuizBySlugTag(slug), "max");
+  updateTag(getQuizBySlugTag(slug));
 }
 
-/** Квизы по topic slug (legacy: без фильтра по разделу) */
-export async function getQuizzesByTopicSlug(
-  supabase: SupabaseClient,
-  topicSlug: string
-): Promise<Quiz[]> {
-  const topic = await getTopicBySlug(supabase, topicSlug);
-  if (!topic) return [];
-
-  const { data, error } = await supabase
-    .from("quizzes")
-    .select("id, topic_id, title, description, slug, created_at")
-    .eq("topic_id", topic.id)
-    .order("title", { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []) as Quiz[];
+export function revalidateQuizzesByTopicSlugAndChapter(
+  topicSlug: string,
+  chapter: Chapter
+) {
+  updateTag(getQuizzesByTopicSlugAndChapterTag(topicSlug, chapter));
 }
 
 /** Квизы темы в контексте раздела (`/admin/[chapter]/[topicSlug]`) */
@@ -63,17 +54,32 @@ export async function getQuizzesByTopicSlugAndChapter(
   topicSlug: string,
   chapter: Chapter
 ): Promise<Quiz[]> {
-  const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
-  if (!topic) return [];
+  const slugForQuery = topicSlug.trim();
+  const chapterKey = String(chapter).trim();
+  const listTag = getQuizzesByTopicSlugAndChapterTag(slugForQuery, chapterKey);
+  const getQuizzesByTopicSlugAndChapterCached = unstable_cache(
+    async (): Promise<Quiz[]> => {
+      const topic = await getTopicBySlugAndChapter(
+        supabase,
+        slugForQuery,
+        chapterKey
+      );
+      if (!topic) return [];
 
-  const { data, error } = await supabase
-    .from("quizzes")
-    .select("id, topic_id, title, description, slug, created_at")
-    .eq("topic_id", topic.id)
-    .order("title", { ascending: true });
+      const { data, error } = await supabase
+        .from("quizzes")
+        .select("id, topic_id, title, description, slug, created_at")
+        .eq("topic_id", topic.id)
+        .order("title", { ascending: true });
 
-  if (error) throw error;
-  return (data ?? []) as Quiz[];
+      if (error) throw error;
+      return (data ?? []) as Quiz[];
+    },
+    ["quizzes:by-topic-chapter", chapterKey.toLowerCase(), slugForQuery.toLowerCase()],
+    { tags: [listTag] }
+  );
+
+  return getQuizzesByTopicSlugAndChapterCached();
 }
 
 /** Квиз по id со всеми страницами, вопросами и вариантами */
@@ -158,21 +164,22 @@ export async function getQuizWithPagesBySlug(
   supabase: SupabaseClient,
   slug: string
 ): Promise<QuizWithPages | null> {
-  const quizSlugTag = getQuizBySlugTag(slug);
+  const normalizedSlug = slug.trim();
+  const quizSlugTag = getQuizBySlugTag(normalizedSlug);
   const getQuizWithPagesBySlugCached = unstable_cache(
-    async (quizSlug: string): Promise<QuizWithPages | null> => {
+    async (): Promise<QuizWithPages | null> => {
       const { data: quiz, error: quizError } = await supabase
         .from("quizzes")
         .select("id, topic_id, title, description, slug, created_at")
-        .eq("slug", quizSlug)
+        .eq("slug", normalizedSlug)
         .single();
 
       if (quizError || !quiz) return null;
       return getQuizWithPages(supabase, quiz.id);
     },
-    ["quizzes:with-pages-by-slug"],
+    ["quizzes:with-pages-by-slug", normalizedSlug],
     { tags: [quizSlugTag] }
   );
 
-  return getQuizWithPagesBySlugCached(slug);
+  return getQuizWithPagesBySlugCached();
 }

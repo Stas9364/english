@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import {
   createServerClient,
-  getQuizWithPages,
+  getQuizWithPagesBySlug,
   getTheoryBlocks,
   getTopicMetaById,
   getTopicsByChapter,
@@ -9,13 +9,13 @@ import {
 import { EditQuizScreen } from "@/components/screens/EditQuizScreen";
 
 interface AdminQuizPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
-  const { id } = await params;
+  const { slug } = await params;
   const supabase = await createServerClient();
-  const quiz = await getQuizWithPages(supabase, id);
+  const quiz = await getQuizWithPagesBySlug(supabase, slug);
   if (!quiz) notFound();
 
   const topicMeta = await getTopicMetaById(supabase, quiz.topic_id);
@@ -24,7 +24,7 @@ export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
   const backToTopicHref = `/admin/${topicMeta.chapter}/${topicMeta.slug}`;
 
   const [theoryBlocks, topics] = await Promise.all([
-    getTheoryBlocks(supabase, id),
+    getTheoryBlocks(supabase, quiz.id),
     getTopicsByChapter(supabase, topicMeta.chapter),
   ]);
 

@@ -87,8 +87,6 @@ export async function createTopic(payload: {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/admin");
-  revalidatePath(`/admin/${payload.chapter}`);
   if (createdTopicId) revalidateTopicMetaById(createdTopicId);
   return { ok: true };
 }
@@ -119,11 +117,9 @@ export async function updateTopic(
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/admin");
   revalidateTopicMetaById(topicId);
   const existingChapter = extractTopicChapterKey(existing);
   if (existing && existingChapter) {
-    revalidatePath(`/admin/${existingChapter}`);
     revalidatePath(`/admin/${existingChapter}/${existing.slug}`);
   }
   return { ok: true };
@@ -154,11 +150,9 @@ export async function deleteTopic(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/admin");
   revalidateTopicMetaById(topicId);
   const topicChapter = extractTopicChapterKey(topic);
   if (topic && topicChapter) {
-    revalidatePath(`/admin/${topicChapter}`);
     revalidatePath(`/admin/${topicChapter}/${topic.slug}`);
   }
   return { ok: true };

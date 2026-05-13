@@ -22,7 +22,6 @@ export async function revalidateAdminPathsForTopicId(
     .single();
   const chapterKey = extractChapterKey(t?.chapters);
   if (!chapterKey) return;
-  revalidatePath(`/admin/${chapterKey}`);
   revalidatePath(`/admin/${chapterKey}/${t?.slug}`);
 }
 
@@ -32,9 +31,12 @@ export async function revalidateAdminPathsForQuizId(
 ) {
   const { data: quiz } = await supabase
     .from("quizzes")
-    .select("topic_id")
+    .select("topic_id, slug")
     .eq("id", quizId)
     .single();
+  if (quiz?.slug) {
+    revalidatePath(`/admin/quiz/${quiz.slug}`);
+  }
   await revalidateAdminPathsForTopicId(supabase, quiz?.topic_id);
 }
 
