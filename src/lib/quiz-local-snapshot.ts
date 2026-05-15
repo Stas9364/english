@@ -34,8 +34,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-export function getCreateQuizSnapshotKey(chapter: Chapter): string {
-  return `${CREATE_QUIZ_SNAPSHOT_KEY_PREFIX}${chapter}`;
+export function getCreateQuizSnapshotKey(chapter: Chapter, topicSlug?: string): string {
+  const base = `${CREATE_QUIZ_SNAPSHOT_KEY_PREFIX}${chapter}`;
+  const slug = topicSlug?.trim();
+  return slug ? `${base}:${slug}` : base;
 }
 
 export function getEditQuizSnapshotKey(quizId: string): string {

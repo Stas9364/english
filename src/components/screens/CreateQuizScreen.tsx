@@ -85,9 +85,11 @@ function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefi
 interface CreateQuizScreenProps {
     chapter: Chapter;
     topics: { id: string; name: string }[];
+    initialTopicId?: string;
+    topicSlug?: string;
 }
 
-export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
+export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }: CreateQuizScreenProps) {
     const isListeningChapter = chapter.trim().toLowerCase() === "listening";
     const [activePageIndex, setActivePageIndex] = useState(0);
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
@@ -116,9 +118,12 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
     const defaultTopicId = useMemo(() => {
         if (topics.length === 0) return "";
+        if (initialTopicId && topics.some((t) => t.id === initialTopicId)) {
+            return initialTopicId;
+        }
         const otherTopic = topics.find((t) => t.name.trim().toLowerCase() === "other");
         return otherTopic?.id ?? topics[0].id;
-    }, [topics]);
+    }, [topics, initialTopicId]);
 
     const form = useForm<CreateQuizFormValues>({
         resolver: zodResolver(createQuizFormSchema),
@@ -136,7 +141,10 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
     });
     const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
     const watchedPages = useWatch({ control: form.control, name: "pages" }) ?? [];
-    const snapshotKey = useMemo(() => getCreateQuizSnapshotKey(chapter), [chapter]);
+    const snapshotKey = useMemo(
+        () => getCreateQuizSnapshotKey(chapter, topicSlug),
+        [chapter, topicSlug]
+    );
     const snapshotAutosave = useQuizLocalSnapshotAutosave<CreateQuizFormValues>({
         storageKey: snapshotKey,
         form,
@@ -162,15 +170,26 @@ export function CreateQuizScreen({ chapter, topics }: CreateQuizScreenProps) {
             chapter,
         });
 
-        if (!snapshot) return;
+        const resolvedTopicId =
+            initialTopicId && topics.some((t) => t.id === initialTopicId) ? initialTopicId : undefined;
+
+        if (!snapshot) {
+            if (resolvedTopicId && form.getValues("topic_id") !== resolvedTopicId) {
+                form.setValue("topic_id", resolvedTopicId, { shouldValidate: true });
+            }
+            return;
+        }
 
         queueMicrotask(() => {
-            form.reset(snapshot.formValues);
+            form.reset({
+                ...snapshot.formValues,
+                ...(resolvedTopicId ? { topic_id: resolvedTopicId } : {}),
+            });
             setVideoUrl(snapshot.videoUrl ?? "");
             replaceTheoryBlocks(snapshot.theoryBlocks ?? []);
             markSnapshotRestored();
         });
-    }, [chapter, form, markSnapshotRestored, replaceTheoryBlocks, snapshotKey]);
+    }, [chapter, form, initialTopicId, markSnapshotRestored, replaceTheoryBlocks, snapshotKey, topics]);
 
     function mapGeneratedPagesToForm(pages: { type: TestType; title?: string | null; questions: { question_title: string; explanation?: string | null; options: { option_text: string; is_correct: boolean; gap_index?: number }[] }[] }[]) {
         return pages.map((p, pi) => ({
