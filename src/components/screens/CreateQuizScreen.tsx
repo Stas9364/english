@@ -424,6 +424,7 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                                     <PageBlock
                                         form={form as unknown as UseFormReturn<PageBlockFormValues>}
                                         pageIndex={pIndex}
+                                        totalPages={pagesArray.fields.length}
                                         defaultOption={defaultOption}
                                         defaultQuestion={defaultQuestion}
                                         quizId={undefined}
@@ -432,6 +433,16 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                                             setActivePageIndex(0);
                                         }}
                                         canRemove={pagesArray.fields.length > 1}
+                                        onMoveUp={() => {
+                                            pagesArray.move(pIndex, pIndex - 1);
+                                            setActivePageIndex(pIndex - 1);
+                                        }}
+                                        onMoveDown={() => {
+                                            pagesArray.move(pIndex, pIndex + 1);
+                                            setActivePageIndex(pIndex + 1);
+                                        }}
+                                        canMoveUp={pIndex > 0}
+                                        canMoveDown={pIndex < pagesArray.fields.length - 1}
                                         hidePageTypeSelect={isListeningChapter}
                                         hidePageTitleFields={isListeningChapter}
                                         hideAddQuestionButton={isListeningChapter}

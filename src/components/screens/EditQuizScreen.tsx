@@ -503,6 +503,7 @@ export function EditQuizScreen({
                       <PageBlock
                         form={form as unknown as UseFormReturn<PageBlockFormValues>}
                         pageIndex={pIndex}
+                        totalPages={pagesArray.fields.length}
                         defaultOption={() => defaultOption()}
                         defaultQuestion={defaultQuestionForBlock}
                         quizId={quiz.id}

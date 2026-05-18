@@ -40,6 +40,7 @@ export type PageBlockFormValues = {
 export interface PageBlockProps {
   form: UseFormReturn<PageBlockFormValues>;
   pageIndex: number;
+  totalPages?: number;
   defaultOption: () => { option_text: string; is_correct: boolean };
   defaultQuestion: (
     orderIndex: number,
@@ -68,6 +69,7 @@ export interface PageBlockProps {
 export function PageBlock({
   form,
   pageIndex,
+  totalPages,
   defaultOption,
   defaultQuestion,
   onRemove,
@@ -111,6 +113,7 @@ export function PageBlock({
   }
 
   const showExpanded = embeddedInTabs || isExpanded;
+  const pagesCount = totalPages ?? form.getValues("pages")?.length ?? pageIndex + 1;
 
   return (
     <Card>
@@ -128,6 +131,9 @@ export function PageBlock({
             >
               <ArrowLeft className="size-4" />
             </Button>
+            <span className="min-w-10 text-center text-xs text-muted-foreground">
+              {pageIndex + 1}/{Math.max(1, pagesCount)}
+            </span>
             <Button
               type="button"
               variant="ghost"
