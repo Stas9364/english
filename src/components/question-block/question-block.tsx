@@ -54,6 +54,7 @@ function QuestionBlockImpl({
   const perGapCorrectnessSelect = isSelectGaps && checked && hasInlineGaps ? getPerGapCorrectnessSelectGaps(question, selectedOptionIds) : null;
   const correctTextsByGap =
     (isText || isSelectGaps) && checked ? getCorrectTextsByGap(question, isSelectGaps) : null;
+  const questionOptions = question.options ?? [];
 
   const showQuestionNumber = totalQuestionsOnPage > 2;
 
@@ -101,7 +102,7 @@ function QuestionBlockImpl({
                         )}
                       >
                         <option value="">—</option>
-                        {(question.options ?? [])
+                        {questionOptions
                           .filter((o) => (o.gap_index ?? 0) === i)
                           .map((opt) => (
                             <option key={opt.id} value={opt.id}>
@@ -189,7 +190,7 @@ function QuestionBlockImpl({
             )
           ) : isMultiple ? (
             <div className="grid gap-2">
-              {question.options.map((option) => (
+              {questionOptions.map((option) => (
                 <OptionRow
                   key={option.id}
                   option={option}
@@ -207,7 +208,7 @@ function QuestionBlockImpl({
               disabled={checked}
               className="grid gap-2"
             >
-              {question.options.map((option) => (
+              {questionOptions.map((option) => (
                 <OptionRow
                   key={option.id}
                   option={option}

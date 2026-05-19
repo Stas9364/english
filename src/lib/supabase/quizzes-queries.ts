@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache, updateTag } from "next/cache";
 import type { Chapter } from "@/lib/chapters";
+import { shuffleArray } from "@/lib/utils";
 import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
 import { getTopicBySlugAndChapter } from "./topics-queries";
 import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
@@ -146,7 +147,7 @@ export async function getQuizWithPages(
     if (!acc[pid]) acc[pid] = [];
     acc[pid].push({
       ...q,
-      options: optionsByQuestion[q.id] ?? [],
+      options: shuffleArray(optionsByQuestion[q.id] ?? []),
     });
     return acc;
   }, {});
