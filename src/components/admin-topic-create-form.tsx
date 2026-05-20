@@ -5,6 +5,7 @@ import type { Chapter } from "@/lib/chapters";
 import { createTopic } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface AdminTopicCreateFormProps {
   chapter: Chapter;
@@ -19,7 +20,9 @@ export function AdminTopicCreateForm({ chapter, onCreated }: AdminTopicCreateFor
   const handleCreateTopic = async () => {
     const name = newTopicName.trim();
     if (!name) {
-      window.alert("Topic name is required");
+      toast.error("Failed to create topic", {
+        description: "Topic name is required.",
+      });
       return;
     }
 
@@ -32,13 +35,16 @@ export function AdminTopicCreateForm({ chapter, onCreated }: AdminTopicCreateFor
     setIsCreatingTopic(false);
 
     if (!res.ok) {
-      window.alert(res.error ?? "Failed to create topic");
+      toast.error("Failed to create topic", {
+        description: res.error ?? "Please try again.",
+      });
       return;
     }
 
     setNewTopicName("");
     setNewTopicDescription("");
     onCreated?.();
+    toast.success("Topic created");
   };
 
   return (

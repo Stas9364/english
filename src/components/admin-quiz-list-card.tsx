@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import type { Quiz } from "@/lib/supabase";
 import { deleteQuiz } from "@/app/admin/actions";
+import { toast } from "sonner";
 
 export interface AdminQuizListCardProps {
   quizzes: Quiz[];
@@ -59,9 +60,13 @@ export function AdminQuizListCard({
                     onConfirm={async () => {
                       const res = await deleteQuiz(quiz.id);
                       if (!res.ok) {
+                        toast.error("Failed to delete quiz", {
+                          description: res.error ?? "Please try again.",
+                        });
                         onDeleteError?.(res);
                         return;
                       }
+                      toast.success("Quiz deleted");
                       onDeleteSuccess?.();
                     }}
                   >

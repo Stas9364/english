@@ -13,6 +13,7 @@ import type { Chapter } from "@/lib/chapters";
 import type { Topic } from "@/lib/supabase";
 import Link from "next/link";
 import { useTopicEditing } from "@/hooks/use-topic-editing";
+import { toast } from "sonner";
 
 interface AdminScreenProps {
   chapter: Chapter;
@@ -132,9 +133,12 @@ export function AdminScreen({ chapter, chapterName, topics }: AdminScreenProps) 
                       onConfirm={async () => {
                         const res = await deleteTopic(topic.id);
                         if (!res.ok) {
-                          window.alert(res.error ?? "Failed to delete topic");
+                          toast.error("Failed to delete topic", {
+                            description: res.error ?? "Please try again.",
+                          });
                           return;
                         }
+                        toast.success("Topic deleted");
                         router.refresh();
                       }}
                     >

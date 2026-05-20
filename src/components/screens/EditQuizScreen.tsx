@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   updateQuiz,
   deleteQuizPage,
@@ -34,6 +35,7 @@ import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-ind
 import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot-restore-dialog";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
 import { useEditQuizInvalidFocus } from "@/hooks/use-edit-quiz-invalid-focus";
+import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import {
   getEditQuizSnapshotKey,
   QUIZ_LOCAL_SNAPSHOT_VERSION,
@@ -263,7 +265,11 @@ export function EditQuizScreen({
     setResult(null);
     const normalizedVideoUrl = videoUrl.trim();
     if (isListeningChapter && !normalizedVideoUrl) {
-      setResult({ ok: false, error: "YouTube video URL is required for listening quizzes." });
+      const message = "YouTube video URL is required for listening quizzes.";
+      setResult({ ok: false, error: message });
+      toast.error("Failed to save quiz", {
+        description: message,
+      });
       return;
     }
 
@@ -302,12 +308,22 @@ export function EditQuizScreen({
     setResult(res);
     if (res.ok) {
       snapshotAutosave.clearSnapshot({ pauseMs: 1000 });
+      toast.success("Changes saved", {
+        description: "Quiz updated successfully.",
+      });
+      return;
     }
+    toast.error("Failed to save quiz", {
+      description: res.error ?? "An error occurred while saving.",
+    });
   }
 
   function handleAddTheoryBlock(type: TheoryBlockType) {
     addTheoryBlock(type);
     setActiveTab("theory");
+    toast.info("Theory block added", {
+      description: `Block type: ${type}.`,
+    });
   }
 
   async function handleDeletePage(pageIndex: number) {
@@ -316,11 +332,15 @@ export function EditQuizScreen({
       const res = await deleteQuizPage(page.id);
       if (!res.ok) {
         setResult(res);
+        toast.error("Failed to delete page", {
+          description: res.error ?? "Please try again.",
+        });
         return;
       }
     }
     pagesArray.remove(pageIndex);
     setActivePageIndex(0);
+    toast.success("Page deleted");
   }
 
   return (
@@ -346,7 +366,7 @@ export function EditQuizScreen({
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={backToTopicHref}>Back to topic</Link>
+            <Link href={backToTopicHref}>Back to quizzes</Link>
           </Button>
         </div>
       </div>
@@ -531,9 +551,13 @@ export function EditQuizScreen({
                             const r = await deleteQuestion(q.id);
                             if (!r.ok) {
                               setResult(r);
+                              toast.error("Failed to delete question", {
+                                description: r.error ?? "Please try again.",
+                              });
                               return false;
                             }
                           }
+                          toast.success("Question deleted");
                           return true;
                         }}
                         onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
@@ -543,9 +567,13 @@ export function EditQuizScreen({
                             const r = await deleteOption(opt.id);
                             if (!r.ok) {
                               setResult(r);
+                              toast.error("Failed to delete answer option", {
+                                description: r.error ?? "Please try again.",
+                              });
                               return false;
                             }
                           }
+                          toast.success("Answer option deleted");
                           return true;
                         }}
                         onConfirmRemoveQuestionImage={async (pi, qIndex) => {
@@ -554,9 +582,13 @@ export function EditQuizScreen({
                             const r = await deleteQuestionImage(q.id);
                             if (!r.ok) {
                               setResult(r);
+                              toast.error("Failed to delete image", {
+                                description: r.error ?? "Please try again.",
+                              });
                               return false;
                             }
                           }
+                          toast.success("Image deleted");
                           return true;
                         }}
                       />
@@ -573,7 +605,14 @@ export function EditQuizScreen({
                 uploadError={uploadError}
                 onAddBlock={handleAddTheoryBlock}
                 onRemoveBlock={(index) => {
-                  void handleDeleteTheoryBlock(index);
+                  void (async () => {
+                    const removed = await handleDeleteTheoryBlock(index);
+                    if (removed) {
+                      toast.success("Theory block deleted");
+                      return;
+                    }
+                    toast.error("Failed to delete theory block");
+                  })();
                 }}
                 onMoveBlock={moveTheoryBlock}
                 onUpdateBlock={updateTheoryBlock}
@@ -589,9 +628,10 @@ export function EditQuizScreen({
               </Alert>
             )}
 
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Saving…" : "Save changes"}
-            </Button>
+            <LoadingSubmitButton
+              isLoading={form.formState.isSubmitting}
+              idleText="Save changes"
+            />
           </form>
         </CardContent>
       </Card>

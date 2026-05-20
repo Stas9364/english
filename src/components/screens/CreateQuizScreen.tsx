@@ -22,8 +22,10 @@ import { Label } from '../ui/label';
 import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { useMemo } from "react";
 import Link from "next/link";
+import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
+import { toast } from "sonner";
 import {
     getCreateQuizSnapshotKey,
     QUIZ_LOCAL_SNAPSHOT_VERSION,
@@ -255,7 +257,11 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
         setResult(null);
         const normalizedVideoUrl = videoUrl.trim();
         if (isListeningChapter && !normalizedVideoUrl) {
-            setResult({ ok: false, error: "YouTube video URL is required for listening quizzes." });
+            const message = "YouTube video URL is required for listening quizzes.";
+            setResult({ ok: false, error: message });
+            toast.error("Failed to create quiz", {
+                description: message,
+            });
             return;
         }
 
@@ -301,7 +307,12 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
             setActivePageIndex(0);
             setVideoUrl("");
             clearTheoryBlocks();
+            toast.success("Quiz created");
+            return;
         }
+        toast.error("Failed to create quiz", {
+            description: res.error ?? "Please try again.",
+        });
     }
     return (
         <>
@@ -313,7 +324,7 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
             />
             <div className="mb-4">
                 <Button asChild variant="ghost" size="sm">
-                    <Link href={`/admin/${chapter}`}>Back to topics</Link>
+                    <Link href={`/admin/${chapter}/${topicSlug}`}>Back to {topicSlug}</Link>
                 </Button>
             </div>
             <Card>
@@ -473,9 +484,10 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                             </Alert>
                         )}
 
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                            {form.formState.isSubmitting ? "Saving…" : "Create quiz"}
-                        </Button>
+                        <LoadingSubmitButton
+                            isLoading={form.formState.isSubmitting}
+                            idleText="Create quiz"
+                        />
                     </form>
                 </CardContent>
             </Card>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateTopic } from "@/app/admin/actions";
 import type { Topic } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export function useTopicEditing() {
   const router = useRouter();
@@ -25,20 +26,31 @@ export function useTopicEditing() {
   };
 
   const saveEdit = async (topicId: string) => {
+    const normalizedName = draftName.trim();
+    if (!normalizedName) {
+      toast.error("Failed to update topic", {
+        description: "Topic name is required.",
+      });
+      return;
+    }
+
     setIsSaving(true);
     const res = await updateTopic(topicId, {
-      name: draftName,
+      name: normalizedName,
       description: draftDescription,
     });
     setIsSaving(false);
 
     if (!res.ok) {
-      window.alert(res.error ?? "Failed to update topic");
+      toast.error("Failed to update topic", {
+        description: res.error ?? "Please try again.",
+      });
       return;
     }
 
     cancelEdit();
     router.refresh();
+    toast.success("Topic updated");
   };
 
   return {
