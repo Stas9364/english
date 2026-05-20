@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions } from "@/lib/supabase";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
+import { useSelectGapsScore } from "@/hooks/use-select-gaps-score";
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -32,6 +33,7 @@ export function useQuizProgress(quiz: QuizWithPages) {
   );
   const pageType = currentPage.type;
   const isCurrentPageChecked = currentPage.id ? !!checkedPages[currentPage.id] : false;
+  const selectGapsScore = useSelectGapsScore(currentPage.questions, selected);
 
   const handleSelect = useCallback(
     (questionId: string, optionId: string, type: "single" | "multiple" | "input" | "select_gaps") => {
@@ -91,6 +93,10 @@ export function useQuizProgress(quiz: QuizWithPages) {
   }, [pageIndex, pageType, currentPage.questions, selected]);
 
   const getScore = useCallback(() => {
+    if (pageType === "select_gaps") {
+      return selectGapsScore;
+    }
+
     let correct = 0;
     let total = 0;
     currentPage.questions.forEach((q) => {
@@ -115,14 +121,6 @@ export function useQuizProgress(quiz: QuizWithPages) {
           );
           if (correctTexts.has(userArr[i] ?? "")) correct++;
         });
-      } else if (pageType === "select_gaps") {
-        total++;
-        const gapCount = getEffectiveGapCount(q.question_title);
-        const chosenForGaps = (selected[q.id] ?? []).slice(0, gapCount);
-        if (chosenForGaps.length !== gapCount || chosenForGaps.some((id) => !id)) return;
-        const optionById = new Map((q.options ?? []).map((o) => [o.id, o]));
-        const allCorrect = chosenForGaps.every((optId) => optionById.get(optId)?.is_correct === true);
-        if (allCorrect) correct++;
       } else if (pageType === "matching") {
         total++;
         const matchChosen = selected[q.id]?.[0];
@@ -132,7 +130,7 @@ export function useQuizProgress(quiz: QuizWithPages) {
       }
     });
     return { correct, total };
-  }, [currentPage.questions, currentPage.type, pageType, selected, textAnswers]);
+  }, [currentPage.questions, pageType, selectGapsScore, selected, textAnswers]);
 
   const allChoiceAnswered =
     currentPage.questions.filter(() => pageType === "single" || pageType === "multiple").length === 0 ||

@@ -33,6 +33,7 @@ export function QuizScreen({
 }: QuizScreenProps) {
   const [viewTab, setViewTab] = useState<ViewTab>("quiz");
   const emptySelectedOptionIds = useMemo(() => [] as string[], []);
+  const emptyTextAnswers = useMemo(() => [] as string[], []);
 
   const {
     pages,
@@ -199,7 +200,11 @@ export function QuizScreen({
                   totalQuestionsOnPage={totalQuestionsOnPage}
                   selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
                   checked={isCurrentPageChecked}
-                  textAnswers={getTextAnswersForQuestion(q.id, q.question_title)}
+                  textAnswers={
+                    pageType === "input"
+                      ? getTextAnswersForQuestion(q.id, q.question_title)
+                      : emptyTextAnswers
+                  }
                   onInputChange={handleQuestionInputChange}
                   onSelect={handleSelect}
                   onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
