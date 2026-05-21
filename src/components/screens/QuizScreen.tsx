@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageContainer } from "@/components/page-container";
-import { TheoryImage } from "@/components/theory-image";
+import { TheoryImageDialog } from "@/components/theory-image-dialog";
 import type { QuizWithPages, TheoryBlock } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -137,7 +137,7 @@ export function QuizScreen({
                     dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(block.content ?? "") }}
                   />
                 ) : (
-                  <TheoryImage src={block.content} maxHeight="70vh" />
+                  <TheoryImageDialog src={block.content} />
                 )}
               </CardContent>
             </Card>
