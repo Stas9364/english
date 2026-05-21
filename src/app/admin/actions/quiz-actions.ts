@@ -22,7 +22,20 @@ import {
   revalidateAdminPathsForTopicId,
 } from "./shared";
 import type { CreateQuizInput, UpdateQuizInput } from "./types";
+import type {
+  ExistingBlockRow,
+  ExistingOptionRow,
+  ExistingQuestionRow,
+  NormalizedOptionInput,
+  OptionInsertRow,
+  OptionUpsertRow,
+  QuestionWriteRow,
+  QuizPageWriteRow,
+  TheoryBlockInsertRow,
+  TheoryBlockUpsertRow,
+} from "./quiz-write-types";
 
+// Validation helpers
 function isListeningChapter(chapterKey: string): boolean {
   return chapterKey.trim().toLowerCase() === "listening";
 }
@@ -66,6 +79,7 @@ function validateSelectGapsMarkers(input: {
   return null;
 }
 
+// Cache and topic helpers
 async function revalidateTopicQuizListCaches(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   topicIds: Array<string | null | undefined>
@@ -106,6 +120,51 @@ async function getTopicChapterKeyByTopicId(
   }
 
   return { ok: true, chapterKey: topicChapter };
+}
+
+// Bulk write helpers
+function getExistingIdOrCreate(
+  maybeId: string | undefined,
+  existingIds: Set<string>
+): string {
+  if (maybeId && existingIds.has(maybeId)) return maybeId;
+  return crypto.randomUUID();
+}
+
+function normalizeOptionsForSync(
+  pageType: UpdateQuizInput["pages"][number]["type"],
+  options: UpdateQuizInput["pages"][number]["questions"][number]["options"]
+): NormalizedOptionInput[] {
+  if (pageType === "input") {
+    return options
+      .filter((o) => (o.option_text ?? "").trim())
+      .map((o) => ({
+        id: o.id,
+        option_text: o.option_text.trim(),
+        is_correct: true,
+        gap_index: o.gap_index ?? 0,
+      }));
+  }
+
+  if (pageType === "select_gaps") {
+    return options
+      .filter((o) => (o.option_text ?? "").trim())
+      .map((o) => ({
+        id: o.id,
+        option_text: o.option_text.trim(),
+        is_correct: o.is_correct,
+        gap_index: o.gap_index ?? 0,
+      }));
+  }
+
+  return options;
+}
+
+function getStaleIds<T extends { id: string }>(
+  existingRows: T[],
+  keptIds: Set<string>
+): string[] {
+  return existingRows.filter((row) => !keptIds.has(row.id)).map((row) => row.id);
 }
 
 export async function createQuiz(data: CreateQuizInput) {
@@ -164,88 +223,78 @@ export async function createQuiz(data: CreateQuizInput) {
     return { ok: false, error: "Failed to create quiz" };
   }
 
-  for (let pi = 0; pi < data.pages.length; pi++) {
-    const page = data.pages[pi];
-    const { data: quizPage, error: pageError } = await supabase
-      .from("quiz_pages")
-      .insert({
-        quiz_id: quiz.id,
-        type: page.type,
-        title: page.title || null,
-        example: page.example || null,
-        order_index: page.order_index,
-      })
-      .select("id")
-      .single();
+  const pagesToInsert: QuizPageWriteRow[] = [];
+  const questionsToInsert: QuestionWriteRow[] = [];
+  const optionsToInsert: OptionInsertRow[] = [];
 
-    if (pageError || !quizPage) {
-      return { ok: false, error: pageError?.message ?? "Failed to create page" };
-    }
+  for (const page of data.pages) {
+    const pageId = crypto.randomUUID();
+    pagesToInsert.push({
+      id: pageId,
+      quiz_id: quiz.id,
+      type: page.type,
+      title: page.title || null,
+      example: page.example || null,
+      order_index: page.order_index,
+    });
 
-    for (let qi = 0; qi < page.questions.length; qi++) {
-      const q = page.questions[qi];
-      const { data: question, error: questionError } = await supabase
-        .from("questions")
-        .insert({
-          page_id: quizPage.id,
-          question_title: q.question_title || "",
-          question_image_url: q.question_image_url || null,
-          explanation: q.explanation || null,
-          order_index: q.order_index,
-        })
-        .select("id")
-        .single();
+    for (const q of page.questions) {
+      const questionId = crypto.randomUUID();
+      questionsToInsert.push({
+        id: questionId,
+        page_id: pageId,
+        question_title: q.question_title || "",
+        question_image_url: q.question_image_url || null,
+        explanation: q.explanation || null,
+        order_index: q.order_index,
+      });
 
-      if (questionError || !question) {
-        return { ok: false, error: questionError?.message ?? "Failed to create question" };
-      }
+      const isGapBased = page.type === "input" || page.type === "select_gaps";
+      const normalizedOptions = normalizeOptionsForSync(page.type, q.options);
 
       // single, multiple, matching: require at least one option per question
-      if (page.type !== "input" && page.type !== "select_gaps" && q.options.length === 0) {
+      if (!isGapBased && normalizedOptions.length === 0) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
-      const optionsToInsert =
-        page.type === "input"
-          ? q.options
-              .filter((o) => (o.option_text ?? "").trim())
-              .map((o) => ({
-                question_id: question.id,
-                option_text: o.option_text.trim(),
-                is_correct: true,
-                gap_index: o.gap_index ?? 0,
-              }))
-          : page.type === "select_gaps"
-            ? q.options
-                .filter((o) => (o.option_text ?? "").trim())
-                .map((o) => ({
-                  question_id: question.id,
-                  option_text: o.option_text.trim(),
-                  is_correct: o.is_correct,
-                  gap_index: o.gap_index ?? 0,
-                }))
-            : q.options.map((o) => ({
-                question_id: question.id,
-                option_text: o.option_text,
-                is_correct: o.is_correct,
-              }));
-      if (optionsToInsert.length > 0) {
-        const { error: optionsError } = await supabase.from("options").insert(optionsToInsert);
-        if (optionsError) return { ok: false, error: optionsError.message };
-      }
+
+      optionsToInsert.push(
+        ...normalizedOptions.map((o) => ({
+          question_id: questionId,
+          option_text: o.option_text,
+          is_correct: o.is_correct,
+          ...(isGapBased ? { gap_index: o.gap_index ?? 0 } : {}),
+        }))
+      );
     }
   }
 
-  if (data.theoryBlocks?.length) {
-    for (let i = 0; i < data.theoryBlocks.length; i++) {
-      const b = data.theoryBlocks[i];
-      const { error: tbError } = await supabase.from("theory_blocks").insert({
-        quiz_id: quiz.id,
-        type: b.type,
-        content: b.content.trim() || " ",
-        order_index: b.order_index,
-      });
-      if (tbError) return { ok: false, error: tbError.message };
-    }
+  if (pagesToInsert.length > 0) {
+    const { error: pagesInsertError } = await supabase.from("quiz_pages").insert(pagesToInsert);
+    if (pagesInsertError) return { ok: false, error: pagesInsertError.message };
+  }
+  if (questionsToInsert.length > 0) {
+    const { error: questionsInsertError } = await supabase
+      .from("questions")
+      .insert(questionsToInsert);
+    if (questionsInsertError) return { ok: false, error: questionsInsertError.message };
+  }
+  if (optionsToInsert.length > 0) {
+    const { error: optionsInsertError } = await supabase.from("options").insert(optionsToInsert);
+    if (optionsInsertError) return { ok: false, error: optionsInsertError.message };
+  }
+
+  const theoryBlocksToInsert: TheoryBlockInsertRow[] =
+    data.theoryBlocks?.map((b) => ({
+      quiz_id: quiz.id,
+      type: b.type,
+      content: b.content.trim() || " ",
+      order_index: b.order_index,
+    })) ?? [];
+  if (theoryBlocksToInsert.length > 0) {
+    const { error: theoryBlocksInsertError } = await supabase
+      .from("theory_blocks")
+      .insert(theoryBlocksToInsert);
+    if (theoryBlocksInsertError) return { ok: false, error: theoryBlocksInsertError.message };
   }
 
   if (normalizedVideoUrl) {
@@ -308,204 +357,198 @@ export async function updateQuiz(data: UpdateQuizInput) {
 
   if (quizError) return { ok: false, error: quizError.message };
 
-  const { data: existingPages } = await supabase
+  const { data: existingPages, error: existingPagesError } = await supabase
     .from("quiz_pages")
     .select("id")
     .eq("quiz_id", data.quizId);
-  const existingPageIds = new Set((existingPages ?? []).map((p) => p.id));
-  const keptPageIds: string[] = [];
+  if (existingPagesError) return { ok: false, error: existingPagesError.message };
+
+  const existingPageRows = existingPages ?? [];
+  const existingPageIds = new Set(existingPageRows.map((p) => p.id));
+  const existingPageIdList = existingPageRows.map((p) => p.id);
+
+  let existingQuestions: ExistingQuestionRow[] = [];
+  if (existingPageIdList.length > 0) {
+    const { data: questionsData, error: questionsError } = await supabase
+      .from("questions")
+      .select("id, page_id")
+      .in("page_id", existingPageIdList);
+    if (questionsError) return { ok: false, error: questionsError.message };
+    existingQuestions = questionsData ?? [];
+  }
+
+  const existingQuestionIdsByPageId = new Map<string, Set<string>>();
+  for (const row of existingQuestions) {
+    const ids = existingQuestionIdsByPageId.get(row.page_id) ?? new Set<string>();
+    ids.add(row.id);
+    existingQuestionIdsByPageId.set(row.page_id, ids);
+  }
+
+  const existingQuestionIdList = existingQuestions.map((q) => q.id);
+  let existingOptions: ExistingOptionRow[] = [];
+  if (existingQuestionIdList.length > 0) {
+    const { data: optionsData, error: optionsError } = await supabase
+      .from("options")
+      .select("id, question_id")
+      .in("question_id", existingQuestionIdList);
+    if (optionsError) return { ok: false, error: optionsError.message };
+    existingOptions = optionsData ?? [];
+  }
+
+  const existingOptionIdsByQuestionId = new Map<string, Set<string>>();
+  for (const row of existingOptions) {
+    const ids = existingOptionIdsByQuestionId.get(row.question_id) ?? new Set<string>();
+    ids.add(row.id);
+    existingOptionIdsByQuestionId.set(row.question_id, ids);
+  }
+
+  const { data: existingBlocks, error: existingBlocksError } = await supabase
+    .from("theory_blocks")
+    .select("id, type, content")
+    .eq("quiz_id", data.quizId);
+  if (existingBlocksError) return { ok: false, error: existingBlocksError.message };
+
+  const keptPageIds = new Set<string>();
+  const keptQuestionIds = new Set<string>();
+  const keptOptionIds = new Set<string>();
+  const keptBlockIds = new Set<string>();
+
+  const pagesToUpsert: QuizPageWriteRow[] = [];
+  const questionsToUpsert: QuestionWriteRow[] = [];
+  const optionsToUpsert: OptionUpsertRow[] = [];
+  const theoryBlocksToUpsert: TheoryBlockUpsertRow[] = [];
 
   for (const page of data.pages) {
-    let pageId: string;
+    const pageId = page.id && existingPageIds.has(page.id) ? page.id : crypto.randomUUID();
+    keptPageIds.add(pageId);
 
-    if (page.id && existingPageIds.has(page.id)) {
-      pageId = page.id;
-      const { error: up } = await supabase
-        .from("quiz_pages")
-        .update({
-          type: page.type,
-          title: page.title || null,
-          example: page.example || null,
-          order_index: page.order_index,
-        })
-        .eq("id", pageId);
-      if (up) return { ok: false, error: up.message };
-    } else {
-      const { data: inserted, error: ins } = await supabase
-        .from("quiz_pages")
-        .insert({
-          quiz_id: data.quizId,
-          type: page.type,
-          title: page.title || null,
-          example: page.example || null,
-          order_index: page.order_index,
-        })
-        .select("id")
-        .single();
-      if (ins || !inserted) return { ok: false, error: ins?.message ?? "Failed to insert page" };
-      pageId = inserted.id;
-    }
-    keptPageIds.push(pageId);
+    pagesToUpsert.push({
+      id: pageId,
+      quiz_id: data.quizId,
+      type: page.type,
+      title: page.title || null,
+      example: page.example || null,
+      order_index: page.order_index,
+    });
 
-    const { data: existingQuestions } = await supabase
-      .from("questions")
-      .select("id")
-      .eq("page_id", pageId);
-    const existingQuestionIds = new Set((existingQuestions ?? []).map((q) => q.id));
-    const keptQuestionIds: string[] = [];
+    const existingQuestionIdsForPage = existingQuestionIdsByPageId.get(pageId) ?? new Set<string>();
 
     for (const q of page.questions) {
-      let questionId: string;
+      const questionId = getExistingIdOrCreate(q.id, existingQuestionIdsForPage);
+      keptQuestionIds.add(questionId);
 
-      if (q.id && existingQuestionIds.has(q.id)) {
-        questionId = q.id;
-        const { error: up } = await supabase
-          .from("questions")
-          .update({
-            question_title: q.question_title || "",
-            question_image_url: q.question_image_url || null,
-            explanation: q.explanation || null,
-            order_index: q.order_index,
-          })
-          .eq("id", questionId);
-        if (up) return { ok: false, error: up.message };
-      } else {
-        const { data: inserted, error: ins } = await supabase
-          .from("questions")
-          .insert({
-            page_id: pageId,
-            question_title: q.question_title || "",
-            question_image_url: q.question_image_url || null,
-            explanation: q.explanation || null,
-            order_index: q.order_index,
-          })
-          .select("id")
-          .single();
-        if (ins || !inserted) return { ok: false, error: ins?.message ?? "Failed to insert question" };
-        questionId = inserted.id;
-      }
-      keptQuestionIds.push(questionId);
-
-      const { data: existingOpts } = await supabase
-        .from("options")
-        .select("id")
-        .eq("question_id", questionId);
-      const existingOptIds = new Set((existingOpts ?? []).map((o) => o.id));
+      questionsToUpsert.push({
+        id: questionId,
+        page_id: pageId,
+        question_title: q.question_title || "",
+        question_image_url: q.question_image_url || null,
+        explanation: q.explanation || null,
+        order_index: q.order_index,
+      });
 
       const isInput = page.type === "input";
       const isSelectGaps = page.type === "select_gaps";
       const isGapBased = isInput || isSelectGaps;
-      // matching: same as single/multiple — options with is_correct, no gap_index
-      const optionsToSync = isInput
-        ? q.options
-            .filter((o) => (o.option_text ?? "").trim())
-            .map((o) => ({
-              id: o.id,
-              option_text: o.option_text.trim(),
-              is_correct: true as boolean,
-              gap_index: o.gap_index ?? 0,
-            }))
-        : isSelectGaps
-          ? q.options
-              .filter((o) => (o.option_text ?? "").trim())
-              .map((o) => ({
-                id: o.id,
-                option_text: o.option_text.trim(),
-                is_correct: o.is_correct,
-                gap_index: o.gap_index ?? 0,
-              }))
-          : q.options;
+
+      const optionsToSync = normalizeOptionsForSync(page.type, q.options);
 
       if (!isGapBased && optionsToSync.length === 0) {
         return { ok: false, error: "Choice page must have at least one option per question" };
       }
 
-      const keptOptIds: string[] = [];
-      for (const o of optionsToSync) {
-        if (o.id && existingOptIds.has(o.id)) {
-          keptOptIds.push(o.id);
-          const { error: up } = await supabase
-            .from("options")
-            .update({
-              option_text: o.option_text,
-              is_correct: isInput ? true : o.is_correct,
-              ...(isGapBased ? { gap_index: "gap_index" in o ? (o.gap_index ?? 0) : 0 } : {}),
-            })
-            .eq("id", o.id);
-          if (up) return { ok: false, error: up.message };
-        } else {
-          const { data: inserted, error: ins } = await supabase
-            .from("options")
-            .insert({
-              question_id: questionId,
-              option_text: o.option_text,
-              is_correct: isInput ? true : o.is_correct,
-              ...(isGapBased ? { gap_index: "gap_index" in o ? (o.gap_index ?? 0) : 0 } : {}),
-            })
-            .select("id")
-            .single();
-          if (ins || !inserted) return { ok: false, error: ins?.message ?? "Failed to insert option" };
-          keptOptIds.push(inserted.id);
-        }
-      }
-      const toDel = (existingOpts ?? []).filter((x) => !keptOptIds.includes(x.id)).map((x) => x.id);
-      if (toDel.length) {
-        const { error: del } = await supabase.from("options").delete().in("id", toDel);
-        if (del) return { ok: false, error: del.message };
-      }
-    }
+      const existingOptionIdsForQuestion = existingOptionIdsByQuestionId.get(questionId) ?? new Set<string>();
 
-    const toDelQ = (existingQuestions ?? []).filter((x) => !keptQuestionIds.includes(x.id)).map((x) => x.id);
-    if (toDelQ.length) {
-      const { error: del } = await supabase.from("questions").delete().in("id", toDelQ);
-      if (del) return { ok: false, error: del.message };
+      for (const o of optionsToSync) {
+        const optionId = getExistingIdOrCreate(o.id, existingOptionIdsForQuestion);
+        keptOptionIds.add(optionId);
+
+        optionsToUpsert.push({
+          id: optionId,
+          question_id: questionId,
+          option_text: o.option_text,
+          is_correct: isInput ? true : o.is_correct,
+          ...(isGapBased ? { gap_index: "gap_index" in o ? (o.gap_index ?? 0) : 0 } : {}),
+        });
+      }
     }
   }
 
-  const toDelP = (existingPages ?? []).filter((x) => !keptPageIds.includes(x.id)).map((x) => x.id);
-  if (toDelP.length) {
-    const { error: del } = await supabase.from("quiz_pages").delete().in("id", toDelP);
-    if (del) return { ok: false, error: del.message };
+  if (pagesToUpsert.length > 0) {
+    const { error: pagesUpsertError } = await supabase
+      .from("quiz_pages")
+      .upsert(pagesToUpsert, { onConflict: "id" });
+    if (pagesUpsertError) return { ok: false, error: pagesUpsertError.message };
+  }
+
+  if (questionsToUpsert.length > 0) {
+    const { error: questionsUpsertError } = await supabase
+      .from("questions")
+      .upsert(questionsToUpsert, { onConflict: "id" });
+    if (questionsUpsertError) return { ok: false, error: questionsUpsertError.message };
+  }
+
+  if (optionsToUpsert.length > 0) {
+    const { error: optionsUpsertError } = await supabase
+      .from("options")
+      .upsert(optionsToUpsert, { onConflict: "id" });
+    if (optionsUpsertError) return { ok: false, error: optionsUpsertError.message };
+  }
+
+  const staleOptionIds = getStaleIds(existingOptions, keptOptionIds);
+  if (staleOptionIds.length > 0) {
+    const { error: optionsDeleteError } = await supabase
+      .from("options")
+      .delete()
+      .in("id", staleOptionIds);
+    if (optionsDeleteError) return { ok: false, error: optionsDeleteError.message };
+  }
+
+  const staleQuestionIds = getStaleIds(existingQuestions, keptQuestionIds);
+  if (staleQuestionIds.length > 0) {
+    const { error: questionsDeleteError } = await supabase
+      .from("questions")
+      .delete()
+      .in("id", staleQuestionIds);
+    if (questionsDeleteError) return { ok: false, error: questionsDeleteError.message };
+  }
+
+  const stalePageIds = getStaleIds(existingPageRows, keptPageIds);
+  if (stalePageIds.length > 0) {
+    const { error: pagesDeleteError } = await supabase
+      .from("quiz_pages")
+      .delete()
+      .in("id", stalePageIds);
+    if (pagesDeleteError) return { ok: false, error: pagesDeleteError.message };
   }
 
   const theoryBlocks = data.theoryBlocks ?? [];
-  const { data: existingBlocks } = await supabase
-    .from("theory_blocks")
-    .select("id, type, content")
-    .eq("quiz_id", data.quizId);
   const existingBlockIds = new Set((existingBlocks ?? []).map((b) => b.id));
-  const keptBlockIds: string[] = [];
-
   for (const b of theoryBlocks) {
     const content = (b.content ?? "").trim() || " ";
-    if (b.id && existingBlockIds.has(b.id)) {
-      keptBlockIds.push(b.id);
-      const { error: up } = await supabase
-        .from("theory_blocks")
-        .update({ type: b.type, content, order_index: b.order_index })
-        .eq("id", b.id);
-      if (up) return { ok: false, error: up.message };
-    } else {
-      const { data: inserted, error: ins } = await supabase
-        .from("theory_blocks")
-        .insert({
-          quiz_id: data.quizId,
-          type: b.type,
-          content,
-          order_index: b.order_index,
-        })
-        .select("id")
-        .single();
-      if (ins || !inserted) return { ok: false, error: ins?.message ?? "Failed to insert theory block" };
-      keptBlockIds.push(inserted.id);
-    }
+    const blockId = getExistingIdOrCreate(b.id, existingBlockIds);
+    keptBlockIds.add(blockId);
+
+    theoryBlocksToUpsert.push({
+      id: blockId,
+      quiz_id: data.quizId,
+      type: b.type,
+      content,
+      order_index: b.order_index,
+    });
   }
 
-  const toDelB = (existingBlocks ?? []).filter((x) => !keptBlockIds.includes(x.id));
+  if (theoryBlocksToUpsert.length > 0) {
+    const { error: theoryUpsertError } = await supabase
+      .from("theory_blocks")
+      .upsert(theoryBlocksToUpsert, { onConflict: "id" });
+    if (theoryUpsertError) return { ok: false, error: theoryUpsertError.message };
+  }
+
+  const toDelB = (existingBlocks ?? []).filter((x) => !keptBlockIds.has(x.id));
   if (toDelB.length) {
     const pathsToRemove: string[] = [];
     for (const row of toDelB) {
-      const block = row as { id: string; type: string; content: string | null };
+      const block = row as ExistingBlockRow;
       if (block.type === "image" && block.content) {
         const path = getStoragePathFromPublicUrl(block.content, IMAGES_BUCKET);
         if (path) pathsToRemove.push(path);
