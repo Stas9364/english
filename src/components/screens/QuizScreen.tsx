@@ -132,9 +132,10 @@ export function QuizScreen({
             <Card key={block.id}>
               <CardContent>
                 {block.type === "text" ? (
-                  <div className="whitespace-pre-wrap wrap-break-word text-sm text-muted-foreground">
-                    {block.content}
-                  </div>
+                  <div
+                    className="wrap-break-word text-sm text-muted-foreground [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_h1]:m-0 [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:text-inherit [&_ul]:my-0 [&_ul]:pl-5 [&_ol]:my-0 [&_ol]:pl-5"
+                    dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(block.content ?? "") }}
+                  />
                 ) : (
                   <TheoryImage src={block.content} maxHeight="70vh" />
                 )}

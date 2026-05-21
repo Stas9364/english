@@ -1,6 +1,7 @@
 "use client";
 
 import { TheoryImage } from "@/components/theory-image";
+import { QuestionTitleColorEditor } from "@/components/question-title-color-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
@@ -108,11 +109,12 @@ export function QuizTheoryBlocksEditor({
               {block.type === "text" ? (
                 <>
                   <Label className="text-xs">Text</Label>
-                  <textarea
-                    className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  <QuestionTitleColorEditor
+                    id={`theory-block-title-${index}`}
+                    name={`theoryBlocks.${index}.content`}
                     value={block.content}
-                    onChange={(e) => onUpdateBlock(index, { content: e.target.value })}
-                    placeholder="Enter theory text…"
+                    onChange={(html) => onUpdateBlock(index, { content: html })}
+                    placeholder="Enter theory text..."
                   />
                 </>
               ) : (

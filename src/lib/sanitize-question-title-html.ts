@@ -22,7 +22,7 @@ const ALLOWED_TAGS = [
   "pre",
 ] as const;
 
-const ALLOWED_ATTR = ["href", "title", "target", "rel"] as const;
+const ALLOWED_ATTR = ["href", "title", "target", "rel", "style"] as const;
 
 /**
  * Санитизация фрагмента заголовка вопроса перед `dangerouslySetInnerHTML`.
