@@ -13,11 +13,37 @@ export async function getCurrentUser(): Promise<User | null> {
   return user;
 }
 
-/**
- * Returns true if the current user's email is in admin_emails (RLS allows SELECT only for admins).
- */
-export async function getIsAdmin(): Promise<boolean> {
-  const supabase = await createServerClient();
-  const { data } = await supabase.from("admin_emails").select("email").limit(1);
+async function isEmailInAdminList(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  email?: string | null
+) {
+  const normalizedEmail = email?.trim();
+  if (!normalizedEmail) return false;
+
+  const { data, error } = await supabase
+    .from("admin_emails")
+    .select("email")
+    .ilike("email", normalizedEmail)
+    .limit(1);
+  if (error) return false;
+
   return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Returns true if the current user's email is in admin_emails.
+ */
+export async function getIsAdmin(currentUser?: User | null): Promise<boolean> {
+  const supabase = await createServerClient();
+  const email = currentUser?.email ?? null;
+  if (email) {
+    return isEmailInAdminList(supabase, email);
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) return false;
+  return isEmailInAdminList(supabase, user?.email);
 }

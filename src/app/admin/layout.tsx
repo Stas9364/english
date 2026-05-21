@@ -8,20 +8,19 @@ import { AdminChatWidget } from "@/components/admin-chat-widget";
 /** Avoid cached layout so auth is read on every request (fixes "login works on second try" in prod). */
 export const dynamic = "force-dynamic";
 
-const skipAdminAuth = process.env.NEXT_PUBLIC_SKIP_ADMIN_AUTH === "true";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (!skipAdminAuth) {
-    const user = await getCurrentUser();
+  
+    const user = await getCurrentUser();    
     if (!user) {
       redirect("/login?next=/admin");
     }
 
-    const isAdmin = await getIsAdmin();
+  const isAdmin = await getIsAdmin(user);
     if (!isAdmin) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -34,14 +33,14 @@ export default async function AdminLayout({
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/admin">Back to topics</Link>
+                <Link href="/">Back to topics</Link>
               </Button>
             </CardContent>
           </Card>
         </div>
       );
     }
-  }
+  
 
   return (
     <div className="min-h-screen bg-background">

@@ -168,6 +168,9 @@ function getStaleIds<T extends { id: string }>(
 }
 
 export async function createQuiz(data: CreateQuizInput) {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
   const supabase = await createServerClient();
 
   const topicChapterResult = await getTopicChapterKeyByTopicId(supabase, data.topic_id);
@@ -318,6 +321,9 @@ export async function createQuiz(data: CreateQuizInput) {
 }
 
 export async function updateQuiz(data: UpdateQuizInput) {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+
   const supabase = await createServerClient();
   const normalizedVideoUrl = data.video_url?.trim() ?? "";
 

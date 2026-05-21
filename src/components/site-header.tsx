@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
-  const isAdmin = user ? await getIsAdmin() : false;
+  const isAdmin = user ? await getIsAdmin(user) : false;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
