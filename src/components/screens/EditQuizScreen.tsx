@@ -179,7 +179,6 @@ export function EditQuizScreen({
     name: "pages",
   });
   const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
-  const watchedPages = useWatch({ control: form.control, name: "pages" }) ?? [];
   const snapshotKey = useMemo(() => getEditQuizSnapshotKey(quiz.id), [quiz.id]);
   const snapshotAutosave = useQuizLocalSnapshotAutosave<EditQuizFormValues>({
     storageKey: snapshotKey,
@@ -502,7 +501,7 @@ export function EditQuizScreen({
                   )}
                   <QuizPagesTabStrip
                     fieldIds={pagesArray.fields.map((f) => f.id)}
-                    titles={watchedPages.map((p) => p?.title ?? "")}
+                    titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
                     activeIndex={activePageIndex}
                     onSelect={setActivePageIndex}
                     showAddPage={!isListeningChapter}
@@ -514,86 +513,80 @@ export function EditQuizScreen({
                       setActivePageIndex(next);
                     }}
                   />
-                  {pagesArray.fields.map((field, pIndex) => (
-                    <div
-                      key={field.id}
-                      className={cn(activePageIndex !== pIndex && "hidden")}
-                      aria-hidden={activePageIndex !== pIndex}
-                    >
-                      <PageBlock
-                        form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                        pageIndex={pIndex}
-                        totalPages={pagesArray.fields.length}
-                        defaultOption={() => defaultOption()}
-                        defaultQuestion={defaultQuestionForBlock}
-                        quizId={quiz.id}
-                        onRemove={() => handleDeletePage(pIndex)}
-                        canRemove={pagesArray.fields.length > 1}
-                        onMoveUp={() => {
-                          pagesArray.move(pIndex, pIndex - 1);
-                          setActivePageIndex(pIndex - 1);
-                        }}
-                        onMoveDown={() => {
-                          pagesArray.move(pIndex, pIndex + 1);
-                          setActivePageIndex(pIndex + 1);
-                        }}
-                        canMoveUp={pIndex > 0}
-                        canMoveDown={pIndex < pagesArray.fields.length - 1}
-                        hidePageTypeSelect={isListeningChapter}
-                        hidePageTitleFields={isListeningChapter}
-                        hideAddQuestionButton={isListeningChapter}
-                        hideQuestionImageBlock={isListeningChapter}
-                        useLyricsTerminology={isListeningChapter}
-                        embeddedInTabs
-                        onConfirmDeleteQuestion={async (pi, qIndex) => {
-                          const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                          if (q?.id) {
-                            const r = await deleteQuestion(q.id);
-                            if (!r.ok) {
-                              setResult(r);
-                              toast.error("Failed to delete question", {
-                                description: r.error ?? "Please try again.",
-                              });
-                              return false;
-                            }
+                  {pagesArray.fields[activePageIndex] ? (
+                    <PageBlock
+                      form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                      pageIndex={activePageIndex}
+                      totalPages={pagesArray.fields.length}
+                      defaultOption={() => defaultOption()}
+                      defaultQuestion={defaultQuestionForBlock}
+                      quizId={quiz.id}
+                      onRemove={() => handleDeletePage(activePageIndex)}
+                      canRemove={pagesArray.fields.length > 1}
+                      onMoveUp={() => {
+                        pagesArray.move(activePageIndex, activePageIndex - 1);
+                        setActivePageIndex(activePageIndex - 1);
+                      }}
+                      onMoveDown={() => {
+                        pagesArray.move(activePageIndex, activePageIndex + 1);
+                        setActivePageIndex(activePageIndex + 1);
+                      }}
+                      canMoveUp={activePageIndex > 0}
+                      canMoveDown={activePageIndex < pagesArray.fields.length - 1}
+                      hidePageTypeSelect={isListeningChapter}
+                      hidePageTitleFields={isListeningChapter}
+                      hideAddQuestionButton={isListeningChapter}
+                      hideQuestionImageBlock={isListeningChapter}
+                      useLyricsTerminology={isListeningChapter}
+                      embeddedInTabs
+                      onConfirmDeleteQuestion={async (pi, qIndex) => {
+                        const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
+                        if (q?.id) {
+                          const r = await deleteQuestion(q.id);
+                          if (!r.ok) {
+                            setResult(r);
+                            toast.error("Failed to delete question", {
+                              description: r.error ?? "Please try again.",
+                            });
+                            return false;
                           }
-                          toast.success("Question deleted");
-                          return true;
-                        }}
-                        onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
-                          const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
-                          const opt = opts[oIndex];
-                          if (opt?.id) {
-                            const r = await deleteOption(opt.id);
-                            if (!r.ok) {
-                              setResult(r);
-                              toast.error("Failed to delete answer option", {
-                                description: r.error ?? "Please try again.",
-                              });
-                              return false;
-                            }
+                        }
+                        toast.success("Question deleted");
+                        return true;
+                      }}
+                      onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
+                        const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
+                        const opt = opts[oIndex];
+                        if (opt?.id) {
+                          const r = await deleteOption(opt.id);
+                          if (!r.ok) {
+                            setResult(r);
+                            toast.error("Failed to delete answer option", {
+                              description: r.error ?? "Please try again.",
+                            });
+                            return false;
                           }
-                          toast.success("Answer option deleted");
-                          return true;
-                        }}
-                        onConfirmRemoveQuestionImage={async (pi, qIndex) => {
-                          const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                          if (q?.id) {
-                            const r = await deleteQuestionImage(q.id);
-                            if (!r.ok) {
-                              setResult(r);
-                              toast.error("Failed to delete image", {
-                                description: r.error ?? "Please try again.",
-                              });
-                              return false;
-                            }
+                        }
+                        toast.success("Answer option deleted");
+                        return true;
+                      }}
+                      onConfirmRemoveQuestionImage={async (pi, qIndex) => {
+                        const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
+                        if (q?.id) {
+                          const r = await deleteQuestionImage(q.id);
+                          if (!r.ok) {
+                            setResult(r);
+                            toast.error("Failed to delete image", {
+                              description: r.error ?? "Please try again.",
+                            });
+                            return false;
                           }
-                          toast.success("Image deleted");
-                          return true;
-                        }}
-                      />
-                    </div>
-                  ))}
+                        }
+                        toast.success("Image deleted");
+                        return true;
+                      }}
+                    />
+                  ) : null}
                 </div>
               </>
             )}

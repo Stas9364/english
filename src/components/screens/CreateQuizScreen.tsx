@@ -142,7 +142,6 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
         name: "pages",
     });
     const selectedTopicId = useWatch({ control: form.control, name: "topic_id" });
-    const watchedPages = useWatch({ control: form.control, name: "pages" }) ?? [];
     const snapshotKey = useMemo(
         () => getCreateQuizSnapshotKey(chapter, topicSlug),
         [chapter, topicSlug]
@@ -416,7 +415,7 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                             </div>
                             <QuizPagesTabStrip
                                 fieldIds={pagesArray.fields.map((f) => f.id)}
-                                titles={watchedPages.map((p) => p?.title ?? "")}
+                                titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
                                 activeIndex={activePageIndex}
                                 onSelect={setActivePageIndex}
                                 showAddPage={!isListeningChapter}
@@ -426,43 +425,41 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                                     setActivePageIndex(next);
                                 }}
                             />
-                            {pagesArray.fields.map((field, pIndex) => (
-                                <div
-                                    key={field.id}
-                                    className={cn(activePageIndex !== pIndex && "hidden")}
-                                    aria-hidden={activePageIndex !== pIndex}
-                                >
-                                    <PageBlock
-                                        form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                                        pageIndex={pIndex}
-                                        totalPages={pagesArray.fields.length}
-                                        defaultOption={defaultOption}
-                                        defaultQuestion={defaultQuestion}
-                                        quizId={undefined}
-                                        onRemove={() => {
-                                            pagesArray.remove(pIndex);
-                                            setActivePageIndex(0);
-                                        }}
-                                        canRemove={pagesArray.fields.length > 1}
-                                        onMoveUp={() => {
-                                            pagesArray.move(pIndex, pIndex - 1);
-                                            setActivePageIndex(pIndex - 1);
-                                        }}
-                                        onMoveDown={() => {
-                                            pagesArray.move(pIndex, pIndex + 1);
-                                            setActivePageIndex(pIndex + 1);
-                                        }}
-                                        canMoveUp={pIndex > 0}
-                                        canMoveDown={pIndex < pagesArray.fields.length - 1}
-                                        hidePageTypeSelect={isListeningChapter}
-                                        hidePageTitleFields={isListeningChapter}
-                                        hideAddQuestionButton={isListeningChapter}
-                                        hideQuestionImageBlock={isListeningChapter}
-                                        useLyricsTerminology={isListeningChapter}
-                                        embeddedInTabs
-                                    />
-                                </div>
-                            ))}
+                            {pagesArray.fields[activePageIndex] ? (
+                                <PageBlock
+                                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
+                                    pageIndex={activePageIndex}
+                                    totalPages={pagesArray.fields.length}
+                                    defaultOption={defaultOption}
+                                    defaultQuestion={defaultQuestion}
+                                    quizId={undefined}
+                                    onRemove={() => {
+                                        const nextIndex = Math.max(
+                                            0,
+                                            Math.min(activePageIndex, pagesArray.fields.length - 2)
+                                        );
+                                        pagesArray.remove(activePageIndex);
+                                        setActivePageIndex(nextIndex);
+                                    }}
+                                    canRemove={pagesArray.fields.length > 1}
+                                    onMoveUp={() => {
+                                        pagesArray.move(activePageIndex, activePageIndex - 1);
+                                        setActivePageIndex(activePageIndex - 1);
+                                    }}
+                                    onMoveDown={() => {
+                                        pagesArray.move(activePageIndex, activePageIndex + 1);
+                                        setActivePageIndex(activePageIndex + 1);
+                                    }}
+                                    canMoveUp={activePageIndex > 0}
+                                    canMoveDown={activePageIndex < pagesArray.fields.length - 1}
+                                    hidePageTypeSelect={isListeningChapter}
+                                    hidePageTitleFields={isListeningChapter}
+                                    hideAddQuestionButton={isListeningChapter}
+                                    hideQuestionImageBlock={isListeningChapter}
+                                    useLyricsTerminology={isListeningChapter}
+                                    embeddedInTabs
+                                />
+                            ) : null}
                         </div>
 
                         <QuizTheoryBlocksEditor

@@ -1,6 +1,6 @@
 import type { TestType } from '@/lib/supabase';
 import { Trash2 } from 'lucide-react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useState } from 'react';
 import { QuestionTitleEditor } from '../question-title-editor';
 import { QuizQuestionChoiceOptions, type QuizQuestionFormValues, QuizQuestionInputGapsOptions, QuizQuestionSelectGapsOptions, QuizQuestionMatchingOption } from '../quiz-question-options-editor';
@@ -49,7 +49,14 @@ export function QuestionItemCard({
     autoFocusTitle = false,
     onTitleAutoFocusDone,
 }: QuestionItemCardProps) {
-    const questionImage = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_image_url`) ?? "";
+    const questionImage = useWatch({
+        control: form.control,
+        name: `pages.${pageIndex}.questions.${qIndex}.question_image_url`,
+    }) ?? "";
+    const questionTitle = useWatch({
+        control: form.control,
+        name: `pages.${pageIndex}.questions.${qIndex}.question_title`,
+    }) ?? "";
     const uploadTarget = `${pageIndex}-${qIndex}`;
     const [isRemovingImage, setIsRemovingImage] = useState(false);
 
@@ -97,7 +104,7 @@ export function QuestionItemCard({
                     <QuestionTitleEditor
                         id={`question-title-${pageIndex}-${qIndex}`}
                         name={`pages.${pageIndex}.questions.${qIndex}.question_title`}
-                        value={form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`)}
+                        value={questionTitle}
                         onChange={(html) => form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_title`, html)}
                         disabled={form.formState.isSubmitting}
                         autoFocus={autoFocusTitle}

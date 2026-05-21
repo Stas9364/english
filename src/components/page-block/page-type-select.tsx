@@ -1,5 +1,5 @@
 import type { TestType } from '@/lib/supabase';
-import type { UseFormReturn } from 'react-hook-form';
+import { useWatch, type UseFormReturn } from 'react-hook-form';
 import  { PageBlockFormValues } from './page-block';
 import { Label } from '../ui/label';
 
@@ -10,12 +10,17 @@ interface PageTypeSelectProps {
 }
 
 export function PageTypeSelect({ form, pageIndex, defaultOption }: PageTypeSelectProps) {
+    const pageType = useWatch({
+        control: form.control,
+        name: `pages.${pageIndex}.type`,
+    });
+
     return (
         <div className="space-y-2">
             <Label>Page type</Label>
             <select
                 className="cursor-pointer h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:scheme-dark"
-                value={form.watch(`pages.${pageIndex}.type`)}
+                value={pageType}
                 onChange={(e) => {
                     const value = e.target.value as TestType;
                     form.setValue(`pages.${pageIndex}.type`, value);

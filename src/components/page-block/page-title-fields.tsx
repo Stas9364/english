@@ -1,4 +1,4 @@
-import type { UseFormReturn } from 'react-hook-form';
+import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { PageBlockFormValues } from './page-block';
 import { Label } from '../ui/label';
 import { QuestionTitleEditor } from '../question-title-editor';
@@ -9,12 +9,17 @@ interface PageTitleFieldsProps {
 }
 
 export function PageTitleFields({ form, pageIndex }: PageTitleFieldsProps) {
+    const pageTitle = useWatch({
+        control: form.control,
+        name: `pages.${pageIndex}.title`,
+    }) ?? '';
+
     return (
         <>
             <div className="space-y-2">
                 <Label>Page title (optional)</Label>
                 <QuestionTitleEditor
-                    value={form.watch(`pages.${pageIndex}.title`) ?? ''}
+                    value={pageTitle}
                     onChange={(html) => form.setValue(`pages.${pageIndex}.title`, html)}
                     disabled={form.formState.isSubmitting}
                     invalid={!!form.formState.errors.pages?.[pageIndex]?.title}

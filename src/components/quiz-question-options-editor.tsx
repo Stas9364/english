@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
 import { Plus, Trash2 } from "lucide-react";
-import type { UseFormReturn } from "react-hook-form";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 import { cn } from "@/lib/utils";
 
 /** Minimal form shape used by both create and edit quiz pages. */
@@ -53,8 +53,11 @@ export function QuizQuestionChoiceOptions({
   defaultOption,
   onBeforeRemoveOption,
 }: QuizQuestionChoiceOptionsProps) {
-  const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
   const basePath = `pages.${pageIndex}.questions.${qIndex}.options` as const;
+  const options = useWatch({
+    control: form.control,
+    name: basePath,
+  }) ?? [];
 
   async function handleRemoveOption(oIndex: number) {
     if (onBeforeRemoveOption) {
@@ -81,7 +84,7 @@ export function QuizQuestionChoiceOptions({
           />
           <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
             <Checkbox
-              checked={form.watch(`${basePath}.${oIndex}.is_correct`)}
+              checked={!!options[oIndex]?.is_correct}
               onCheckedChange={(checked) => {
                 if (pageType === "single" && checked === true) {
                   const opts = form.getValues(basePath);
@@ -135,12 +138,18 @@ export function QuizQuestionInputGapsOptions({
   qIndex,
   onBeforeRemoveOption,
 }: QuizQuestionInputGapsOptionsProps) {
-  const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-  const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
-  const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
   const questionError = (form.formState?.errors as PageQuestionErrors)?.pages?.[pageIndex]?.questions?.[qIndex]?.root;
   const questionErrorMessage = questionError?.message ?? "";
   const basePath = `pages.${pageIndex}.questions.${qIndex}.options` as const;
+  const title = useWatch({
+    control: form.control,
+    name: `pages.${pageIndex}.questions.${qIndex}.question_title`,
+  }) || "";
+  const options = useWatch({
+    control: form.control,
+    name: basePath,
+  }) ?? [];
+  const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
 
   async function handleRemoveOption(optIdx: number) {
     if (onBeforeRemoveOption) {
@@ -230,12 +239,18 @@ export function QuizQuestionSelectGapsOptions({
   qIndex,
   onBeforeRemoveOption,
 }: QuizQuestionSelectGapsOptionsProps) {
-  const title = form.watch(`pages.${pageIndex}.questions.${qIndex}.question_title`) || "";
-  const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
-  const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
   const questionError = (form.formState?.errors as PageQuestionErrors)?.pages?.[pageIndex]?.questions?.[qIndex]?.root;
   const questionErrorMessage = questionError?.message ?? "";
   const basePath = `pages.${pageIndex}.questions.${qIndex}.options` as const;
+  const title = useWatch({
+    control: form.control,
+    name: `pages.${pageIndex}.questions.${qIndex}.question_title`,
+  }) || "";
+  const options = useWatch({
+    control: form.control,
+    name: basePath,
+  }) ?? [];
+  const gapCount = Math.max(1, Math.max(0, title.split("[[]]").length - 1));
 
   async function handleRemoveOption(optIdx: number) {
     if (onBeforeRemoveOption) {
@@ -274,7 +289,7 @@ export function QuizQuestionSelectGapsOptions({
                 />
                 <label className="flex cursor-pointer shrink-0 items-center gap-2 whitespace-nowrap text-sm">
                   <Checkbox
-                    checked={form.watch(`${basePath}.${optIdx}.is_correct`)}
+                    checked={!!options[optIdx]?.is_correct}
                     onCheckedChange={(checked) =>
                       form.setValue(`${basePath}.${optIdx}.is_correct`, checked === true)
                     }
@@ -325,7 +340,10 @@ export function QuizQuestionMatchingOption({
   pageIndex,
   qIndex,
 }: QuizQuestionMatchingOptionProps) {
-  const options = form.watch(`pages.${pageIndex}.questions.${qIndex}.options`) ?? [];
+  const options = useWatch({
+    control: form.control,
+    name: `pages.${pageIndex}.questions.${qIndex}.options`,
+  }) ?? [];
   const questionError = (form.formState?.errors as PageQuestionErrors)?.pages?.[pageIndex]?.questions?.[qIndex]?.root;
   const questionErrorMessage = questionError?.message ?? "";
   const basePath = `pages.${pageIndex}.questions.${qIndex}.options` as const;

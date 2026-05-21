@@ -9,7 +9,7 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 import type { TestType } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useFieldArray, type UseFormReturn } from "react-hook-form";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { PageTitleFields } from './page-title-fields';
 import { PageTypeSelect } from './page-type-select';
 import { QuestionItemCard } from './question-item-card';
@@ -95,7 +95,10 @@ export function PageBlock({
     uploadImage: uploadTheoryImage,
     baseFields: quizId ? { quizId } : undefined,
   });
-  const pageType = form.watch(`pages.${pageIndex}.type`);
+  const pageType = useWatch({
+    control: form.control,
+    name: `pages.${pageIndex}.type`,
+  });
   const questionsArray = useFieldArray({
     control: form.control,
     name: `pages.${pageIndex}.questions`,
