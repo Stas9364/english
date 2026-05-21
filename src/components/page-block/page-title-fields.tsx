@@ -1,7 +1,7 @@
 import { useWatch, type UseFormReturn } from 'react-hook-form';
-import type { PageBlockFormValues } from './page-block';
+import { QuestionTitleColorEditor } from '../question-title-color-editor';
 import { Label } from '../ui/label';
-import { QuestionTitleEditor } from '../question-title-editor';
+import type { PageBlockFormValues } from './page-block';
 
 interface PageTitleFieldsProps {
     form: UseFormReturn<PageBlockFormValues>;
@@ -18,7 +18,7 @@ export function PageTitleFields({ form, pageIndex }: PageTitleFieldsProps) {
         <>
             <div className="space-y-2">
                 <Label>Page title (optional)</Label>
-                <QuestionTitleEditor
+                <QuestionTitleColorEditor
                     value={pageTitle}
                     onChange={(html) => form.setValue(`pages.${pageIndex}.title`, html)}
                     invalid={!!form.formState.errors.pages?.[pageIndex]?.title}

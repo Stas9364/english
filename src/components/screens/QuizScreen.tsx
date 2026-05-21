@@ -119,7 +119,7 @@ export function QuizScreen({
             )}
           </div>
           {totalPages > 1 && (
-            <span className="text-sm text-muted-foreground shrink-0">
+            <span className="text-sm text-muted-foreground shrink-0 mb-2">
               Page {pageIndex + 1} of {totalPages}
             </span>
           )}
@@ -155,7 +155,7 @@ export function QuizScreen({
             </Card>
           )}
 
-          {(currentPage.title || currentPage.example || totalPages > 1) && (
+          {((currentPage.title || currentPage.example) && totalPages > 1) && (
             <Card className="mb-6">
               <CardContent>
                 {(currentPage.title) && (

@@ -2,7 +2,7 @@ import type { TestType } from '@/lib/supabase';
 import { Trash2 } from 'lucide-react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useState } from 'react';
-import { QuestionTitleEditor } from '../question-title-editor';
+import { QuestionTitleColorEditor } from '../question-title-color-editor';
 import { QuizQuestionChoiceOptions, type QuizQuestionFormValues, QuizQuestionInputGapsOptions, QuizQuestionSelectGapsOptions, QuizQuestionMatchingOption } from '../quiz-question-options-editor';
 import { TheoryImage } from '../theory-image';
 import { Button } from '../ui/button';
@@ -101,7 +101,7 @@ export function QuestionItemCard({
                                 ? "Right column (question)"
                                 : "Question text"}
                     </Label>
-                    <QuestionTitleEditor
+                    <QuestionTitleColorEditor
                         id={`question-title-${pageIndex}-${qIndex}`}
                         name={`pages.${pageIndex}.questions.${qIndex}.question_title`}
                         value={questionTitle}
