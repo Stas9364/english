@@ -123,6 +123,10 @@ export default async function AdminGuidePage() {
             На вкладке <strong>Details and pages</strong> доступно поле <strong>YouTube video URL</strong>, и оно также обязательно.
           </li>
           <li>Ограничения конструктора те же, что и при создании (фиксированный input и скрытые лишние контролы).</li>
+          <li>
+            Порядок строк текста (Lyrics) на странице можно менять стрелками <strong>↑</strong> / <strong>↓</strong> в шапке
+            каждой строки — так же, как порядок вопросов на обычных страницах.
+          </li>
         </ul>
 
         <h3 id="listening-mode-student" className="text-lg font-semibold scroll-mt-6">Прохождение Listening‑квиза</h3>
@@ -404,6 +408,15 @@ export default async function AdminGuidePage() {
           Иконка корзины рядом с «Question 1», «Question 2» удаляет вопрос сразу после подтверждения. Удалить можно только если
           вопросов больше одного.
         </p>
+        <p className="text-base">
+          В шапке каждой карточки вопроса (справа, рядом с корзиной) — кнопки со стрелками <strong>↑</strong> и <strong>↓</strong>.
+          При наведении подсказки <strong>Move question up</strong> / <strong>Move question down</strong>. Они меняют порядок
+          вопросов <strong>на текущей странице</strong>: вопрос поднимается или опускается в списке. Стрелка вверх недоступна для
+          первого вопроса, вниз — для последнего. После перемещения страница прокручивается так, чтобы карточка вопроса оставалась
+          в зоне видимости. Порядок, который увидит ученик на этой странице квиза, сохраняется в БД при{" "}
+          <strong>Create quiz</strong> или <strong>Save changes</strong>. В режиме <code>listening</code> те же стрелки работают для
+          строк <strong>Line 1</strong>, <strong>Line 2</strong> … в блоке <strong>Lyrics</strong>.
+        </p>
 
         <h3 id="create-quiz-step-4" className="text-lg font-semibold scroll-mt-6">Шаг 4. Варианты ответов (Single choice и Multiple choice)</h3>
         <p className="text-base">
@@ -647,6 +660,11 @@ export default async function AdminGuidePage() {
             порядок вкладок. Изменение в форме сразу; в БД — по <strong>Save changes</strong>.
           </li>
           <li>
+            В шапке каждой карточки вопроса на открытой странице — стрелки <strong>↑</strong> / <strong>↓</strong> (Move question
+            up / Move question down): порядок вопросов на этой странице; после перемещения карточка остаётся в видимой области
+            экрана. В БД — по <strong>Save changes</strong>. Для <code>listening</code> — порядок строк в блоке <strong>Lyrics</strong>.
+          </li>
+          <li>
             <strong>Add page</strong> — последняя кнопка в ряду вкладок. <strong>Add question</strong> / <strong>Add option</strong>{" "}
             (или <strong>Add correct answer</strong>) — внутри открытой страницы.
           </li>
@@ -709,6 +727,14 @@ export default async function AdminGuidePage() {
                 <td className="border px-2 py-1">
                   <strong>Сразу после подтверждения</strong> в диалоге (запись в БД удаляется; для изображений теории — и файл в
                   хранилище).
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">
+                  Изменение порядка страниц, вопросов на странице, блоков теории
+                </td>
+                <td className="border px-2 py-1">
+                  В форме сразу; в БД — по <strong>Save changes</strong> или <strong>Create quiz</strong>.
                 </td>
               </tr>
               <tr>
@@ -860,7 +886,14 @@ export default async function AdminGuidePage() {
               <tr>
                 <td className="border px-2 py-1">Порядок страниц</td>
                 <td className="border px-2 py-1">
-                  Вкладки страниц; стрелки ← / → слева в шапке карточки активной страницы (редактирование)
+                  Вкладки страниц; стрелки ← / → слева в шапке карточки активной страницы
+                </td>
+                <td className="border px-2 py-1">Нет</td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1">Порядок вопросов на странице</td>
+                <td className="border px-2 py-1">
+                  Стрелки ↑ / ↓ в шапке карточки вопроса (Line N в listening); сохранение — Create quiz / Save changes
                 </td>
                 <td className="border px-2 py-1">Нет</td>
               </tr>
