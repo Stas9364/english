@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
 import { Label } from "@/components/ui/label";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { usePageQuestions } from "@/hooks/use-page-questions";
 import type { TestType } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 import { PageTitleFields } from './page-title-fields';
 import { PageTypeSelect } from './page-type-select';
 import { QuestionItemCard } from './question-item-card';
@@ -65,7 +66,6 @@ export interface PageBlockProps {
   embeddedInTabs?: boolean;
 }
 
-
 export function PageBlock({
   form,
   pageIndex,
@@ -99,21 +99,38 @@ export function PageBlock({
     control: form.control,
     name: `pages.${pageIndex}.type`,
   });
-  const questionsArray = useFieldArray({
-    control: form.control,
-    name: `pages.${pageIndex}.questions`,
+  const { questionsArray, handleMoveQuestion, handleRemoveQuestion } = usePageQuestions({
+    form,
+    pageIndex,
+    onConfirmDeleteQuestion,
   });
 
-  async function handleRemoveQuestion(qIndex: number) {
-    const ok = onConfirmDeleteQuestion ? await onConfirmDeleteQuestion(pageIndex, qIndex) : true;
-    if (ok) questionsArray.remove(qIndex);
-  }
+  const defaultOptionRef = useRef(defaultOption);
+  useEffect(() => {
+    defaultOptionRef.current = defaultOption;
+  });
+  const stableDefaultOption = useCallback(
+    () => defaultOptionRef.current(),
+    []
+  );
 
-  async function handleUploadQuestionImage(qIndex: number, file: File) {
-    const url = await uploadForTarget(`${pageIndex}-${qIndex}`, file, { folder: "questions" });
-    if (!url) return;
-    form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_image_url`, url, { shouldDirty: true, shouldValidate: true });
-  }
+  const clearPendingFocusQuestion = useCallback(() => {
+    setPendingFocusQuestionIndex(null);
+  }, []);
+
+  const questionsCount = questionsArray.fields.length;
+
+  const handleUploadQuestionImage = useCallback(
+    async (qIndex: number, file: File) => {
+      const url = await uploadForTarget(`${pageIndex}-${qIndex}`, file, { folder: "questions" });
+      if (!url) return;
+      form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_image_url`, url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [form, pageIndex, uploadForTarget]
+  );
 
   const showExpanded = embeddedInTabs || isExpanded;
   const pagesCount = totalPages ?? form.getValues("pages")?.length ?? pageIndex + 1;
@@ -196,26 +213,20 @@ export function PageBlock({
                 pageIndex={pageIndex}
                 qIndex={qIndex}
                 pageType={pageType}
-                defaultOption={defaultOption}
-                onRemove={() => void handleRemoveQuestion(qIndex)}
-                canRemove={questionsArray.fields.length > 1}
+                questionsCount={questionsCount}
+                defaultOption={stableDefaultOption}
+                onRemoveQuestion={handleRemoveQuestion}
+                onMoveQuestion={handleMoveQuestion}
+                canRemove={questionsCount > 1}
                 uploadingQuestionTarget={uploadingQuestionTarget}
                 uploadError={uploadError}
                 onUploadQuestionImage={handleUploadQuestionImage}
-                onConfirmDeleteOption={
-                  onConfirmDeleteOption
-                    ? (oIndex) => onConfirmDeleteOption(pageIndex, qIndex, oIndex)
-                    : undefined
-                }
-                onRemoveImage={
-                  onConfirmRemoveQuestionImage
-                    ? () => onConfirmRemoveQuestionImage(pageIndex, qIndex)
-                    : undefined
-                }
+                onConfirmDeleteOption={onConfirmDeleteOption}
+                onConfirmRemoveQuestionImage={onConfirmRemoveQuestionImage}
                 hideQuestionImageBlock={hideQuestionImageBlock}
                 hideQuestionTitle={useLyricsTerminology}
                 autoFocusTitle={qIndex === pendingFocusQuestionIndex}
-                onTitleAutoFocusDone={() => setPendingFocusQuestionIndex(null)}
+                onTitleAutoFocusDone={clearPendingFocusQuestion}
               />
             ))}
             <div className="flex justify-between items-center gap-2">

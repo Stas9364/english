@@ -1,7 +1,7 @@
 import type { TestType } from '@/lib/supabase';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { memo, useState } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
-import { useState } from 'react';
 import { QuestionTitleColorEditor } from '../question-title-color-editor';
 import { QuizQuestionChoiceOptions, type QuizQuestionFormValues, QuizQuestionInputGapsOptions, QuizQuestionSelectGapsOptions, QuizQuestionMatchingOption } from '../quiz-question-options-editor';
 import { TheoryImage } from '../theory-image';
@@ -17,33 +17,37 @@ interface QuestionItemCardProps {
     pageIndex: number;
     qIndex: number;
     pageType: TestType;
+    questionsCount: number;
     defaultOption: () => { option_text: string; is_correct: boolean };
-    onRemove: () => void;
+    onRemoveQuestion: (qIndex: number) => void | Promise<boolean>;
+    onMoveQuestion: (qIndex: number, dir: -1 | 1) => void;
     canRemove: boolean;
     uploadingQuestionTarget: string | null;
     uploadError: string | null;
     onUploadQuestionImage: (qIndex: number, file: File) => void | Promise<void>;
-    onConfirmDeleteOption?: (oIndex: number) => void | Promise<boolean>;
-    onRemoveImage?: () => void | Promise<boolean>;
+    onConfirmDeleteOption?: (pageIndex: number, qIndex: number, oIndex: number) => void | Promise<boolean>;
+    onConfirmRemoveQuestionImage?: (pageIndex: number, qIndex: number) => Promise<boolean>;
     hideQuestionImageBlock?: boolean;
     hideQuestionTitle?: boolean;
     autoFocusTitle?: boolean;
     onTitleAutoFocusDone?: () => void;
 }
 
-export function QuestionItemCard({
+function QuestionItemCardInner({
     form,
     pageIndex,
     qIndex,
     pageType,
+    questionsCount,
     defaultOption,
-    onRemove,
+    onRemoveQuestion,
+    onMoveQuestion,
     canRemove,
     uploadingQuestionTarget,
     uploadError,
     onUploadQuestionImage,
     onConfirmDeleteOption,
-    onRemoveImage,
+    onConfirmRemoveQuestionImage,
     hideQuestionImageBlock = false,
     hideQuestionTitle = false,
     autoFocusTitle = false,
@@ -59,12 +63,16 @@ export function QuestionItemCard({
     }) ?? "";
     const uploadTarget = `${pageIndex}-${qIndex}`;
     const [isRemovingImage, setIsRemovingImage] = useState(false);
+    const canMoveUp = qIndex > 0;
+    const canMoveDown = qIndex < questionsCount - 1;
 
     async function handleRemoveImage() {
         if (isRemovingImage) return;
         setIsRemovingImage(true);
         try {
-            const ok = onRemoveImage ? await onRemoveImage() : true;
+            const ok = onConfirmRemoveQuestionImage
+                ? await onConfirmRemoveQuestionImage(pageIndex, qIndex)
+                : true;
             if (!ok) return;
             form.setValue(`pages.${pageIndex}.questions.${qIndex}.question_image_url`, "", { shouldDirty: true, shouldValidate: true });
         } finally {
@@ -73,23 +81,50 @@ export function QuestionItemCard({
     }
 
     return (
-        <Card className="border-muted transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-primary focus-within:bg-muted/40 focus-within:ring-2 focus-within:ring-primary/20 focus-within:ring-offset-2">
+        <Card
+            data-question-card-id={`question-card-${pageIndex}-${qIndex}`}
+            className="border-muted transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-primary focus-within:bg-muted/40 focus-within:ring-2 focus-within:ring-primary/20 focus-within:ring-offset-2"
+        >
             <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     {!hideQuestionTitle ? (
                         <CardTitle className="text-sm">Question {qIndex + 1}</CardTitle>
                     ) : (
-                        <div />
+                        <span className="text-sm font-medium">Line {qIndex + 1}</span>
                     )}
-                    <ConfirmDeletePopover
-                        title="Delete question?"
-                        onConfirm={onRemove}
-                        disabled={!canRemove}
-                    >
-                        <Button type="button" variant="ghost" size="icon-sm">
-                            <Trash2 className="size-4" />
+                    <div className="flex items-center gap-1">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => onMoveQuestion(qIndex, -1)}
+                            disabled={!canMoveUp}
+                            title="Move question up"
+                            aria-label="Move question up"
+                        >
+                            <ChevronUp className="size-4" />
                         </Button>
-                    </ConfirmDeletePopover>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => onMoveQuestion(qIndex, 1)}
+                            disabled={!canMoveDown}
+                            title="Move question down"
+                            aria-label="Move question down"
+                        >
+                            <ChevronDown className="size-4" />
+                        </Button>
+                        <ConfirmDeletePopover
+                            title="Delete question?"
+                            onConfirm={() => void onRemoveQuestion(qIndex)}
+                            disabled={!canRemove}
+                        >
+                            <Button type="button" variant="ghost" size="icon-sm" aria-label="Delete question">
+                                <Trash2 className="size-4" />
+                            </Button>
+                        </ConfirmDeletePopover>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -185,7 +220,11 @@ export function QuestionItemCard({
                         qIndex={qIndex}
                         pageType={pageType}
                         defaultOption={defaultOption}
-                        onBeforeRemoveOption={onConfirmDeleteOption}
+                        onBeforeRemoveOption={
+                            onConfirmDeleteOption
+                                ? (oIndex) => onConfirmDeleteOption(pageIndex, qIndex, oIndex)
+                                : undefined
+                        }
                     />
                 )}
 
@@ -194,7 +233,11 @@ export function QuestionItemCard({
                         form={form as unknown as UseFormReturn<QuizQuestionFormValues>}
                         pageIndex={pageIndex}
                         qIndex={qIndex}
-                        onBeforeRemoveOption={onConfirmDeleteOption}
+                        onBeforeRemoveOption={
+                            onConfirmDeleteOption
+                                ? (oIndex) => onConfirmDeleteOption(pageIndex, qIndex, oIndex)
+                                : undefined
+                        }
                     />
                 )}
 
@@ -203,7 +246,11 @@ export function QuestionItemCard({
                         form={form as unknown as UseFormReturn<QuizQuestionFormValues>}
                         pageIndex={pageIndex}
                         qIndex={qIndex}
-                        onBeforeRemoveOption={onConfirmDeleteOption}
+                        onBeforeRemoveOption={
+                            onConfirmDeleteOption
+                                ? (oIndex) => onConfirmDeleteOption(pageIndex, qIndex, oIndex)
+                                : undefined
+                        }
                     />
                 )}
 
@@ -218,3 +265,5 @@ export function QuestionItemCard({
         </Card>
     );
 }
+
+export const QuestionItemCard = memo(QuestionItemCardInner);
