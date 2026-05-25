@@ -138,8 +138,9 @@ function QuestionBlockImpl({
                           onChange={(e) => onInputChange?.(question.id, question.question_title, i, e.target.value)}
                           disabled={checked}
                           placeholder="…"
+                          size={Math.max(2, (textAnswers[i] ?? "").length || 1)}
                           className={cn(
-                            "inline-block w-32 min-w-0 align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-40",
+                            "inline-block w-auto min-w-32 max-w-full field-sizing-content align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-w-40",
                             perGapCorrectness?.[i] === true &&
                             "border-b-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
                             perGapCorrectness?.[i] === false &&
