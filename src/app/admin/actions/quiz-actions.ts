@@ -13,6 +13,7 @@ import {
   upsertQuizListeningMetaByQuizId,
 } from "@/lib/supabase/quiz-listenings-meta-queries";
 import { countGapMarkers } from "@/lib/quiz-gap-markers";
+import { normalizeInputAnswerChars } from "@/lib/text-answer-normalize";
 import { revalidatePath } from "next/cache";
 import {
   extractTopicChapterKey,
@@ -140,7 +141,7 @@ function normalizeOptionsForSync(
       .filter((o) => (o.option_text ?? "").trim())
       .map((o) => ({
         id: o.id,
-        option_text: o.option_text.trim(),
+        option_text: normalizeInputAnswerChars(o.option_text),
         is_correct: true,
         gap_index: o.gap_index ?? 0,
       }));

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions } from "@/lib/supabase";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
+import { normalizeInputAnswerForCompare } from '@/lib/text-answer-normalize';
 import { useSelectGapsScore } from "@/hooks/use-select-gaps-score";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -113,11 +114,15 @@ export function useQuizProgress(quiz: QuizWithPages) {
       } else if (pageType === "input") {
         const gapCount = getEffectiveGapCount(q.question_title);
         total += gapCount;
-        const userArr = (textAnswers[q.id] ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+        const userArr = (textAnswers[q.id] ?? [])
+          .slice(0, gapCount)
+          .map((s) => normalizeInputAnswerForCompare(s ?? ""));
         const options = (q.options ?? []).filter((o) => (o.option_text ?? "").trim());
         Array.from({ length: gapCount }, (_, i) => {
           const correctTexts = new Set(
-            options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+            options
+              .filter((o) => (o.gap_index ?? 0) === i)
+              .map((o) => normalizeInputAnswerForCompare(o.option_text!))
           );
           if (correctTexts.has(userArr[i] ?? "")) correct++;
         });

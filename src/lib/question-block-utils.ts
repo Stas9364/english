@@ -1,5 +1,6 @@
 import type { QuestionWithOptions } from './supabase';
 import { countGapMarkers } from './quiz-gap-markers';
+import { normalizeInputAnswerForCompare } from './text-answer-normalize';
 
 /** Number of [[]] gaps in the question title. 0 if none. */
 export function getGapCount(title: string): number {
@@ -13,12 +14,14 @@ export function getEffectiveGapCount(title: string): number {
 
 export function isTextAnswerCorrect(question: QuestionWithOptions, textAnswers: string[]): boolean {
     const gapCount = getEffectiveGapCount(question.question_title);
-    const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+    const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => normalizeInputAnswerForCompare(s ?? ""));
     if (userArr.length !== gapCount || userArr.some((s) => !s)) return false;
     const options = (question.options ?? []).filter((o) => (o.option_text ?? "").trim());
     return Array.from({ length: gapCount }, (_, i) => {
         const correctTexts = new Set(
-            options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+            options
+                .filter((o) => (o.gap_index ?? 0) === i)
+                .map((o) => normalizeInputAnswerForCompare(o.option_text!))
         );
         return correctTexts.has(userArr[i] ?? "");
     }).every(Boolean);
@@ -27,13 +30,15 @@ export function isTextAnswerCorrect(question: QuestionWithOptions, textAnswers: 
 /** For inline [[]] gaps: returns whether each gap's answer is correct (matches at least one option for that gap_index). */
 export function getPerGapCorrectness(question: QuestionWithOptions, textAnswers: string[]): (boolean | null)[] {
     const gapCount = getEffectiveGapCount(question.question_title);
-    const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => (s ?? "").trim().toLowerCase());
+    const userArr = (textAnswers ?? []).slice(0, gapCount).map((s) => normalizeInputAnswerForCompare(s ?? ""));
     const options = (question.options ?? []).filter((o) => (o.option_text ?? "").trim());
     return Array.from({ length: gapCount }, (_, i) => {
         const userVal = userArr[i] ?? "";
         if (!userVal) return null;
         const correctAtI = new Set(
-            options.filter((o) => (o.gap_index ?? 0) === i).map((o) => o.option_text!.trim().toLowerCase())
+            options
+                .filter((o) => (o.gap_index ?? 0) === i)
+                .map((o) => normalizeInputAnswerForCompare(o.option_text!))
         );
         return correctAtI.has(userVal);
     });
