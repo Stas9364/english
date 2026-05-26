@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import { Plus } from "lucide-react";
 
 export type QuizPagesTabStripProps = {
@@ -10,6 +11,14 @@ export type QuizPagesTabStripProps = {
   onSelect: (index: number) => void;
   showAddPage: boolean;
   onAddPage: () => void;
+};
+
+const label = ({ title, index }: { title: string, index: number }) => {
+  return sanitizeQuestionTitleHtml(title ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || `Page ${index + 1}`;
+
 };
 
 export function QuizPagesTabStrip({
@@ -23,17 +32,17 @@ export function QuizPagesTabStrip({
   return (
     <div className="flex flex-wrap items-center gap-2 mt-10">
       {fieldIds.map((id, i) => {
-        const label = titles[i]?.trim() ? titles[i].trim() : `Page ${i + 1}`;
+
         return (
           <Button
             key={id}
             type="button"
             variant={activeIndex === i ? "default" : "outline"}
             size="sm"
-            className="max-w-[min(100%,16rem)] min-w-0 shrink"
+            className="max-w-[min(100%,16rem)] min-w-0 shrink justify-start"
             onClick={() => onSelect(i)}
           >
-            <span className="truncate">{label}</span>
+            <span className="block min-w-0 truncate">{label({ title: titles[i], index: i })}</span>
           </Button>
         );
       })}
