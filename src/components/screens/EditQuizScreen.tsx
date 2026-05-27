@@ -229,30 +229,33 @@ export function EditQuizScreen({
     const res = await ai.generate(topicOverride);
     if (!res.ok) return;
     if (res.pages?.length) {
-      const startIndex = pagesArray.fields.length;
-      res.pages.forEach((p, i) => {
-        pagesArray.append(
-          defaultPage(
-            {
-              type: isListeningChapter ? "input" : p.type,
-              title: p.title ?? null,
-              questions: p.questions.map((q) => ({
-                question_title: q.question_title,
-                question_image_url: null,
-                explanation: q.explanation ?? null,
-                options: q.options.map((o) => ({
-                  option_text: o.option_text,
-                  is_correct: o.is_correct,
-                  gap_index: o.gap_index ?? 0,
-                })),
+      const currentPages = form.getValues("pages") ?? [];
+      const generatedPages = res.pages.map((p, i) =>
+        defaultPage(
+          {
+            type: isListeningChapter ? "input" : p.type,
+            title: p.title ?? null,
+            questions: p.questions.map((q) => ({
+              question_title: q.question_title,
+              question_image_url: null,
+              explanation: q.explanation ?? null,
+              options: q.options.map((o) => ({
+                option_text: o.option_text,
+                is_correct: o.is_correct,
+                gap_index: o.gap_index ?? 0,
               })),
-            },
-            startIndex + i,
-            isListeningChapter ? "input" : undefined
-          )
-        );
-      });
-      setActivePageIndex(startIndex + res.pages.length - 1);
+            })),
+          },
+          currentPages.length + i,
+          isListeningChapter ? "input" : undefined
+        )
+      );
+      const mergedPages = [
+        ...currentPages.map((page, i) => ({ ...page, order_index: i })),
+        ...generatedPages.map((page, i) => ({ ...page, order_index: currentPages.length + i })),
+      ];
+      pagesArray.replace(mergedPages);
+      setActivePageIndex(mergedPages.length - 1);
     }
     if (res.theoryBlocks?.length) {
       appendTheoryBlocks(res.theoryBlocks);
