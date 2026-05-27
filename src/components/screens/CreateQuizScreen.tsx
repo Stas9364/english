@@ -427,6 +427,7 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                             />
                             {pagesArray.fields[activePageIndex] ? (
                                 <PageBlock
+                                    key={pagesArray.fields[activePageIndex].id}
                                     form={form as unknown as UseFormReturn<PageBlockFormValues>}
                                     pageIndex={activePageIndex}
                                     totalPages={pagesArray.fields.length}
