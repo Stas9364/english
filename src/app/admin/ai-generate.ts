@@ -460,6 +460,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
   const banned = (params.bannedTopics ?? "").trim();
   const customTask = (params.customTask ?? "").trim();
   const singleType = params.allowedTypes.length === 1 ? params.allowedTypes[0] : null;
+  const hasCustomMatchingTask = !!customTask && params.allowedTypes.includes("matching");
 
   return [
     `You are generating quiz pages for an English-learning app.`,
@@ -504,6 +505,9 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     `- For type "multiple": options length 4-7, at least one is_correct=true.`,
     `- For types "single" and "multiple": if question_title contains a missing-word slot, mark it ONLY as "..." (three dots). Do NOT use "[[]]", "__", "___", "[blank]", "( )", or any other placeholder symbols.`,
     `- For type "matching": each question is one row (left column); options are the draggable answers (right column). Each question must have exactly one option with is_correct=true (its correct pair). Give each question enough CONTEXT so the learner can tell which answer fits: use a short sentence or phrase (e.g. "He ___ at the office" or "My sister ___ the guitar") rather than a single word. The context must make the correct match obvious. CRITICAL: avoid ambiguity — each correct answer must belong to exactly one question; ensure every question has a unique correct match so the task has a single correct solution. Keep options short.`,
+    hasCustomMatchingTask
+      ? `- CUSTOM MATCHING RULE: the admin will provide matching items exactly as "answer - question/definition" lines. Treat each line as an already correct pair. In JSON, keep pairs correctly matched and in the SAME ORDER as the source lines: store the text BEFORE the dash as that row's single correct option.option_text and the text AFTER the dash as question_title. Do NOT shuffle, reorder, or randomize the JSON questions/options. Do NOT translate, paraphrase, rewrite, expand, shorten, or otherwise change either side of the pair. Do NOT invent extra pairs. The app UI will shuffle the learner-facing answer column separately, so correctness can be checked against the canonical question -> correct option relationship stored in JSON.`
+      : null,
     `- For type "input":`,
     `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
     `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
