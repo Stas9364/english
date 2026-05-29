@@ -63,3 +63,25 @@ export type UpdateQuizInput = {
   }[];
   theoryBlocks?: TheoryBlockInput[];
 };
+
+export type CrosswordEntryInput = {
+  answer: string;
+  clue: string;
+  direction: "across" | "down";
+  row: number;
+  col: number;
+  number: number;
+  order_index: number;
+};
+
+export type SaveCrosswordQuizInput = {
+  quizId?: string;
+  topic_id: string;
+  title: string;
+  description: string;
+  slug: string;
+  width: number;
+  height: number;
+  grid: unknown;
+  entries: CrosswordEntryInput[];
+};

@@ -7,7 +7,7 @@ interface AdminChapterHubProps {
   chapters: AdminChapter[];
 }
 
-export function AdminChapterHub({ chapters }: AdminChapterHubProps) {
+export function AdminChapterHub({ chapters }: AdminChapterHubProps) {  
   return (
     <PageContainer className="space-y-8">
       <div className="space-y-2">

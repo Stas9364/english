@@ -136,6 +136,109 @@ export default async function AdminGuidePage() {
         </ul>
       </section>
 
+      <section id="crossword-mode" className="space-y-3 scroll-mt-6">
+        <h2 className="text-xl font-semibold">Режим Crossword</h2>
+        <p className="text-base">
+          Для раздела <code>crossword</code> используется отдельный конструктор кроссвордов. Он не работает через обычные страницы
+          квиза, вопросы и варианты ответов. Админ вводит слова и подсказки, система генерирует готовую сетку, после чего её можно
+          поправить перетаскиванием целых слов.
+        </p>
+        <p className="text-base text-muted-foreground">
+          Пользователь видит уже сохранённый кроссворд с готовыми координатами. На странице прохождения сетка не генерируется заново.
+        </p>
+
+        <h3 id="crossword-mode-create" className="text-lg font-semibold scroll-mt-6">Создание Crossword‑квиза</h3>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            Откройте раздел <code>crossword</code>, выберите нужный топик и нажмите <strong>Create crossword</strong>.
+          </li>
+          <li>Заполните <strong>Title</strong>.</li>
+          <li>
+            При необходимости заполните <strong>Description</strong> — это инструкция, которую увидит пользователь над кроссвордом.
+          </li>
+          <li>
+            Добавьте слова и подсказки в блоке <strong>Words and clues</strong>. У каждого элемента обязательно должны быть
+            <strong> Answer</strong> и <strong>Clue</strong>.
+          </li>
+          <li>
+            Нажмите <strong>Generate crossword</strong>. Система сама выберет направления <strong>Across</strong> и
+            <strong> Down</strong>, построит сетку и пронумерует слова.
+          </li>
+          <li>
+            Проверьте результат. Если сетка не подходит, можно изменить слова/подсказки и снова нажать
+            <strong> Generate crossword</strong>.
+          </li>
+          <li>
+            Когда сетка утверждена, нажмите <strong>Save crossword</strong>. До этого момента кроссворд не сохраняется в БД.
+          </li>
+        </ol>
+
+        <h3 id="crossword-mode-edit" className="text-lg font-semibold scroll-mt-6">Редактирование Crossword‑квиза</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Откройте кроссворд через кнопку редактирования в списке квизов топика.
+          </li>
+          <li>Можно менять <strong>Title</strong>, <strong>Description</strong>, подсказки и слова.</li>
+          <li>
+            Если изменили сами ответы, сетку нужно построить заново кнопкой <strong>Regenerate crossword</strong>.
+          </li>
+          <li>
+            После генерации под формой появляется сетка. Чтобы поправить раскладку, наведите курсор на слово в сетке, зажмите его
+            мышкой и перетащите в новое место. Перемещается всё слово целиком вместе со всеми буквами.
+          </li>
+          <li>
+            Отдельные буквы вручную не двигаются: если нужно изменить само слово, исправьте его в списке <strong>Words and clues</strong>
+            и снова нажмите <strong>Regenerate crossword</strong>.
+          </li>
+          <li>
+            После перетаскивания редактор пересчитывает координаты. Если слово вышло за допустимую область, пересеклось с другой
+            буквой неправильно или создало конфликт рядом с другим словом, проблемные клетки подсвечиваются.
+          </li>
+          <li>
+            Сохранить можно только валидную сетку без подсвеченных конфликтов. Если конфликт появился, передвиньте слово ещё раз или
+            заново сгенерируйте кроссворд.
+          </li>
+          <li>
+            Кнопка <strong>View crossword</strong> открывает пользовательскую страницу, а <strong>Back to quizzes</strong> возвращает
+            к списку квизов топика.
+          </li>
+        </ul>
+
+        <h3 id="crossword-mode-student" className="text-lg font-semibold scroll-mt-6">Прохождение Crossword‑квиза</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>Пользователь вводит буквы прямо в клетки кроссворда.</li>
+          <li>
+            Под сеткой подсказки разбиты на две колонки: <strong>Across</strong> и <strong>Down</strong>.
+          </li>
+          <li>
+            Номера подсказок совпадают с маленькими номерами в клетках начала слов.
+          </li>
+          <li>
+            Кнопка <strong>Check result</strong> проверяет весь кроссворд сразу. Неверные клетки подсвечиваются.
+          </li>
+          <li>
+            Ввод пользователя сохраняется локально в <code>localStorage</code>, чтобы можно было продолжить позже. После
+            <strong> Check result</strong> сохранённый локальный прогресс очищается.
+          </li>
+        </ul>
+
+        <h3 id="crossword-mode-rules" className="text-lg font-semibold scroll-mt-6">Правила и ограничения</h3>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>Минимум для генерации — <strong>5 слов</strong>.</li>
+          <li>Размер сетки подбирается автоматически, максимум — <strong>20×20</strong>.</li>
+          <li>В ответах разрешены только английские буквы. Пробелы, цифры, дефисы и апострофы не используются.</li>
+          <li>Регистр не важен: пользователь может вводить буквы в любом регистре, проверка сравнивает нормализованные ответы.</li>
+          <li>У каждого слова должна быть подсказка.</li>
+          <li>
+            Если генератор не смог построить валидную сетку, плохая сетка не сохраняется. Измените набор слов или попробуйте
+            сгенерировать ещё раз.
+          </li>
+          <li>
+            При сохранении сервер дополнительно проверяет границы сетки, пересечения, конфликты букв и корректность всех слов.
+          </li>
+        </ul>
+      </section>
+
       <section id="ai-generation" className="space-y-3 scroll-mt-6">
         <h2 className="text-xl font-semibold">Автогенерация страниц (AI generation)</h2>
         <p className="text-base">

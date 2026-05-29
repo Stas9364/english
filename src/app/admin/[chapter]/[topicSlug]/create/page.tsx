@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CreateQuizScreen } from "@/components/screens/CreateQuizScreen";
+import { CreateCrosswordScreen } from "@/components/screens/CreateCrosswordScreen";
 import { PageContainer } from "@/components/page-container";
 import {
   createServerClient,
@@ -27,6 +28,14 @@ export default async function AdminCreateQuizInTopicPage({ params }: AdminCreate
   if (!topic) notFound();
 
   const topics = await getTopicsByChapter(supabase, chapter);
+
+  if (chapter.trim().toLowerCase() === "crossword") {
+    return (
+      <PageContainer>
+        <CreateCrosswordScreen chapter={chapter} topic={topic} />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

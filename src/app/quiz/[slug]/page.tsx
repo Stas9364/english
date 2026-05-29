@@ -1,5 +1,13 @@
 import { notFound } from "next/navigation";
-import { createServerClient, getQuizWithPagesBySlug, getTheoryBlocks, getIsAdmin, getTopicMetaById } from "@/lib/supabase";
+import {
+  createServerClient,
+  getCrosswordQuizBySlug,
+  getQuizWithPagesBySlug,
+  getTheoryBlocks,
+  getIsAdmin,
+  getTopicMetaById,
+} from "@/lib/supabase";
+import { CrosswordScreen } from "@/components/screens/CrosswordScreen";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 
 interface QuizPageProps {
@@ -28,6 +36,18 @@ export default async function QuizPage({ params }: QuizPageProps) {
     topicRow
       ? `/admin/${topicRow.chapter}/${topicRow.slug}`
       : "/admin";
+
+  if (topicRow?.chapter.trim().toLowerCase() === "crossword") {
+    const crosswordQuiz = await getCrosswordQuizBySlug(supabase, slugDecoded);
+    if (!crosswordQuiz) notFound();
+    return (
+      <CrosswordScreen
+        quiz={crosswordQuiz}
+        isAdmin={isAdmin}
+        adminBackHref={adminBackHref}
+      />
+    );
+  }
 
   return (
     <QuizScreen

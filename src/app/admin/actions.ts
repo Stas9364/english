@@ -1,6 +1,11 @@
 "use server";
 
-export type { CreateQuizInput, TheoryBlockInput, UpdateQuizInput } from "./actions/types";
+export type {
+  CreateQuizInput,
+  SaveCrosswordQuizInput,
+  TheoryBlockInput,
+  UpdateQuizInput,
+} from "./actions/types";
 import {
   getTopicsForQuizForm as getTopicsForQuizFormAction,
   createTopic as createTopicAction,
@@ -20,7 +25,12 @@ import {
   deleteTheoryBlock as deleteTheoryBlockAction,
   deleteQuestionImage as deleteQuestionImageAction,
 } from "./actions/media-actions";
-import type { CreateQuizInput, UpdateQuizInput } from "./actions/types";
+import {
+  generateCrosswordAction as generateCrosswordActionImpl,
+  saveCrosswordQuiz as saveCrosswordQuizAction,
+} from "./actions/crossword-actions";
+import type { CreateQuizInput, SaveCrosswordQuizInput, UpdateQuizInput } from "./actions/types";
+import type { CrosswordWordInput } from "@/lib/crossword";
 
 export async function getTopicsForQuizForm() {
   return getTopicsForQuizFormAction();
@@ -47,6 +57,14 @@ export async function deleteTopic(
 
 export async function createQuiz(data: CreateQuizInput) {
   return createQuizAction(data);
+}
+
+export async function generateCrosswordAction(words: CrosswordWordInput[]) {
+  return generateCrosswordActionImpl(words);
+}
+
+export async function saveCrosswordQuiz(data: SaveCrosswordQuizInput) {
+  return saveCrosswordQuizAction(data);
 }
 
 export async function updateQuiz(data: UpdateQuizInput) {

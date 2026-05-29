@@ -12,6 +12,8 @@ export {
   getQuizzesByTopicSlugAndChapter,
   getQuizWithPages,
   getQuizWithPagesBySlug,
+  getCrosswordQuizByQuizId,
+  getCrosswordQuizBySlug,
   getTheoryBlocks,
 } from "./queries";
 export type {
@@ -25,6 +27,12 @@ export type {
   QuestionWithOptions,
   QuizWithPages,
   QuizPageWithDetails,
+  CrosswordDirection,
+  CrosswordEntry,
+  CrosswordGridCell,
+  CrosswordGridSnapshot,
+  CrosswordPuzzle,
+  CrosswordQuiz,
   TestType,
   TheoryBlock,
   TheoryBlockType,

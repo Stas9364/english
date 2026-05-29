@@ -14,6 +14,7 @@ interface AdminTopicQuizzesScreenProps {
 
 export function AdminTopicQuizzesScreen({ topic, quizzes }: AdminTopicQuizzesScreenProps) {
   const router = useRouter();
+  const isCrossword = topic.chapter.trim().toLowerCase() === "crossword";
 
   return (
     <PageContainer className="space-y-8">
@@ -26,7 +27,9 @@ export function AdminTopicQuizzesScreen({ topic, quizzes }: AdminTopicQuizzesScr
         </div>
         <div className="flex items-center gap-2">
           <Button asChild>
-            <Link href={`/admin/${topic.chapter}/${topic.slug}/create`}>Create quiz</Link>
+            <Link href={`/admin/${topic.chapter}/${topic.slug}/create`}>
+              {isCrossword ? "Create crossword" : "Create quiz"}
+            </Link>
           </Button>
           <Button asChild variant="ghost">
             <Link href={`/admin/${topic.chapter}`}>Back to topics</Link>

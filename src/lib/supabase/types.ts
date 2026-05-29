@@ -87,6 +87,47 @@ export interface QuizWithPages extends Quiz {
   video: QuizVideo | null;
 }
 
+export type CrosswordDirection = "across" | "down";
+
+export interface CrosswordGridCell {
+  letter: string | null;
+  number?: number;
+}
+
+export interface CrosswordGridSnapshot {
+  width: number;
+  height: number;
+  cells: CrosswordGridCell[][];
+}
+
+export interface CrosswordEntry {
+  id: string;
+  puzzle_id: string;
+  answer: string;
+  clue: string;
+  direction: CrosswordDirection;
+  row: number;
+  col: number;
+  number: number;
+  order_index: number;
+  created_at: string;
+}
+
+export interface CrosswordPuzzle {
+  id: string;
+  quiz_id: string;
+  width: number;
+  height: number;
+  grid: CrosswordGridSnapshot;
+  created_at: string;
+  updated_at: string;
+  entries: CrosswordEntry[];
+}
+
+export interface CrosswordQuiz extends Quiz {
+  crossword: CrosswordPuzzle;
+}
+
 /** Тип блока теории: текст или изображение (URL) */
 export type TheoryBlockType = "text" | "image";
 

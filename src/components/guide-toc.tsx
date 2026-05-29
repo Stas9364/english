@@ -23,6 +23,16 @@ const sections = [
     ],
   },
   {
+    id: "crossword-mode",
+    label: "Режим Crossword",
+    items: [
+      { id: "crossword-mode-create", label: "Создание Crossword" },
+      { id: "crossword-mode-edit", label: "Редактирование Crossword" },
+      { id: "crossword-mode-student", label: "Прохождение Crossword" },
+      { id: "crossword-mode-rules", label: "Правила и ограничения" },
+    ],
+  },
+  {
     id: "ai-generation",
     label: "Автогенерация (AI)",
     items: [
