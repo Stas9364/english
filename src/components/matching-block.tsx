@@ -28,6 +28,16 @@ export function MatchingBlock({
     () => new Map(allOptions.map((o) => [o.id, o])),
     [allOptions]
   );
+  const questionsWithCorrectAnswers = useMemo(
+    () =>
+      questions
+        .map((question) => ({
+          question,
+          correctOptions: (question.options ?? []).filter((option) => option.is_correct),
+        }))
+        .filter(({ correctOptions }) => correctOptions.length > 0),
+    [questions]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -76,6 +86,24 @@ export function MatchingBlock({
           </ul>
         </div>
       </div>
+      {checked && questionsWithCorrectAnswers.length > 0 && (
+        <div className="mt-6 rounded-lg border bg-muted/30 p-4 text-sm">
+          <h3 className="font-medium">Correct answers</h3>
+          <ul className="mt-3 space-y-3">
+            {questionsWithCorrectAnswers.map(({ question, correctOptions }) => (
+              <li key={question.id} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
+                <span
+                  className="wrap-break-word font-medium [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit"
+                  dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(question.question_title ?? "") }}
+                />
+                <span className="text-muted-foreground">
+                  {correctOptions.map((option) => option.option_text).join(" / ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {checked &&
         questions.some((q) => (q.explanation ?? "").trim()) && (
           <div className="mt-6 space-y-4">
