@@ -2,16 +2,11 @@ import { sanitizeQuestionTitleHtml } from '@/lib/sanitize-question-title-html';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 
-/**
- * Текст между `[[]]` (после санитизации).
- * `display: contents` — участок не создаёт узкий `inline-block`, текст переносится
- * по ширине родителя; `<p>` из редактора переводим в inline, чтобы не рвать строку с пропусками.
- */
-export function GapTitleSegment({ part }: { part: string }) {
+export function GapTitleSegment({ part }: { part: string }) {  
     const safe = useMemo(() => sanitizeQuestionTitleHtml(part), [part]);
     if (!safe) return <span className="inline" />;
     return (
-      <p
+      <div
         className={cn(
           "contents text-left",
           "[&_a]:text-primary [&_a]:wrap-break-word [&_a]:underline",
