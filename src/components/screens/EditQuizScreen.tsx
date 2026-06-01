@@ -36,6 +36,7 @@ import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
 import { useEditQuizInvalidFocus } from "@/hooks/use-edit-quiz-invalid-focus";
 import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
+import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
 import {
   getEditQuizSnapshotKey,
   QUIZ_LOCAL_SNAPSHOT_VERSION,
@@ -89,6 +90,7 @@ function defaultPage(
       explanation?: string | null;
       options: { id?: string; option_text: string; is_correct: boolean }[];
     }[];
+    crossword_quiz_id?: string | null;
   },
   pageIndex?: number,
   forcedType?: TestType
@@ -100,6 +102,7 @@ function defaultPage(
     title: p?.title ?? "",
     example: p?.example ?? "",
     order_index: pageIndex ?? 0,
+    crossword_quiz_id: p?.crossword_quiz_id ?? null,
     questions: (p?.questions?.length ? p.questions : [{ question_title: "", question_image_url: "", explanation: "", options: [defaultOption()] }]).map((q, i) =>
       defaultQuestion(q, i)
     ),
@@ -112,6 +115,7 @@ interface EditQuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
   topics: { id: string; name: string }[];
+  crosswordOptions?: CrosswordSelectOption[];
   chapter?: Chapter;
   /** Ссылка «назад к списку квизов темы» (по умолчанию хаб админки) */
   backToTopicHref?: string;
@@ -121,6 +125,7 @@ export function EditQuizScreen({
   quiz,
   theoryBlocks: initialTheoryBlocks = [],
   topics,
+  crosswordOptions = [],
   chapter,
   backToTopicHref = "/admin",
 }: EditQuizScreenProps) {
@@ -161,7 +166,7 @@ export function EditQuizScreen({
       pages: quiz.pages?.length
         ? quiz.pages.map((p, i) =>
             defaultPage(
-              { id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions },
+              { id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions, crossword_quiz_id: p.crossword?.quiz.id ?? null },
               i,
               isListeningChapter ? "input" : undefined
             )
@@ -287,8 +292,9 @@ export function EditQuizScreen({
         type: p.type,
         title: p.title || null,
         example: p.example || null,
+        crossword_quiz_id: p.type === "crossword" ? p.crossword_quiz_id ?? null : null,
         order_index: pi,
-        questions: p.questions.map((q, qi) => ({
+        questions: p.type === "crossword" ? [] : p.questions.map((q, qi) => ({
           id: q.id,
           question_title: q.question_title,
           question_image_url: q.question_image_url || null,
@@ -543,6 +549,7 @@ export function EditQuizScreen({
                       hideQuestionImageBlock={isListeningChapter}
                       useLyricsTerminology={isListeningChapter}
                       embeddedInTabs
+                      crosswordOptions={crosswordOptions}
                       onConfirmDeleteQuestion={async (pi, qIndex) => {
                         const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
                         if (q?.id) {

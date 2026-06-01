@@ -14,6 +14,7 @@ export {
   getQuizWithPagesBySlug,
   getCrosswordQuizByQuizId,
   getCrosswordQuizBySlug,
+  getCrosswordOptions,
   getTheoryBlocks,
 } from "./queries";
 export type {

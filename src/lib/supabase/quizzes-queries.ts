@@ -5,6 +5,7 @@ import { shuffleArray } from "@/lib/utils";
 import type { Option, Quiz, QuizPageWithDetails, QuizWithPages } from "./types";
 import { getTopicBySlugAndChapter } from "./topics-queries";
 import { getQuizListeningMetaByQuizId } from "./quiz-listenings-meta-queries";
+import { getLinkedCrosswordsByPageIds } from "./crossword-queries";
 
 const QUIZZES_LIST_TAG = "quizzes:list";
 const getQuizBySlugTag = (slug: string) => `quizzes:slug:${slug.trim().toLowerCase()}`;
@@ -47,7 +48,8 @@ type QuizNestedRow = Quiz & {
 
 function mapNestedQuizToQuizWithPages(
   quiz: QuizNestedRow,
-  video: QuizWithPages["video"]
+  video: QuizWithPages["video"],
+  linkedCrosswords = new Map<string, QuizPageWithDetails["crossword"]>()
 ): QuizWithPages {
   const pages: QuizPageWithDetails[] = (quiz.quiz_pages ?? [])
     .slice()
@@ -59,6 +61,7 @@ function mapNestedQuizToQuizWithPages(
       title: page.title ?? null,
       example: page.example ?? null,
       order_index: page.order_index,
+      crossword: linkedCrosswords.get(page.id) ?? null,
       questions: (page.questions ?? [])
         .slice()
         .sort((a, b) => a.order_index - b.order_index)
@@ -182,8 +185,14 @@ export async function getQuizWithPages(
     .single();
 
   if (quizError || !quiz) return null;
-  const video = await getQuizListeningMetaByQuizId(supabase, quiz.id);
-  return mapNestedQuizToQuizWithPages(quiz as QuizNestedRow, video);
+  const [video, linkedCrosswords] = await Promise.all([
+    getQuizListeningMetaByQuizId(supabase, quiz.id),
+    getLinkedCrosswordsByPageIds(
+      supabase,
+      ((quiz as QuizNestedRow).quiz_pages ?? []).map((page) => page.id)
+    ),
+  ]);
+  return mapNestedQuizToQuizWithPages(quiz as QuizNestedRow, video, linkedCrosswords);
 }
 
 /** Квиз по slug (для маршрута /quiz/[slug]) */
@@ -215,8 +224,14 @@ export async function getQuizWithPagesBySlug(
         .single();
 
       if (quizError || !quiz) return null;
-      const video = await getQuizListeningMetaByQuizId(supabase, quiz.id);
-      return mapNestedQuizToQuizWithPages(quiz as QuizNestedRow, video);
+      const [video, linkedCrosswords] = await Promise.all([
+        getQuizListeningMetaByQuizId(supabase, quiz.id),
+        getLinkedCrosswordsByPageIds(
+          supabase,
+          ((quiz as QuizNestedRow).quiz_pages ?? []).map((page) => page.id)
+        ),
+      ]);
+      return mapNestedQuizToQuizWithPages(quiz as QuizNestedRow, video, linkedCrosswords);
     },
     ["quizzes:with-pages-by-slug", normalizedSlug],
     { tags: [quizSlugTag] }

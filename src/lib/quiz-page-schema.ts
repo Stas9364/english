@@ -18,15 +18,17 @@ export const quizQuestionSchema = z.object({
 });
 
 export const quizPageBaseObject = z.object({
-  type: z.enum(["single", "multiple", "input", "select_gaps", "matching"]),
+  type: z.enum(["single", "multiple", "input", "select_gaps", "matching", "crossword"]),
   title: z.string().optional(),
   example: z.string().optional(),
   order_index: z.number(),
+  crossword_quiz_id: z.string().uuid().nullable().optional(),
   questions: z.array(quizQuestionSchema).min(1, "At least one question"),
 });
 
 type PageLike = {
   type: string;
+  crossword_quiz_id?: string | null;
   questions: Array<{
     question_title?: string;
     question_image_url?: string;
@@ -36,6 +38,17 @@ type PageLike = {
 
 export function withQuizPageRefine<T extends z.ZodType<PageLike>>(schema: T): T {
   return schema.superRefine((p: PageLike, ctx) => {
+    if (p.type === "crossword") {
+      if (!("crossword_quiz_id" in p) || typeof p.crossword_quiz_id !== "string" || !p.crossword_quiz_id) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Select crossword",
+          path: ["crossword_quiz_id"],
+        });
+      }
+      return;
+    }
+
     const ensureQuestionContent = (q: PageLike["questions"][number], i: number) => {
       const hasTitle = (q.question_title ?? "").trim().length > 0;
       const hasImage = (q.question_image_url ?? "").trim().length > 0;

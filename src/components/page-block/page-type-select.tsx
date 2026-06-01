@@ -25,7 +25,9 @@ export function PageTypeSelect({ form, pageIndex, defaultOption }: PageTypeSelec
                     const value = e.target.value as TestType;
                     form.setValue(`pages.${pageIndex}.type`, value);
                     const questions = form.getValues(`pages.${pageIndex}.questions`);
-                    if (value === "input" || value === "select_gaps") {
+                    if (value === "crossword") {
+                        form.setValue(`pages.${pageIndex}.crossword_quiz_id`, null);
+                    } else if (value === "input" || value === "select_gaps") {
                         form.setValue(
                             `pages.${pageIndex}.questions`,
                             questions.map((q, i) => ({
@@ -63,6 +65,7 @@ export function PageTypeSelect({ form, pageIndex, defaultOption }: PageTypeSelec
                 <option value="input">Text input</option>
                 <option value="select_gaps">Dropdown in gaps</option>
                 <option value="matching">Matching</option>
+                <option value="crossword">Crossword</option>
             </select>
         </div>
     );

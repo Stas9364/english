@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/page-container";
 import {
   createServerClient,
   getAdminChapterByKey,
+  getCrosswordOptions,
   getTopicBySlugAndChapter,
   getTopicsByChapter,
 } from "@/lib/supabase";
@@ -27,7 +28,10 @@ export default async function AdminCreateQuizInTopicPage({ params }: AdminCreate
   const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
   if (!topic) notFound();
 
-  const topics = await getTopicsByChapter(supabase, chapter);
+  const [topics, crosswordOptions] = await Promise.all([
+    getTopicsByChapter(supabase, chapter),
+    getCrosswordOptions(supabase),
+  ]);
 
   if (chapter.trim().toLowerCase() === "crossword") {
     return (
@@ -42,6 +46,7 @@ export default async function AdminCreateQuizInTopicPage({ params }: AdminCreate
       <CreateQuizScreen
         chapter={chapter}
         topics={topics}
+        crosswordOptions={crosswordOptions}
         initialTopicId={topic.id}
         topicSlug={topic.slug}
       />

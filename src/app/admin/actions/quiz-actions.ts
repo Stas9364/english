@@ -230,6 +230,7 @@ export async function createQuiz(data: CreateQuizInput) {
   const pagesToInsert: QuizPageWriteRow[] = [];
   const questionsToInsert: QuestionWriteRow[] = [];
   const optionsToInsert: OptionInsertRow[] = [];
+  const crosswordLinksToInsert: { page_id: string; crossword_quiz_id: string }[] = [];
 
   for (const page of data.pages) {
     const pageId = crypto.randomUUID();
@@ -241,6 +242,17 @@ export async function createQuiz(data: CreateQuizInput) {
       example: page.example || null,
       order_index: page.order_index,
     });
+
+    if (page.type === "crossword") {
+      if (!page.crossword_quiz_id) {
+        return { ok: false, error: "Select crossword for crossword page" };
+      }
+      crosswordLinksToInsert.push({
+        page_id: pageId,
+        crossword_quiz_id: page.crossword_quiz_id,
+      });
+      continue;
+    }
 
     for (const q of page.questions) {
       const questionId = crypto.randomUUID();
@@ -285,6 +297,12 @@ export async function createQuiz(data: CreateQuizInput) {
   if (optionsToInsert.length > 0) {
     const { error: optionsInsertError } = await supabase.from("options").insert(optionsToInsert);
     if (optionsInsertError) return { ok: false, error: optionsInsertError.message };
+  }
+  if (crosswordLinksToInsert.length > 0) {
+    const { error: crosswordLinksInsertError } = await supabase
+      .from("quiz_page_crosswords")
+      .insert(crosswordLinksToInsert);
+    if (crosswordLinksInsertError) return { ok: false, error: crosswordLinksInsertError.message };
   }
 
   const theoryBlocksToInsert: TheoryBlockInsertRow[] =
@@ -424,6 +442,7 @@ export async function updateQuiz(data: UpdateQuizInput) {
   const questionsToUpsert: QuestionWriteRow[] = [];
   const optionsToUpsert: OptionUpsertRow[] = [];
   const theoryBlocksToUpsert: TheoryBlockUpsertRow[] = [];
+  const crosswordLinksToUpsert: { page_id: string; crossword_quiz_id: string }[] = [];
 
   for (const page of data.pages) {
     const pageId = page.id && existingPageIds.has(page.id) ? page.id : crypto.randomUUID();
@@ -437,6 +456,17 @@ export async function updateQuiz(data: UpdateQuizInput) {
       example: page.example || null,
       order_index: page.order_index,
     });
+
+    if (page.type === "crossword") {
+      if (!page.crossword_quiz_id) {
+        return { ok: false, error: "Select crossword for crossword page" };
+      }
+      crosswordLinksToUpsert.push({
+        page_id: pageId,
+        crossword_quiz_id: page.crossword_quiz_id,
+      });
+      continue;
+    }
 
     const existingQuestionIdsForPage = existingQuestionIdsByPageId.get(pageId) ?? new Set<string>();
 
@@ -499,6 +529,21 @@ export async function updateQuiz(data: UpdateQuizInput) {
       .from("options")
       .upsert(optionsToUpsert, { onConflict: "id" });
     if (optionsUpsertError) return { ok: false, error: optionsUpsertError.message };
+  }
+
+  if (existingPageIdList.length > 0) {
+    const { error: crosswordLinksDeleteError } = await supabase
+      .from("quiz_page_crosswords")
+      .delete()
+      .in("page_id", existingPageIdList);
+    if (crosswordLinksDeleteError) return { ok: false, error: crosswordLinksDeleteError.message };
+  }
+
+  if (crosswordLinksToUpsert.length > 0) {
+    const { error: crosswordLinksUpsertError } = await supabase
+      .from("quiz_page_crosswords")
+      .upsert(crosswordLinksToUpsert, { onConflict: "page_id" });
+    if (crosswordLinksUpsertError) return { ok: false, error: crosswordLinksUpsertError.message };
   }
 
   const staleOptionIds = getStaleIds(existingOptions, keptOptionIds);

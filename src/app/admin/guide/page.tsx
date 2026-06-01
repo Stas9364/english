@@ -204,6 +204,30 @@ export default async function AdminGuidePage() {
           </li>
         </ul>
 
+        <h3 id="crossword-mode-embed" className="text-lg font-semibold scroll-mt-6">Как встроить Crossword в обычный квиз</h3>
+        <ol className="list-decimal space-y-1 pl-5 text-base">
+          <li>
+            Сначала создайте и сохраните кроссворд в разделе <code>crossword</code>.
+          </li>
+          <li>
+            Откройте обычный квиз в режиме создания или редактирования.
+          </li>
+          <li>
+            Добавьте новую страницу и выберите <strong>Page type: Crossword</strong>.
+          </li>
+          <li>
+            В поле <strong>Crossword</strong> найдите нужный кроссворд через поиск и выберите его в списке.
+          </li>
+          <li>
+            Сохраните квиз. На пользовательской странице этот кроссворд будет показан внутри текущего квиза и попадёт в
+            навигацию <strong>Previous page</strong> / <strong>Next page</strong>.
+          </li>
+          <li>
+            Для админа на встроенной странице есть кнопка <strong>Open crossword</strong>: она открывает в новой вкладке
+            страницу редактирования выбранного кроссворда. Так можно быстро перейти к правке слов, подсказок и сетки.
+          </li>
+        </ol>
+
         <h3 id="crossword-mode-student" className="text-lg font-semibold scroll-mt-6">Прохождение Crossword‑квиза</h3>
         <ul className="list-disc space-y-1 pl-5 text-base">
           <li>Пользователь вводит буквы прямо в клетки кроссворда.</li>

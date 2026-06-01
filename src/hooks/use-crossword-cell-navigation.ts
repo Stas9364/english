@@ -32,6 +32,8 @@ export function useCrosswordCellNavigation(entries: CrosswordEntry[]) {
     [entries]
   );
 
+  const entriesById = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
+
   const entriesByCellKey = useMemo(() => {
     const map = new Map<string, CrosswordEntry[]>();
     for (const entry of entries) {
@@ -70,19 +72,81 @@ export function useCrosswordCellNavigation(entries: CrosswordEntry[]) {
     if (nextEntryId) setActiveEntryId(nextEntryId);
   }
 
-  function focusNextCellInActiveEntry(key: string) {
+  function moveCursorInActiveEntry(key: string, delta: -1 | 1): boolean {
     const entryId = selectEntryForCell(key);
-    if (!entryId) return;
+    if (!entryId) return false;
 
     setActiveEntryId(entryId);
     const keys = entryCellKeys.get(entryId) ?? [];
-    const nextKey = keys[keys.indexOf(key) + 1];
+    const nextIndex = keys.indexOf(key) + delta;
+    if (nextIndex < 0 || nextIndex >= keys.length) return true;
+
+    const nextKey = keys[nextIndex];
     if (nextKey) inputRefs.current.get(nextKey)?.focus();
+    return true;
+  }
+
+  function focusNextCellInActiveEntry(key: string) {
+    moveCursorInActiveEntry(key, 1);
+  }
+
+  /** Arrow keys along active word: Left/Right for across, Up/Down for down. */
+  function handleArrowKeyInActiveEntry(cellKey: string, keyName: string): boolean {
+    const entryId = selectEntryForCell(cellKey);
+    if (!entryId) return false;
+
+    const entry = entriesById.get(entryId);
+    if (!entry) return false;
+
+    let delta: -1 | 1 | null = null;
+    if (entry.direction === "across") {
+      if (keyName === "ArrowLeft") delta = -1;
+      else if (keyName === "ArrowRight") delta = 1;
+    } else {
+      if (keyName === "ArrowUp") delta = -1;
+      else if (keyName === "ArrowDown") delta = 1;
+    }
+
+    if (delta === null) return false;
+    return moveCursorInActiveEntry(cellKey, delta);
+  }
+
+  function focusCell(focusKey: string) {
+    inputRefs.current.get(focusKey)?.focus();
+  }
+
+  /** Backspace: clear letter and move focus toward word start within active entry. */
+  function backspaceInActiveEntry(key: string, answers: Record<string, string>) {
+    const entryId = selectEntryForCell(key);
+    if (!entryId) return { keysToClear: [] as string[], focusKey: null as string | null };
+
+    setActiveEntryId(entryId);
+    const keys = entryCellKeys.get(entryId) ?? [];
+    const index = keys.indexOf(key);
+    if (index < 0) return { keysToClear: [], focusKey: null };
+
+    const hasLetter = Boolean((answers[key] ?? "").trim());
+    if (hasLetter) {
+      return {
+        keysToClear: [key],
+        focusKey: index > 0 ? keys[index - 1]! : key,
+      };
+    }
+
+    if (index > 0) {
+      const prevKey = keys[index - 1]!;
+      return { keysToClear: [prevKey], focusKey: prevKey };
+    }
+
+    return { keysToClear: [], focusKey: null };
   }
 
   return {
     focusEntryStart,
     focusNextCellInActiveEntry,
+    handleArrowKeyInActiveEntry,
+    backspaceInActiveEntry,
+    focusCell,
     handleCellFocus,
     registerInput,
   };

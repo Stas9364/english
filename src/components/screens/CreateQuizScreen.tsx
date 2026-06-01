@@ -25,6 +25,7 @@ import Link from "next/link";
 import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
+import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
 import { toast } from "sonner";
 import {
     getCreateQuizSnapshotKey,
@@ -64,6 +65,7 @@ function defaultPage(pageIndex: number, forcedType: TestType = "single") {
         type: forcedType,
         title: "",
         example: "",
+        crossword_quiz_id: null,
         order_index: pageIndex,
         questions: [defaultQuestion(0, forcedType)],
     };
@@ -87,11 +89,12 @@ function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefi
 interface CreateQuizScreenProps {
     chapter: Chapter;
     topics: { id: string; name: string }[];
+    crosswordOptions?: CrosswordSelectOption[];
     initialTopicId?: string;
     topicSlug?: string;
 }
 
-export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }: CreateQuizScreenProps) {
+export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initialTopicId, topicSlug }: CreateQuizScreenProps) {
     const isListeningChapter = chapter.trim().toLowerCase() === "listening";
     const [activePageIndex, setActivePageIndex] = useState(0);
     const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
@@ -275,8 +278,9 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                 type: p.type,
                 title: p.title || null,
                 example: p.example || null,
+                crossword_quiz_id: p.type === "crossword" ? p.crossword_quiz_id ?? null : null,
                 order_index: pi,
-                questions: p.questions.map((q, qi) => ({
+                questions: p.type === "crossword" ? [] : p.questions.map((q, qi) => ({
                     question_title: q.question_title,
                     question_image_url: q.question_image_url || null,
                     explanation: q.explanation || null,
@@ -459,6 +463,7 @@ export function CreateQuizScreen({ chapter, topics, initialTopicId, topicSlug }:
                                     hideQuestionImageBlock={isListeningChapter}
                                     useLyricsTerminology={isListeningChapter}
                                     embeddedInTabs
+                                    crosswordOptions={crosswordOptions}
                                 />
                             ) : null}
                         </div>

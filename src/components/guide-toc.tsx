@@ -28,6 +28,7 @@ const sections = [
     items: [
       { id: "crossword-mode-create", label: "Создание Crossword" },
       { id: "crossword-mode-edit", label: "Редактирование Crossword" },
+      { id: "crossword-mode-embed", label: "Встроить в квиз" },
       { id: "crossword-mode-student", label: "Прохождение Crossword" },
       { id: "crossword-mode-rules", label: "Правила и ограничения" },
     ],

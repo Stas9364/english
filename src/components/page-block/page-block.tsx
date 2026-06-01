@@ -4,6 +4,7 @@ import { uploadTheoryImage } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDeletePopover } from "@/components/ui/confirm-delete-popover";
+import { CrosswordPageSelect, type CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
 import { Label } from "@/components/ui/label";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { usePageQuestions } from "@/hooks/use-page-questions";
@@ -22,6 +23,7 @@ export type PageBlockFormValues = {
     title?: string;
     example?: string;
     order_index?: number;
+      crossword_quiz_id?: string | null;
     questions: {
       id?: string;
       question_title: string;
@@ -64,6 +66,7 @@ export interface PageBlockProps {
   useLyricsTerminology?: boolean;
   /** Табы снаружи: без аккордеона и дубля заголовка страницы */
   embeddedInTabs?: boolean;
+  crosswordOptions?: CrosswordSelectOption[];
 }
 
 export function PageBlock({
@@ -88,6 +91,7 @@ export function PageBlock({
   hideQuestionImageBlock = false,
   useLyricsTerminology = false,
   embeddedInTabs = false,
+  crosswordOptions = [],
 }: PageBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [pendingFocusQuestionIndex, setPendingFocusQuestionIndex] = useState<number | null>(null);
@@ -98,6 +102,10 @@ export function PageBlock({
   const pageType = useWatch({
     control: form.control,
     name: `pages.${pageIndex}.type`,
+  });
+  const crosswordQuizId = useWatch({
+    control: form.control,
+    name: `pages.${pageIndex}.crossword_quiz_id`,
   });
   const { questionsArray, handleMoveQuestion, handleRemoveQuestion } = usePageQuestions({
     form,
@@ -199,68 +207,81 @@ export function PageBlock({
             <PageTitleFields form={form} pageIndex={pageIndex} />
           )}
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <Label>{useLyricsTerminology ? "Lyrics" : "Questions"}</Label>
-              <span className="text-sm text-muted-foreground">
-                {useLyricsTerminology ? "Lines" : "Questions"}: {questionsArray.fields.length}
-              </span>
+          {pageType === "crossword" ? (
+            <CrosswordPageSelect
+              value={crosswordQuizId ?? ""}
+              onChange={(value: string) =>
+                form.setValue(`pages.${pageIndex}.crossword_quiz_id`, value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+              options={crosswordOptions}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <Label>{useLyricsTerminology ? "Lyrics" : "Questions"}</Label>
+                <span className="text-sm text-muted-foreground">
+                  {useLyricsTerminology ? "Lines" : "Questions"}: {questionsArray.fields.length}
+                </span>
+              </div>
+              {questionsArray.fields.map((qField, qIndex) => (
+                <QuestionItemCard
+                  key={qField.id}
+                  form={form}
+                  pageIndex={pageIndex}
+                  qIndex={qIndex}
+                  pageType={pageType}
+                  questionsCount={questionsCount}
+                  defaultOption={stableDefaultOption}
+                  onRemoveQuestion={handleRemoveQuestion}
+                  onMoveQuestion={handleMoveQuestion}
+                  canRemove={questionsCount > 1}
+                  uploadingQuestionTarget={uploadingQuestionTarget}
+                  uploadError={uploadError}
+                  onUploadQuestionImage={handleUploadQuestionImage}
+                  onConfirmDeleteOption={onConfirmDeleteOption}
+                  onConfirmRemoveQuestionImage={onConfirmRemoveQuestionImage}
+                  hideQuestionImageBlock={hideQuestionImageBlock}
+                  hideQuestionTitle={useLyricsTerminology}
+                  autoFocusTitle={qIndex === pendingFocusQuestionIndex}
+                  onTitleAutoFocusDone={clearPendingFocusQuestion}
+                />
+              ))}
+              <div className="flex justify-between items-center gap-2">
+                {!hideAddQuestionButton && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newQuestionIndex = questionsArray.fields.length;
+                      setPendingFocusQuestionIndex(newQuestionIndex);
+                      questionsArray.append(
+                        defaultQuestion(
+                          questionsArray.fields.length,
+                          pageType
+                        ) as PageBlockFormValues["pages"][0]["questions"][0]
+                      );
+                    }}
+                  >
+                    <Plus className="size-4" /> Add question
+                  </Button>
+                )}
+                {!embeddedInTabs && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsExpanded(false)}
+                  >
+                    Collapse
+                  </Button>
+                )}
+              </div>
             </div>
-            {questionsArray.fields.map((qField, qIndex) => (
-              <QuestionItemCard
-                key={qField.id}
-                form={form}
-                pageIndex={pageIndex}
-                qIndex={qIndex}
-                pageType={pageType}
-                questionsCount={questionsCount}
-                defaultOption={stableDefaultOption}
-                onRemoveQuestion={handleRemoveQuestion}
-                onMoveQuestion={handleMoveQuestion}
-                canRemove={questionsCount > 1}
-                uploadingQuestionTarget={uploadingQuestionTarget}
-                uploadError={uploadError}
-                onUploadQuestionImage={handleUploadQuestionImage}
-                onConfirmDeleteOption={onConfirmDeleteOption}
-                onConfirmRemoveQuestionImage={onConfirmRemoveQuestionImage}
-                hideQuestionImageBlock={hideQuestionImageBlock}
-                hideQuestionTitle={useLyricsTerminology}
-                autoFocusTitle={qIndex === pendingFocusQuestionIndex}
-                onTitleAutoFocusDone={clearPendingFocusQuestion}
-              />
-            ))}
-            <div className="flex justify-between items-center gap-2">
-              {!hideAddQuestionButton && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newQuestionIndex = questionsArray.fields.length;
-                    setPendingFocusQuestionIndex(newQuestionIndex);
-                    questionsArray.append(
-                      defaultQuestion(
-                        questionsArray.fields.length,
-                        pageType
-                      ) as PageBlockFormValues["pages"][0]["questions"][0]
-                    );
-                  }}
-                >
-                  <Plus className="size-4" /> Add question
-                </Button>
-              )}
-              {!embeddedInTabs && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsExpanded(false)}
-                >
-                  Collapse
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
         </CardContent>
       )}
     </Card>

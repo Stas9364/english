@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import {
   createServerClient,
+  getCrosswordOptions,
   getCrosswordQuizByQuizId,
   getQuizWithPagesBySlug,
   getTheoryBlocks,
@@ -31,9 +32,10 @@ export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
     return <EditCrosswordScreen quiz={crosswordQuiz} backToTopicHref={backToTopicHref} />;
   }
 
-  const [theoryBlocks, topics] = await Promise.all([
+  const [theoryBlocks, topics, crosswordOptions] = await Promise.all([
     getTheoryBlocks(supabase, quiz.id),
     getTopicsByChapter(supabase, topicMeta.chapter),
+    getCrosswordOptions(supabase),
   ]);
 
   return (
@@ -41,6 +43,7 @@ export default async function AdminQuizPage({ params }: AdminQuizPageProps) {
       quiz={quiz}
       theoryBlocks={theoryBlocks}
       topics={topics}
+      crosswordOptions={crosswordOptions}
       chapter={topicMeta.chapter}
       backToTopicHref={backToTopicHref}
     />

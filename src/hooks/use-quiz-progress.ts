@@ -21,7 +21,7 @@ export function useQuizProgress(quiz: QuizWithPages) {
   const [checkedPages, setCheckedPages] = useState<Record<string, boolean>>({});
   const [pageIndex, setPageIndex] = useState(0);
 
-  const pages: QuizPageWithDetails[] = quiz.pages ?? [];
+  const pages = useMemo<QuizPageWithDetails[]>(() => quiz.pages ?? [], [quiz.pages]);
   const totalPages = pages.length || 1;
   const currentPage = useMemo(
     () =>
@@ -29,6 +29,7 @@ export function useQuizProgress(quiz: QuizWithPages) {
       ({
         type: "single" as const,
         questions: [] as QuestionWithOptions[],
+        crossword: null,
       } as QuizPageWithDetails),
     [pages, pageIndex]
   );

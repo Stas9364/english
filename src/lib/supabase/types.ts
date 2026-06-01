@@ -1,7 +1,7 @@
 import type { Chapter } from "@/lib/chapters";
 
-/** Тип страницы квиза: один правильный, несколько, ввод текста, выбор в пропусках или соответствие */
-export type TestType = "single" | "multiple" | "input" | "select_gaps" | "matching";
+/** Тип страницы квиза: вопросы, соответствие или встроенный кроссворд */
+export type TestType = "single" | "multiple" | "input" | "select_gaps" | "matching" | "crossword";
 
 /** Тема квизов (одна тема -> много квизов) */
 export interface Topic {
@@ -76,17 +76,6 @@ export interface QuestionWithOptions extends Question {
   options: Option[];
 }
 
-/** Страница квиза с вопросами и вариантами */
-export interface QuizPageWithDetails extends QuizPage {
-  questions: QuestionWithOptions[];
-}
-
-/** Квиз со всеми страницами (для прохождения и админки) */
-export interface QuizWithPages extends Quiz {
-  pages: QuizPageWithDetails[];
-  video: QuizVideo | null;
-}
-
 export type CrosswordDirection = "across" | "down";
 
 export interface CrosswordGridCell {
@@ -126,6 +115,22 @@ export interface CrosswordPuzzle {
 
 export interface CrosswordQuiz extends Quiz {
   crossword: CrosswordPuzzle;
+}
+
+export interface LinkedCrossword {
+  quiz: CrosswordQuiz;
+}
+
+/** Страница квиза с вопросами/вариантами или linked crossword */
+export interface QuizPageWithDetails extends QuizPage {
+  questions: QuestionWithOptions[];
+  crossword: LinkedCrossword | null;
+}
+
+/** Квиз со всеми страницами (для прохождения и админки) */
+export interface QuizWithPages extends Quiz {
+  pages: QuizPageWithDetails[];
+  video: QuizVideo | null;
 }
 
 /** Тип блока теории: текст или изображение (URL) */

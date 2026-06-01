@@ -22,6 +22,7 @@ export type CreateQuizInput = {
     title?: string | null;
     example?: string | null;
     order_index: number;
+    crossword_quiz_id?: string | null;
     questions: {
       question_title: string;
       question_image_url?: string | null;
@@ -52,6 +53,7 @@ export type UpdateQuizInput = {
     title?: string | null;
     example?: string | null;
     order_index: number;
+    crossword_quiz_id?: string | null;
     questions: {
       id?: string;
       question_title: string;

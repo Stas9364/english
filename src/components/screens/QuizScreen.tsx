@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { MatchingBlock } from "@/components/matching-block";
 import { QuizVideoPlayer } from "@/components/quiz-video-player";
+import { CrosswordPlayer } from "@/components/crossword/crossword-player";
 import { QuestionBlock } from "../question-block/question-block";
 import { useQuizProgress } from "@/hooks/use-quiz-progress";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
@@ -83,6 +84,7 @@ export function QuizScreen({
 
   const hasVideo = Boolean(quiz.video?.url?.trim());
   const safePageTitleHtml = sanitizeQuestionTitleHtml(currentPage.title ?? "");
+  const isCrosswordPage = pageType === "crossword";
 
   const quizMainContent = (
     <>
@@ -173,7 +175,31 @@ export function QuizScreen({
             </Card>
           )}
 
-          {pageType === "matching" ? (
+          {isCrosswordPage ? (
+            currentPage.crossword ? (
+              <div className="flex flex-col gap-4">
+                {isAdmin ? (
+                  <div>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/admin/quiz/${currentPage.crossword.quiz.slug}`} target="_blank" rel="noopener noreferrer">
+                        Open crossword
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
+                <CrosswordPlayer
+                  quiz={currentPage.crossword.quiz}
+                  storageKey={`${quiz.id}:${currentPage.id}`}
+                />
+              </div>
+            ) : (
+              <Card>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Crossword is not configured for this page.</p>
+                </CardContent>
+              </Card>
+            )
+          ) : pageType === "matching" ? (
             <MatchingBlock
               questions={currentPage.questions}
               selected={selected}
@@ -214,33 +240,35 @@ export function QuizScreen({
             </ul>
           )}
 
-          <div className="mt-8 flex flex-col items-center gap-4">
-            {!isCurrentPageChecked ? (
-              <Button
-                size="lg"
-                onClick={handleCheck}
-                disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered || !allMatchingAnswered}
-              >
-                Check results
-              </Button>
-            ) : (
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {hasNextPage && (
-                  <Button
-                    size="lg"
-                    onClick={() => setPageIndex((i) => i + 1)}
-                  >
-                    Next page
-                  </Button>
-                )}
-                {!hasNextPage && hasTheory && (
-                  <Button size="lg" variant="outline" onClick={() => setViewTab("theory")}>
-                    Back to theory
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+          {!isCrosswordPage && (
+            <div className="mt-8 flex flex-col items-center gap-4">
+              {!isCurrentPageChecked ? (
+                <Button
+                  size="lg"
+                  onClick={handleCheck}
+                  disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered || !allMatchingAnswered}
+                >
+                  Check results
+                </Button>
+              ) : (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {hasNextPage && (
+                    <Button
+                      size="lg"
+                      onClick={() => setPageIndex((i) => i + 1)}
+                    >
+                      Next page
+                    </Button>
+                  )}
+                  {!hasNextPage && hasTheory && (
+                    <Button size="lg" variant="outline" onClick={() => setViewTab("theory")}>
+                      Back to theory
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {totalPages > 1 && (
             <nav className="mt-6 flex flex-wrap items-center justify-center gap-2" aria-label="Quiz pages">
