@@ -269,6 +269,10 @@ export default async function AdminGuidePage() {
           В админке ниже полей квиза есть блок <strong>AI generation (Gemini)</strong>. Он умеет по заданным параметрам
           автоматически создавать одну страницу квиза и сразу вставлять её в форму.
         </p>
+        <p className="text-base">
+          В верхней части блока доступно поле <strong>Gemini model</strong> — можно выбрать модель, которой будет выполняться
+          генерация. Это позволяет переключаться между более быстрым и более качественным режимом в зависимости от задачи.
+        </p>
 
         <h3 id="ai-generation-basic" className="text-lg font-semibold scroll-mt-6">Как пользоваться базовым режимом (без custom task)</h3>
         <ol className="list-decimal space-y-1 pl-5 text-base">
@@ -278,6 +282,15 @@ export default async function AdminGuidePage() {
           <li>
             Укажите <strong>Level</strong> (например, B1) и <strong>Explanation language</strong> (RU/EN) — это подсказки для
             уровня сложности и языка комментариев.
+          </li>
+          <li>
+            Выберите <strong>Gemini model</strong>:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>модель применяется к текущему запросу генерации;</li>
+              <li>
+                при необходимости можно менять модель перед каждым новым нажатием <strong>Generate page</strong>.
+              </li>
+            </ul>
           </li>
           <li>
             В блоке <strong>Pages per request / Questions per page / Page type to generate</strong>:
