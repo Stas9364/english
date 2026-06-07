@@ -21,6 +21,7 @@ import {
   createButton,
 } from "react-simple-wysiwyg";
 import { useDebouncedDraftValue } from "@/hooks/use-debounced-draft-value";
+import { useSanitizeEmptyEditorPaste } from "@/hooks/use-sanitize-empty-editor-paste";
 import { cn } from "@/lib/utils";
 
 export interface QuestionTitleColorEditorProps {
@@ -34,6 +35,7 @@ export interface QuestionTitleColorEditorProps {
   name?: string;
   placeholder?: string;
   className?: string;
+  sanitizePasteWhenEmpty?: boolean;
 }
 
 const SAVE_DELAY_MS = 500;
@@ -58,12 +60,18 @@ export function QuestionTitleColorEditor({
   name,
   placeholder = "Use [[]] where the user should type or choose",
   className,
+  sanitizePasteWhenEmpty = false,
 }: QuestionTitleColorEditorProps) {
   const hasFocusedRef = useRef(false);
   const [draftValue, setDraftValue] = useDebouncedDraftValue({
     value,
     onChange,
     delayMs: SAVE_DELAY_MS,
+  });
+  const handlePaste = useSanitizeEmptyEditorPaste({
+    enabled: sanitizePasteWhenEmpty,
+    draftValue,
+    setDraftValue,
   });
 
   function handleContainerRef(node: HTMLDivElement | null) {
@@ -100,6 +108,7 @@ export function QuestionTitleColorEditor({
           aria-invalid={invalid || undefined}
           onChange={(e) => setDraftValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           containerProps={{
             className: cn(
               "border-input bg-background w-full min-w-0 overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow]",

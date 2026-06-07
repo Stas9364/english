@@ -31,6 +31,7 @@ interface QuestionItemCardProps {
     hideQuestionTitle?: boolean;
     autoFocusTitle?: boolean;
     onTitleAutoFocusDone?: () => void;
+    sanitizeTitlePasteWhenEmpty?: boolean;
 }
 
 function QuestionItemCardInner({
@@ -52,6 +53,7 @@ function QuestionItemCardInner({
     hideQuestionTitle = false,
     autoFocusTitle = false,
     onTitleAutoFocusDone,
+    sanitizeTitlePasteWhenEmpty = false,
 }: QuestionItemCardProps) {
     const questionImage = useWatch({
         control: form.control,
@@ -152,6 +154,7 @@ function QuestionItemCardInner({
                         invalid={
                             !!form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title
                         }
+                        sanitizePasteWhenEmpty={sanitizeTitlePasteWhenEmpty}
                     />
                     {form.formState.errors.pages?.[pageIndex]?.questions?.[qIndex]?.question_title && (
                         <p className="text-sm text-destructive">

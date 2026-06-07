@@ -462,6 +462,7 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
                                     hideAddQuestionButton={isListeningChapter}
                                     hideQuestionImageBlock={isListeningChapter}
                                     useLyricsTerminology={isListeningChapter}
+                                    sanitizeTitlePasteWhenEmpty={isListeningChapter}
                                     embeddedInTabs
                                     crosswordOptions={crosswordOptions}
                                 />

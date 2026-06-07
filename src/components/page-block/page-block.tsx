@@ -64,6 +64,7 @@ export interface PageBlockProps {
   hideAddQuestionButton?: boolean;
   hideQuestionImageBlock?: boolean;
   useLyricsTerminology?: boolean;
+  sanitizeTitlePasteWhenEmpty?: boolean;
   /** Табы снаружи: без аккордеона и дубля заголовка страницы */
   embeddedInTabs?: boolean;
   crosswordOptions?: CrosswordSelectOption[];
@@ -90,6 +91,7 @@ export function PageBlock({
   hideAddQuestionButton = false,
   hideQuestionImageBlock = false,
   useLyricsTerminology = false,
+  sanitizeTitlePasteWhenEmpty = false,
   embeddedInTabs = false,
   crosswordOptions = [],
 }: PageBlockProps) {
@@ -247,6 +249,7 @@ export function PageBlock({
                   hideQuestionTitle={useLyricsTerminology}
                   autoFocusTitle={qIndex === pendingFocusQuestionIndex}
                   onTitleAutoFocusDone={clearPendingFocusQuestion}
+                  sanitizeTitlePasteWhenEmpty={sanitizeTitlePasteWhenEmpty}
                 />
               ))}
               <div className="flex justify-between items-center gap-2">
