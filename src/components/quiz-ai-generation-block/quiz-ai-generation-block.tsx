@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useRef } from "react";
 import { InputField } from './input-field';
 import { SelectField } from './select-field';
+import { GeminiModelSelectField } from "./gemini-model-select-field";
 
 export interface QuizAiGenerationBlockProps {
   topic: string;
@@ -22,6 +23,7 @@ export interface QuizAiGenerationBlockProps {
   constraints: string;
   lexicon: string;
   bannedTopics: string;
+  selectedModel: string;
 
   onTopicChange: (value: string) => void;
   onLevelChange: (value: string) => void;
@@ -33,6 +35,7 @@ export interface QuizAiGenerationBlockProps {
   onConstraintsChange: (value: string) => void;
   onLexiconChange: (value: string) => void;
   onBannedTopicsChange: (value: string) => void;
+  onSelectedModelChange: (value: string) => void;
 
   generateLabel?: string;
   helperText?: string;
@@ -71,6 +74,7 @@ export function QuizAiGenerationBlock({
   constraints,
   lexicon,
   bannedTopics,
+  selectedModel,
   onTopicChange,
   onLevelChange,
   onLanguageChange,
@@ -81,6 +85,7 @@ export function QuizAiGenerationBlock({
   onConstraintsChange,
   onLexiconChange,
   onBannedTopicsChange,
+  onSelectedModelChange,
   generateLabel = "Generate page",
   helperText = "The first successful generation replaces the current pages; all subsequent generations append new pages to the end.",
   isGenerating,
@@ -144,11 +149,17 @@ export function QuizAiGenerationBlock({
           Generates pages that match the quiz format and inserts them into the form below. Review and adjust questions
           before saving.
         </CardDescription>
+
+        <GeminiModelSelectField
+          selectedModel={selectedModel}
+          onSelectedModelChange={onSelectedModelChange}
+          isGenerating={isGenerating}
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <InputField label="Topic (required)" value={topicField.local} onChange={(e) => topicField.setLocal(e.target.value)} placeholder="e.g. Present Simple (routine)" wrapperClassName="sm:col-span-2" />
-          
+
           <SelectField label="Level" value={level} onChange={(e) => onLevelChange(e.target.value)} options={["A1", "A2", "B1", "B2", "C1", "C2"]} />
           <SelectField label="Explanation language" value={language} onChange={(e) => onLanguageChange(e.target.value as "RU" | "EN")} options={["RU", "EN"]} />
         </div>

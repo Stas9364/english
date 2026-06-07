@@ -482,6 +482,7 @@ export function EditQuizScreen({
                       constraints={ai.constraints}
                       lexicon={ai.lexicon}
                       bannedTopics={ai.bannedTopics}
+                      selectedModel={ai.selectedModel}
                       onTopicChange={ai.setTopic}
                       onLevelChange={ai.setLevel}
                       onLanguageChange={ai.setLanguage}
@@ -492,6 +493,7 @@ export function EditQuizScreen({
                       onConstraintsChange={ai.setConstraints}
                       onLexiconChange={ai.setLexicon}
                       onBannedTopicsChange={ai.setBannedTopics}
+                      onSelectedModelChange={ai.setSelectedModel}
                       isGenerating={ai.isGenerating}
                       onGenerate={handleGenerate}
                       generatedSummary={

@@ -26,6 +26,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [lexicon, setLexicon] = useState("");
   const [bannedTopics, setBannedTopics] = useState("");
   const [customTask, setCustomTask] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
         constraints: constraints.trim() || undefined,
         lexicon: lexicon.trim() || undefined,
         bannedTopics: bannedTopics.trim() || undefined,
+        model: selectedModel.trim() || undefined,
       });
 
       if (process.env.NODE_ENV === "development") {
@@ -87,6 +89,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     constraints,
     lexicon,
     bannedTopics,
+    selectedModel,
     isGenerating,
     errorMessage,
 
@@ -101,6 +104,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     setConstraints,
     setLexicon,
     setBannedTopics,
+    setSelectedModel,
     setErrorMessage,
 
     // actions

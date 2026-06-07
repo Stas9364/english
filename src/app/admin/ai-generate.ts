@@ -6,6 +6,12 @@ import type { TestType, TheoryBlockType } from "@/lib/supabase";
 const GEMINI_MODEL = "gemini-3-flash-preview";
 // const GEMINI_MODEL = "gemma-3n-e4b-it";
 
+export type GeminiModelOption = {
+  name: string;
+  displayName: string;
+  description: string;
+};
+
 export type GenerateQuizPagesParams = {
   topic: string;
   level: string;
@@ -18,6 +24,7 @@ export type GenerateQuizPagesParams = {
   lexicon?: string;
   bannedTopics?: string;
   customTask?: string;
+  model?: string;
 };
 
 type GeneratedOption = { option_text: string; is_correct: boolean; gap_index?: number };
@@ -540,6 +547,60 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     .join("\n");
 }
 
+function normalizeGeminiModelName(modelName?: string): string {
+  const normalized = (modelName ?? "").trim();
+  if (!normalized) return GEMINI_MODEL;
+  return normalized.startsWith("models/") ? normalized.slice("models/".length) : normalized;
+}
+
+export async function listGeminiModels(): Promise<{ ok: true; models: GeminiModelOption[] } | { ok: false; error: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { ok: false, error: "GEMINI_API_KEY is not configured" };
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        return { ok: false, error: "Gemini authorization failed. Check GEMINI_API_KEY." };
+      }
+      if (resp.status === 429) {
+        return { ok: false, error: "Gemini rate limit exceeded. Try again later." };
+      }
+      return { ok: false, error: `Gemini models request failed (${resp.status}).` };
+    }
+
+    type ModelsResponse = {
+      models?: Array<{
+        name?: string;
+        displayName?: string;
+        description?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
+    const data = (await resp.json()) as ModelsResponse;
+    const models = (data.models ?? [])
+      .filter((model) => (model.supportedGenerationMethods ?? []).includes("generateContent"))
+      .map((model) => ({
+        name: (model.name ?? "").toString(),
+        displayName: (model.displayName ?? model.name ?? "").toString(),
+        description: (model.description ?? "").toString(),
+      }))
+      .filter((model) => model.name.length > 0 && model.displayName.length > 0);
+
+    return { ok: true, models };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return { ok: false, error: message };
+  }
+}
+
 export async function generateQuizPages(
   params: GenerateQuizPagesParams
 ): Promise<GenerateOk | GenerateErr> {
@@ -587,6 +648,7 @@ export async function generateQuizPages(
         .optional()
         .transform(trimOrUndef)
         .refine((s) => !s || s.length <= MAX_FIELD_LEN_GENERIC, `Banned topics is too long (max ${MAX_FIELD_LEN_GENERIC})`),
+      model: z.string().optional().transform(trimOrUndef),
     })
     .superRefine((p, ctx) => {
       const total = p.pageCount * p.questionsPerPage;
@@ -633,7 +695,8 @@ export async function generateQuizPages(
   const prompt = buildGeneratePrompt(parsedParams);
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const modelToUse = normalizeGeminiModelName(parsedParams.model);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${encodeURIComponent(apiKey)}`;
     // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
     const signal =
       typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
