@@ -4,6 +4,11 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { QuestionWithOptions, Option } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
+const correctSurfaceClassName =
+  "animate-quiz-result-reveal border-success bg-success-soft dark:bg-success-soft/80";
+const incorrectSurfaceClassName =
+  "animate-quiz-result-reveal border-error bg-error-soft dark:bg-error-soft/80";
+
 function DraggableOption({
   option,
   disabled,
@@ -38,7 +43,7 @@ function DraggableOption({
         !disabled && "cursor-grab active:cursor-grabbing"
       )}
     >
-      <span className="block truncate break-words">{option.option_text}</span>
+      <span className="wrap-break-word block truncate">{option.option_text}</span>
     </Tag>
   );
 }
@@ -69,8 +74,8 @@ export function MatchingRightSlot({
         rowClass,
         "transition-[background-color,border-color] duration-300",
         isOver && "border-primary bg-primary/10",
-        checked && isCorrect === true && "animate-quiz-result-reveal border-green-600 bg-green-50 dark:bg-green-950/30",
-        checked && isCorrect === false && "animate-quiz-result-reveal border-red-600 bg-red-50 dark:bg-red-950/30",
+        checked && isCorrect === true && correctSurfaceClassName,
+        checked && isCorrect === false && incorrectSurfaceClassName,
         !selectedOpt && "border-dashed"
       )}
     >
@@ -78,7 +83,7 @@ export function MatchingRightSlot({
         <span className="inline-flex min-w-0 flex-1 items-center gap-2">
           <DraggableOption option={selectedOpt} disabled={disabled} as="div" inSlot />
           {checked && isCorrect !== null && (
-            <span className={cn("shrink-0 text-sm", isCorrect ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300")}>
+            <span className={cn("shrink-0 text-sm", isCorrect ? "text-success-foreground" : "text-error-foreground")}>
               {isCorrect ? " ✓" : " ✗"}
             </span>
           )}

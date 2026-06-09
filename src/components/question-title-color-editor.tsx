@@ -39,13 +39,14 @@ export interface QuestionTitleColorEditorProps {
 }
 
 const SAVE_DELAY_MS = 500;
+const QUESTION_TITLE_ACCENT_COLOR = "#e80000";
 
-const BtnTextRed = createButton(
-  "Red text",
-  <span style={{ color: "#dc2626", fontWeight: 700 }}>A</span>,
+const BtnAccentText = createButton(
+  "Accent text",
+  <span style={{ color: QUESTION_TITLE_ACCENT_COLOR, fontWeight: 700 }}>A</span>,
   () => {
     document.execCommand("styleWithCSS", false, "true");
-    document.execCommand("foreColor", false, "#dc2626");
+    document.execCommand("foreColor", false, QUESTION_TITLE_ACCENT_COLOR);
   }
 );
 
@@ -134,7 +135,7 @@ export function QuestionTitleColorEditor({
             <BtnItalic />
             <BtnUnderline />
             <BtnStrikeThrough />
-            <BtnTextRed />
+            <BtnAccentText />
             <Separator />
             <BtnNumberedList />
             <BtnBulletList />

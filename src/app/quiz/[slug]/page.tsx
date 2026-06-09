@@ -9,9 +9,20 @@ import {
 } from "@/lib/supabase";
 import { CrosswordScreen } from "@/components/screens/CrosswordScreen";
 import { QuizScreen } from "@/components/screens/QuizScreen";
+import type { Metadata } from 'next';
 
 interface QuizPageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: QuizPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const slugDecoded = decodeURIComponent(slug).trim();
+  if (!slugDecoded) notFound();
+
+  return {
+    title: `${slugDecoded}`,
+  };
 }
 
 export default async function QuizPage({ params }: QuizPageProps) {

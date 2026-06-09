@@ -4,6 +4,10 @@ import type { Option } from "@/lib/supabase";
 import { RadioGroupItem } from '../ui/radio-group';
 import { cn } from '@/lib/utils';
 
+const correctSurfaceClassName =
+    "border-success bg-success-soft dark:bg-success-soft/80";
+const incorrectSurfaceClassName =
+    "border-error bg-error-soft dark:bg-error-soft/80";
 
 export function OptionRow({
     option,
@@ -26,8 +30,8 @@ export function OptionRow({
             className={cn(
                 "flex-1 text-lg font-normal",
                 !multiple && "cursor-pointer",
-                showCorrect && "text-green-800 dark:text-green-200",
-                showIncorrect && "text-red-800 dark:text-red-200"
+                showCorrect && "text-success-foreground",
+                showIncorrect && "text-error-foreground"
             )}
         >
             {option.option_text}
@@ -37,8 +41,8 @@ export function OptionRow({
     const wrapperClassName = cn(
         "flex items-center gap-3 rounded-lg border px-3 py-2 min-h-[2.75rem]",
         (showCorrect || showIncorrect) && "animate-quiz-result-reveal",
-        showCorrect && "border-green-600 bg-green-50 dark:bg-green-950/30",
-        showIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30",
+        showCorrect && correctSurfaceClassName,
+        showIncorrect && incorrectSurfaceClassName,
         !checked && "cursor-pointer"
     );
 

@@ -130,9 +130,9 @@ export function CrosswordPlayer({
                   key={key}
                   className={cn(
                     "relative flex aspect-square items-center justify-center border border-border",
-                    isActive ? "bg-background" : "bg-muted/40",
-                    isCorrect && "border-green-600 bg-green-50 dark:bg-green-950/30",
-                    isIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30"
+                    isActive ? "bg-background" : "bg-cyan-100/50",
+                    isCorrect && "border-success bg-success-soft dark:bg-success-soft/80",
+                    isIncorrect && "border-error bg-error-soft dark:bg-error-soft/80"
                   )}
                 >
                   {cell.number ? (

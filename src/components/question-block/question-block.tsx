@@ -16,6 +16,15 @@ import { CorrectAnswers } from './correct-answers';
 import { GapTitleSegment } from './gap-title-segment';
 import { OptionRow } from './option-row';
 
+const correctSurfaceClassName =
+  "border-success bg-success-soft text-success-foreground dark:bg-success-soft/80";
+const incorrectSurfaceClassName =
+  "border-error bg-error-soft text-error-foreground dark:bg-error-soft/80";
+const correctUnderlineClassName =
+  "border-b-success bg-success-soft text-success-foreground dark:bg-success-soft/80";
+const incorrectUnderlineClassName =
+  "border-b-error bg-error-soft text-error-foreground dark:bg-error-soft/80";
+
 function QuestionBlockImpl({
   question,
   pageType,
@@ -95,10 +104,8 @@ function QuestionBlockImpl({
                         disabled={checked}
                         className={cn(
                           "gap-control inline-block w-auto min-w-0 max-w-full align-baseline rounded border bg-background px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:appearance-none disabled:bg-none",
-                          perGapCorrectnessSelect?.[i] === true &&
-                          "border-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
-                          perGapCorrectnessSelect?.[i] === false &&
-                          "border-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                          perGapCorrectnessSelect?.[i] === true && correctSurfaceClassName,
+                          perGapCorrectnessSelect?.[i] === false && incorrectSurfaceClassName
                         )}
                       >
                         <option value="">—</option>
@@ -140,11 +147,9 @@ function QuestionBlockImpl({
                           placeholder="…"
                           size={Math.max(2, (textAnswers[i] ?? "").length || 1)}
                           className={cn(
-                            "inline-block w-auto min-w-32 max-w-full field-sizing-content align-baseline rounded-none border-0 border-b border-border/60 bg-transparent px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-w-40",
-                            perGapCorrectness?.[i] === true &&
-                            "border-b-green-600 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200",
-                            perGapCorrectness?.[i] === false &&
-                            "border-b-red-600 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200"
+                            "inline-block w-auto min-w-32 max-w-full field-sizing-content align-baseline rounded-none border-0 border-b border-border/60 bg-cyan-100/50 px-2 py-1.5 text-lg shadow-none outline-none transition-colors duration-200 ease-out focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-w-40",
+                            perGapCorrectness?.[i] === true && correctUnderlineClassName,
+                            perGapCorrectness?.[i] === false && incorrectUnderlineClassName
                           )}
                         />
                       );
@@ -163,8 +168,8 @@ function QuestionBlockImpl({
                   className={cn(
                     "flex items-center gap-3 rounded-lg border px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
                     (textCorrect === true || textIncorrect) && "animate-quiz-result-reveal",
-                    textCorrect === true && "border-green-600 bg-green-50 dark:bg-green-950/30",
-                    textIncorrect && "border-red-600 bg-red-50 dark:bg-red-950/30"
+                    textCorrect === true && correctSurfaceClassName,
+                    textIncorrect && incorrectSurfaceClassName
                   )}
                 >
                   <Input
@@ -174,8 +179,8 @@ function QuestionBlockImpl({
                     placeholder="Type your answer"
                     className={cn(
                       "min-w-0 flex-1 text-lg border-0 bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-300 ease-out",
-                      textCorrect === true && "text-green-800 dark:text-green-200",
-                      textIncorrect && "text-red-800 dark:text-red-200"
+                      textCorrect === true && "text-success-foreground",
+                      textIncorrect && "text-error-foreground"
                     )}
                   />
                 </div>
