@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   updateQuiz,
@@ -12,25 +11,19 @@ import {
   deleteQuestionImage,
   deleteOption,
 } from "@/app/admin/actions";
+import type { TheoryBlockInput } from "@/app/admin/actions";
 import type { QuizWithPages, TestType, TheoryBlock, TheoryBlockType } from "@/lib/supabase";
 import type { Chapter } from "@/lib/chapters";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
-import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
-import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
-import { useQuizAiGeneration, type GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
+import {
+  useQuizAiGeneration,
+  type GenerateQuizResult,
+  type GenerateQuizSuccess,
+} from "@/hooks/use-quiz-ai-generation";
 import { useTheoryBlocks } from "@/hooks/use-theory-blocks";
 import { PageContainer } from "@/components/page-container";
-import { PageBlock } from "@/components/page-block/page-block";
-import type { PageBlockFormValues } from "@/components/page-block/page-block";
-import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
-import type { UseFormReturn } from "react-hook-form";
 import { editQuizFormSchema, type EditQuizFormValues } from "@/lib/quiz-page-schema";
-import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
 import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot-restore-dialog";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
@@ -43,8 +36,83 @@ import {
   readQuizLocalSnapshot,
   type QuizLocalSnapshot,
 } from "@/lib/quiz-local-snapshot";
+import { EditQuizHeader } from "@/components/screens/edit-quiz-screen/edit-quiz-header";
+import { EditQuizDetailsSection } from "@/components/screens/edit-quiz-screen/edit-quiz-details-section";
+import {
+  EditQuizTabs,
+  type EditQuizTabId,
+  getEditQuizTabMeta,
+} from "@/components/screens/edit-quiz-screen/edit-quiz-tabs";
+import { QuizTheorySection } from "@/components/quiz-theory-section";
 
 type GenerateOk = GenerateQuizSuccess;
+type EditQuizPageValue = EditQuizFormValues["pages"][number];
+
+interface GenerateFlowParams {
+  topicOverride: string;
+  isListeningChapter: boolean;
+  ai: {
+    setTopic: (value: string) => void;
+    generate: (nextTopic?: string) => Promise<GenerateQuizResult>;
+  };
+  getCurrentPages: () => EditQuizFormValues["pages"];
+  replacePages: (pages: EditQuizFormValues["pages"]) => void;
+  setActivePageIndex: (index: number) => void;
+  appendTheoryBlocks: (blocks: TheoryBlockInput[]) => void;
+  setGeneratedDraft: (draft: GenerateOk | null) => void;
+}
+
+async function runGenerateFlow({
+  topicOverride,
+  isListeningChapter,
+  ai,
+  getCurrentPages,
+  replacePages,
+  setActivePageIndex,
+  appendTheoryBlocks,
+  setGeneratedDraft,
+}: GenerateFlowParams) {
+  ai.setTopic(topicOverride);
+  setGeneratedDraft(null);
+  const res = await ai.generate(topicOverride);
+  if (!res.ok) return;
+
+  if (res.pages?.length) {
+    const currentPages = getCurrentPages();
+    const generatedPages = res.pages.map((p, i) =>
+      defaultPage(
+        {
+          type: isListeningChapter ? "input" : p.type,
+          title: p.title ?? null,
+          questions: p.questions.map((q) => ({
+            question_title: q.question_title,
+            question_image_url: null,
+            explanation: q.explanation ?? null,
+            options: q.options.map((o) => ({
+              option_text: o.option_text,
+              is_correct: o.is_correct,
+              gap_index: o.gap_index ?? 0,
+            })),
+          })),
+        },
+        currentPages.length + i,
+        isListeningChapter ? "input" : undefined
+      )
+    );
+    const mergedPages: EditQuizPageValue[] = [
+      ...currentPages.map((page, i) => ({ ...page, order_index: i })),
+      ...generatedPages.map((page, i) => ({ ...page, order_index: currentPages.length + i })),
+    ];
+    replacePages(mergedPages);
+    setActivePageIndex(mergedPages.length - 1);
+  }
+
+  if (res.theoryBlocks?.length) {
+    appendTheoryBlocks(res.theoryBlocks);
+  }
+  setGeneratedDraft(res as GenerateOk);
+}
+
 function defaultOption(option?: { id?: string; option_text: string; is_correct: boolean; gap_index?: number }, gapIndex?: number) {
   return {
     id: option?.id,
@@ -109,8 +177,6 @@ function defaultPage(
   };
 }
 
-type TabId = "details" | "theory";
-
 interface EditQuizScreenProps {
   quiz: QuizWithPages;
   theoryBlocks?: TheoryBlock[];
@@ -132,7 +198,7 @@ export function EditQuizScreen({
   const isListeningChapter = (chapter ?? "").trim().toLowerCase() === "listening";
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [videoUrl, setVideoUrl] = useState(quiz.video?.url ?? "");
-  const [activeTab, setActiveTab] = useState<TabId>("details");
+  const [activeTab, setActiveTab] = useState<EditQuizTabId>("details");
   const {
     theoryBlocks,
     uploadingImageIndex,
@@ -165,12 +231,12 @@ export function EditQuizScreen({
       slug: quiz.slug,
       pages: quiz.pages?.length
         ? quiz.pages.map((p, i) =>
-            defaultPage(
-              { id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions, crossword_quiz_id: p.crossword?.quiz.id ?? null },
-              i,
-              isListeningChapter ? "input" : undefined
-            )
+          defaultPage(
+            { id: p.id, type: p.type, title: p.title, example: p.example, questions: p.questions, crossword_quiz_id: p.crossword?.quiz.id ?? null },
+            i,
+            isListeningChapter ? "input" : undefined
           )
+        )
         : [defaultPage(undefined, 0, isListeningChapter ? "input" : undefined)],
     },
   });
@@ -229,43 +295,16 @@ export function EditQuizScreen({
   }
 
   async function handleGenerate(topicOverride: string) {
-    ai.setTopic(topicOverride);
-    setGeneratedDraft(null);
-    const res = await ai.generate(topicOverride);
-    if (!res.ok) return;
-    if (res.pages?.length) {
-      const currentPages = form.getValues("pages") ?? [];
-      const generatedPages = res.pages.map((p, i) =>
-        defaultPage(
-          {
-            type: isListeningChapter ? "input" : p.type,
-            title: p.title ?? null,
-            questions: p.questions.map((q) => ({
-              question_title: q.question_title,
-              question_image_url: null,
-              explanation: q.explanation ?? null,
-              options: q.options.map((o) => ({
-                option_text: o.option_text,
-                is_correct: o.is_correct,
-                gap_index: o.gap_index ?? 0,
-              })),
-            })),
-          },
-          currentPages.length + i,
-          isListeningChapter ? "input" : undefined
-        )
-      );
-      const mergedPages = [
-        ...currentPages.map((page, i) => ({ ...page, order_index: i })),
-        ...generatedPages.map((page, i) => ({ ...page, order_index: currentPages.length + i })),
-      ];
-      pagesArray.replace(mergedPages);
-      setActivePageIndex(mergedPages.length - 1);
-    }
-    if (res.theoryBlocks?.length) {
-      appendTheoryBlocks(res.theoryBlocks);
-    }
-    setGeneratedDraft(res as GenerateOk);
+    await runGenerateFlow({
+      topicOverride,
+      isListeningChapter,
+      ai,
+      getCurrentPages: () => form.getValues("pages") ?? [],
+      replacePages: pagesArray.replace,
+      setActivePageIndex,
+      appendTheoryBlocks,
+      setGeneratedDraft,
+    });
   }
 
   async function onSubmit(data: EditQuizFormValues) {
@@ -351,6 +390,79 @@ export function EditQuizScreen({
     toast.success("Page deleted");
   }
 
+  async function handleConfirmDeleteQuestion(pageIndex: number, questionIndex: number) {
+    const question = form.getValues(`pages.${pageIndex}.questions.${questionIndex}`);
+    if (question?.id) {
+      const response = await deleteQuestion(question.id);
+      if (!response.ok) {
+        setResult(response);
+        toast.error("Failed to delete question", {
+          description: response.error ?? "Please try again.",
+        });
+        return false;
+      }
+    }
+
+    toast.success("Question deleted");
+    return true;
+  }
+
+  async function handleConfirmDeleteOption(pageIndex: number, questionIndex: number, optionIndex: number) {
+    const options = form.getValues(`pages.${pageIndex}.questions.${questionIndex}.options`);
+    const option = options[optionIndex];
+    if (option?.id) {
+      const response = await deleteOption(option.id);
+      if (!response.ok) {
+        setResult(response);
+        toast.error("Failed to delete answer option", {
+          description: response.error ?? "Please try again.",
+        });
+        return false;
+      }
+    }
+
+    toast.success("Answer option deleted");
+    return true;
+  }
+
+  async function handleConfirmRemoveQuestionImage(pageIndex: number, questionIndex: number) {
+    const question = form.getValues(`pages.${pageIndex}.questions.${questionIndex}`);
+    if (question?.id) {
+      const response = await deleteQuestionImage(question.id);
+      if (!response.ok) {
+        setResult(response);
+        toast.error("Failed to delete image", {
+          description: response.error ?? "Please try again.",
+        });
+        return false;
+      }
+    }
+
+    toast.success("Image deleted");
+    return true;
+  }
+
+  async function handleRemoveTheoryBlock(index: number) {
+    const removed = await handleDeleteTheoryBlock(index);
+    if (removed) {
+      toast.success("Theory block deleted");
+      return;
+    }
+    toast.error("Failed to delete theory block");
+  }
+
+  const generatedSummary = generatedDraft
+    ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
+      (acc, p) => acc + (p.questions?.length ?? 0),
+      0
+    )}.` +
+    (generatedDraft.theoryBlocks?.length
+      ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
+      : "")
+    : null;
+
+  const tabMeta = getEditQuizTabMeta(activeTab);
+
   return (
     <PageContainer className="space-y-8">
       <QuizLocalSnapshotIndicator
@@ -365,260 +477,52 @@ export function EditQuizScreen({
         onKeepCurrent={keepDatabaseVersion}
         onApplySnapshot={applyPendingSnapshot}
       />
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Edit quiz</h2>
-        <div className="flex gap-2">
-          <Button asChild>
-            <Link href={`/quiz/${quiz.slug}`}>
-              View quiz
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={backToTopicHref}>Back to quizzes</Link>
-          </Button>
-        </div>
-      </div>
+      <EditQuizHeader quizSlug={quiz.slug} backToTopicHref={backToTopicHref} />
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2 border-b">
-            <button
-              type="button"
-              onClick={() => setActiveTab("details")}
-              className={cn(
-                "cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                activeTab === "details"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Details and pages
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("theory")}
-              className={cn(
-                "cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                activeTab === "theory"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Theory
-            </button>
-          </div>
-
-          <CardTitle className="pt-2">
-            {activeTab === "details" ? "Quiz details" : "Theory"}
-          </CardTitle>
-          <CardDescription>
-            {activeTab === "details"
-              ? "Change title, description and pages. Each page has one question type."
-              : "Text and image blocks shown before taking the quiz."}
-          </CardDescription>
+          <EditQuizTabs activeTab={activeTab} onChange={setActiveTab} />
+          <CardTitle className="pt-2">{tabMeta.title}</CardTitle>
+          <CardDescription>{tabMeta.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
             {activeTab === "details" && (
-              <>
-                <div className="space-y-2">
-                  <QuizTopicSelect
-                    value={selectedTopicId}
-                    onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
-                    topics={topics}
-                    isLoading={false}
-                    error={form.formState.errors.topic_id?.message}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="title">Quiz title</Label>
-                  <Input
-                    id="title"
-                    {...form.register("title")}
-                    placeholder="e.g. Present Simple"
-                    className={cn(form.formState.errors.title && "border-destructive")}
-                  />
-                  {form.formState.errors.title && (
-                    <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-                  )}
-                </div>
-                {isListeningChapter && (
-                  <div className="space-y-2">
-                    <Label htmlFor="video_url">YouTube video URL</Label>
-                    <Input
-                      id="video_url"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Required for listening quizzes.
-                    </p>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="description">General task / instructions</Label>
-                  <Input
-                    id="description"
-                    {...form.register("description")}
-                    placeholder="What respondents need to do (shown at the start of the quiz)"
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>Pages</Label>
-                    <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
-                  </div>
-                  {!isListeningChapter && (
-                    <QuizAiGenerationBlock
-                      topic={ai.topic}
-                      level={ai.level}
-                      language={ai.language}
-                      questionsPerPage={String(ai.questionsPerPage)}
-                      selectedType={ai.selectedType as TestType}
-                      customTask={ai.customTask}
-                      style={ai.style}
-                      constraints={ai.constraints}
-                      lexicon={ai.lexicon}
-                      bannedTopics={ai.bannedTopics}
-                      selectedModel={ai.selectedModel}
-                      onTopicChange={ai.setTopic}
-                      onLevelChange={ai.setLevel}
-                      onLanguageChange={ai.setLanguage}
-                      onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                      onSelectedTypeChange={ai.setSelectedType}
-                      onCustomTaskChange={ai.setCustomTask}
-                      onStyleChange={ai.setStyle}
-                      onConstraintsChange={ai.setConstraints}
-                      onLexiconChange={ai.setLexicon}
-                      onBannedTopicsChange={ai.setBannedTopics}
-                      onSelectedModelChange={ai.setSelectedModel}
-                      isGenerating={ai.isGenerating}
-                      onGenerate={handleGenerate}
-                      generatedSummary={
-                        generatedDraft
-                          ? `Готово: страниц ${generatedDraft.pages.length}, вопросов всего ${generatedDraft.pages.reduce(
-                            (acc, p) => acc + (p.questions?.length ?? 0),
-                            0
-                          )}.` +
-                          (generatedDraft.theoryBlocks?.length
-                            ? ` Теория: ${generatedDraft.theoryBlocks.length} блок(ов).`
-                            : "")
-                          : null
-                      }
-                      errorMessage={ai.errorMessage}
-                    />
-                  )}
-                  <QuizPagesTabStrip
-                    fieldIds={pagesArray.fields.map((f) => f.id)}
-                    titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
-                    activeIndex={activePageIndex}
-                    onSelect={setActivePageIndex}
-                    showAddPage={!isListeningChapter}
-                    onAddPage={() => {
-                      const next = pagesArray.fields.length;
-                      pagesArray.append(
-                        defaultPage(undefined, pagesArray.fields.length, isListeningChapter ? "input" : undefined)
-                      );
-                      setActivePageIndex(next);
-                    }}
-                  />
-                  {pagesArray.fields[activePageIndex] ? (
-                    <PageBlock
-                      key={pagesArray.fields[activePageIndex].id}
-                      form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                      pageIndex={activePageIndex}
-                      totalPages={pagesArray.fields.length}
-                      defaultOption={() => defaultOption()}
-                      defaultQuestion={defaultQuestionForBlock}
-                      quizId={quiz.id}
-                      onRemove={() => handleDeletePage(activePageIndex)}
-                      canRemove={pagesArray.fields.length > 1}
-                      onMoveUp={() => {
-                        pagesArray.move(activePageIndex, activePageIndex - 1);
-                        setActivePageIndex(activePageIndex - 1);
-                      }}
-                      onMoveDown={() => {
-                        pagesArray.move(activePageIndex, activePageIndex + 1);
-                        setActivePageIndex(activePageIndex + 1);
-                      }}
-                      canMoveUp={activePageIndex > 0}
-                      canMoveDown={activePageIndex < pagesArray.fields.length - 1}
-                      hidePageTypeSelect={isListeningChapter}
-                      hidePageTitleFields={isListeningChapter}
-                      hideAddQuestionButton={isListeningChapter}
-                      hideQuestionImageBlock={isListeningChapter}
-                      useLyricsTerminology={isListeningChapter}
-                      embeddedInTabs
-                      crosswordOptions={crosswordOptions}
-                      onConfirmDeleteQuestion={async (pi, qIndex) => {
-                        const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                        if (q?.id) {
-                          const r = await deleteQuestion(q.id);
-                          if (!r.ok) {
-                            setResult(r);
-                            toast.error("Failed to delete question", {
-                              description: r.error ?? "Please try again.",
-                            });
-                            return false;
-                          }
-                        }
-                        toast.success("Question deleted");
-                        return true;
-                      }}
-                      onConfirmDeleteOption={async (pi, qIndex, oIndex) => {
-                        const opts = form.getValues(`pages.${pi}.questions.${qIndex}.options`);
-                        const opt = opts[oIndex];
-                        if (opt?.id) {
-                          const r = await deleteOption(opt.id);
-                          if (!r.ok) {
-                            setResult(r);
-                            toast.error("Failed to delete answer option", {
-                              description: r.error ?? "Please try again.",
-                            });
-                            return false;
-                          }
-                        }
-                        toast.success("Answer option deleted");
-                        return true;
-                      }}
-                      onConfirmRemoveQuestionImage={async (pi, qIndex) => {
-                        const q = form.getValues(`pages.${pi}.questions.${qIndex}`);
-                        if (q?.id) {
-                          const r = await deleteQuestionImage(q.id);
-                          if (!r.ok) {
-                            setResult(r);
-                            toast.error("Failed to delete image", {
-                              description: r.error ?? "Please try again.",
-                            });
-                            return false;
-                          }
-                        }
-                        toast.success("Image deleted");
-                        return true;
-                      }}
-                    />
-                  ) : null}
-                </div>
-              </>
+              <EditQuizDetailsSection
+                form={form}
+                topics={topics}
+                selectedTopicId={selectedTopicId}
+                isListeningChapter={isListeningChapter}
+                videoUrl={videoUrl}
+                onVideoUrlChange={setVideoUrl}
+                ai={ai}
+                generatedSummary={generatedSummary}
+                onGenerate={handleGenerate}
+                pagesArray={pagesArray}
+                activePageIndex={activePageIndex}
+                onActivePageIndexChange={setActivePageIndex}
+                defaultOption={() => defaultOption()}
+                defaultPage={(pageIndex) =>
+                  defaultPage(undefined, pageIndex, isListeningChapter ? "input" : undefined)
+                }
+                defaultQuestion={defaultQuestionForBlock}
+                quizId={quiz.id}
+                crosswordOptions={crosswordOptions}
+                onDeletePage={handleDeletePage}
+                onConfirmDeleteQuestion={handleConfirmDeleteQuestion}
+                onConfirmDeleteOption={handleConfirmDeleteOption}
+                onConfirmRemoveQuestionImage={handleConfirmRemoveQuestionImage}
+              />
             )}
 
             {activeTab === "theory" && (
-              <QuizTheoryBlocksEditor
+              <QuizTheorySection
                 blocks={theoryBlocks}
                 uploadingImageIndex={uploadingImageIndex}
                 uploadError={uploadError}
                 onAddBlock={handleAddTheoryBlock}
                 onRemoveBlock={(index) => {
-                  void (async () => {
-                    const removed = await handleDeleteTheoryBlock(index);
-                    if (removed) {
-                      toast.success("Theory block deleted");
-                      return;
-                    }
-                    toast.error("Failed to delete theory block");
-                  })();
+                  void handleRemoveTheoryBlock(index);
                 }}
                 onMoveBlock={moveTheoryBlock}
                 onUpdateBlock={updateTheoryBlock}

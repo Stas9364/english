@@ -1,16 +1,9 @@
 "use client";
 
 import type { TestType } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
-import { useFieldArray, useForm, useWatch, type UseFormReturn } from 'react-hook-form';
-import { PageBlock, type PageBlockFormValues } from '../page-block/page-block';
-import { QuizPagesTabStrip } from "../page-block/quiz-pages-tab-strip";
-import { QuizAiGenerationBlock } from '../quiz-ai-generation-block/quiz-ai-generation-block';
-import { QuizTheoryBlocksEditor } from '../quiz-theory-blocks-editor';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
 import { useTheoryBlocks } from '@/hooks/use-theory-blocks';
 import { useEffect, useState } from 'react';
 import { useQuizAiGeneration } from '@/hooks/use-quiz-ai-generation';
@@ -18,10 +11,7 @@ import { createQuizFormSchema, type CreateQuizFormValues } from '@/lib/quiz-page
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Chapter } from "@/lib/chapters";
 import { createQuiz } from '@/app/admin/actions';
-import { Label } from '../ui/label';
-import { QuizTopicSelect } from "@/components/quiz-topic-select";
 import { useMemo } from "react";
-import Link from "next/link";
 import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-indicator";
 import { useQuizLocalSnapshotAutosave } from "@/hooks/use-quiz-local-snapshot-autosave";
@@ -33,6 +23,12 @@ import {
     readQuizLocalSnapshot,
     removeStaleCreateQuizSnapshots,
 } from "@/lib/quiz-local-snapshot";
+import {
+    CreateQuizDetailsSection,
+    type CreateQuizGenerationStatus,
+} from "@/components/screens/create-quiz-screen/create-quiz-details-section";
+import { CreateQuizHeader } from "@/components/screens/create-quiz-screen/create-quiz-header";
+import { QuizTheorySection } from "@/components/quiz-theory-section";
 
 function slugify(title: string): string {
     const s = title
@@ -49,7 +45,7 @@ const defaultOption = (gapIndex?: number) => ({ option_text: "", is_correct: fal
 function defaultQuestion(orderIndex: number, pageType?: TestType) {
     const options =
         pageType === "matching"
-            ? [{ option_text: "", is_correct: true }]
+            ? [{ option_text: "", is_correct: true, gap_index: 0 }]
             : [defaultOption()];
     return {
         question_title: "",
@@ -111,12 +107,7 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
         replaceTheoryBlocks,
         clearTheoryBlocks,
     } = useTheoryBlocks({});
-    const [genStatus, setGenStatus] = useState<
-        | { state: "idle" }
-        | { state: "loading" }
-        | { state: "error"; message: string }
-        | { state: "success"; message: string }
-    >({ state: "idle" });
+    const [genStatus, setGenStatus] = useState<CreateQuizGenerationStatus>({ state: "idle" });
 
     const ai = useQuizAiGeneration();
     // Первая удачная генерация заменяет страницы, последующие — добавляют в конец.
@@ -325,11 +316,7 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
                 error={snapshotAutosave.error}
                 onDiscard={snapshotAutosave.discardSnapshot}
             />
-            <div className="mb-4">
-                <Button asChild variant="ghost" size="sm">
-                    <Link href={`/admin/${chapter}/${topicSlug}`}>Back to {topicSlug}</Link>
-                </Button>
-            </div>
+            <CreateQuizHeader chapter={chapter} topicSlug={topicSlug} />
             <Card>
                 <CardHeader>
                     <CardTitle>Create quiz</CardTitle>
@@ -339,146 +326,33 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <div className="space-y-2">
-                            <QuizTopicSelect
-                                value={selectedTopicId}
-                                onChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
-                                topics={topics}
-                                isLoading={false}
-                                error={form.formState.errors.topic_id?.message}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="title">Quiz title</Label>
-                            <Input
-                                id="title"
-                                {...form.register("title")}
-                                placeholder="e.g. Present Simple"
-                                className={cn(form.formState.errors.title && "border-destructive")}
-                            />
-                            {form.formState.errors.title && (
-                                <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-                            )}
-                        </div>
-                        {isListeningChapter && (
-                            <div className="space-y-2">
-                                <Label htmlFor="video_url">YouTube video URL</Label>
-                                <Input
-                                    id="video_url"
-                                    value={videoUrl}
-                                    onChange={(e) => setVideoUrl(e.target.value)}
-                                    placeholder="https://www.youtube.com/watch?v=..."
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Required for listening quizzes.
-                                </p>
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label htmlFor="description">General task / instructions</Label>
-                            <Input
-                                id="description"
-                                {...form.register("description")}
-                                placeholder="What respondents need to do (shown at the start of the quiz)"
-                            />
-                        </div>
+                        <CreateQuizDetailsSection
+                            form={form}
+                            topics={topics}
+                            selectedTopicId={selectedTopicId}
+                            isListeningChapter={isListeningChapter}
+                            videoUrl={videoUrl}
+                            onVideoUrlChange={setVideoUrl}
+                            ai={ai}
+                            genStatus={genStatus}
+                            onGenerate={handleGeneratePages}
+                            pagesArray={pagesArray}
+                            activePageIndex={activePageIndex}
+                            onActivePageIndexChange={setActivePageIndex}
+                            defaultPage={defaultPage}
+                            defaultOption={defaultOption}
+                            defaultQuestion={defaultQuestion}
+                            crosswordOptions={crosswordOptions}
+                        />
 
-                        {!isListeningChapter && (
-                            <QuizAiGenerationBlock
-                                topic={ai.topic}
-                                level={ai.level}
-                                language={ai.language}
-                                questionsPerPage={String(ai.questionsPerPage)}
-                                selectedType={ai.selectedType as TestType}
-                                customTask={ai.customTask}
-                                style={ai.style}
-                                constraints={ai.constraints}
-                                lexicon={ai.lexicon}
-                                bannedTopics={ai.bannedTopics}
-                                selectedModel={ai.selectedModel}
-                                onTopicChange={ai.setTopic}
-                                onLevelChange={ai.setLevel}
-                                onLanguageChange={ai.setLanguage}
-                                onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-                                onSelectedTypeChange={ai.setSelectedType}
-                                onCustomTaskChange={ai.setCustomTask}
-                                onStyleChange={ai.setStyle}
-                                onConstraintsChange={ai.setConstraints}
-                                onLexiconChange={ai.setLexicon}
-                                onBannedTopicsChange={ai.setBannedTopics}
-                                onSelectedModelChange={ai.setSelectedModel}
-                                isGenerating={ai.isGenerating}
-                                onGenerate={handleGeneratePages}
-                                generatedSummary={genStatus.state === "success" ? genStatus.message : null}
-                                errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message : null)}
-                            />
-                        )}
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between gap-2">
-                                <Label>Pages</Label>
-                                <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
-                            </div>
-                            <QuizPagesTabStrip
-                                fieldIds={pagesArray.fields.map((f) => f.id)}
-                                titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
-                                activeIndex={activePageIndex}
-                                onSelect={setActivePageIndex}
-                                showAddPage={!isListeningChapter}
-                                onAddPage={() => {
-                                    const next = pagesArray.fields.length;
-                                    pagesArray.append(defaultPage(pagesArray.fields.length));
-                                    setActivePageIndex(next);
-                                }}
-                            />
-                            {pagesArray.fields[activePageIndex] ? (
-                                <PageBlock
-                                    key={pagesArray.fields[activePageIndex].id}
-                                    form={form as unknown as UseFormReturn<PageBlockFormValues>}
-                                    pageIndex={activePageIndex}
-                                    totalPages={pagesArray.fields.length}
-                                    defaultOption={defaultOption}
-                                    defaultQuestion={defaultQuestion}
-                                    quizId={undefined}
-                                    onRemove={() => {
-                                        const nextIndex = Math.max(
-                                            0,
-                                            Math.min(activePageIndex, pagesArray.fields.length - 2)
-                                        );
-                                        pagesArray.remove(activePageIndex);
-                                        setActivePageIndex(nextIndex);
-                                    }}
-                                    canRemove={pagesArray.fields.length > 1}
-                                    onMoveUp={() => {
-                                        pagesArray.move(activePageIndex, activePageIndex - 1);
-                                        setActivePageIndex(activePageIndex - 1);
-                                    }}
-                                    onMoveDown={() => {
-                                        pagesArray.move(activePageIndex, activePageIndex + 1);
-                                        setActivePageIndex(activePageIndex + 1);
-                                    }}
-                                    canMoveUp={activePageIndex > 0}
-                                    canMoveDown={activePageIndex < pagesArray.fields.length - 1}
-                                    hidePageTypeSelect={isListeningChapter}
-                                    hidePageTitleFields={isListeningChapter}
-                                    hideAddQuestionButton={isListeningChapter}
-                                    hideQuestionImageBlock={isListeningChapter}
-                                    useLyricsTerminology={isListeningChapter}
-                                    sanitizeTitlePasteWhenEmpty={isListeningChapter}
-                                    embeddedInTabs
-                                    crosswordOptions={crosswordOptions}
-                                />
-                            ) : null}
-                        </div>
-
-                        <QuizTheoryBlocksEditor
+                        <QuizTheorySection
                             blocks={theoryBlocks}
                             uploadingImageIndex={uploadingImageIndex}
                             uploadError={uploadError}
-                            onAddBlock={(type) => addTheoryBlock(type)}
-                            onRemoveBlock={(index) => removeTheoryBlock(index)}
-                            onMoveBlock={(index, dir) => moveTheoryBlock(index, dir)}
-                            onUpdateBlock={(index, patch) => updateTheoryBlock(index, patch)}
+                            onAddBlock={addTheoryBlock}
+                            onRemoveBlock={removeTheoryBlock}
+                            onMoveBlock={moveTheoryBlock}
+                            onUpdateBlock={updateTheoryBlock}
                             onUploadImage={handleTheoryImageUpload}
                         />
 
