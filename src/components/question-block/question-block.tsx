@@ -70,23 +70,26 @@ function QuestionBlockImpl({
   return (
     <li>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-medium">
-            {showQuestionNumber ? `${index}. ` : ""}
-            {hasInlineGaps && (isText || isSelectGaps) ? "" : (
-              <span
-                className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit [&_ul]:my-0 [&_ul]:pl-5 [&_ol]:my-0 [&_ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: safeTitleHtml }}
-              />
-            )}
-          </CardTitle>
-        </CardHeader>
+        {hasInlineGaps && (isText || isSelectGaps) ? "" : (
+          <CardHeader>
+            <CardTitle className="text-lg font-medium">
+              <>
+                {showQuestionNumber ? `${index}. ` : ""}
+                <span
+                  className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit [&_ul]:my-0 [&_ul]:pl-5 [&_ol]:my-0 [&_ol]:pl-5"
+                  dangerouslySetInnerHTML={{ __html: safeTitleHtml }}
+                />
+              </>
+            </CardTitle>
+          </CardHeader>
+        )}
         <CardContent className="space-y-4">
           {question.question_image_url ? (
             <TheoryImage src={question.question_image_url} alt={`Question ${index}`} />
           ) : null}
           {isSelectGaps && hasInlineGaps ? (
             <div className="space-y-2">
+              {showQuestionNumber ? <span className="text-sm text-muted-foreground">Question {index}:</span> : null}
               <div
                 className={cn(
                   "block w-full max-w-full rounded-lg  border border-input px-3 py-2 text-lg/[45px]   transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
@@ -129,6 +132,7 @@ function QuestionBlockImpl({
           ) : isText ? (
             hasInlineGaps ? (
               <div className="space-y-2">
+                {showQuestionNumber ? <span className="text-sm text-muted-foreground">Question {index}:</span> : null}
                 <div
                   className={cn(
                     "block w-full max-w-full rounded-lg border border-input px-3 py-2 text-lg/[45px] transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",

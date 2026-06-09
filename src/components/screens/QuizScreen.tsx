@@ -7,7 +7,6 @@ import { TheoryImageDialog } from "@/components/theory-image-dialog";
 import type { QuizWithPages, TheoryBlock } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { MatchingBlock } from "@/components/matching-block";
 import { QuizVideoPlayer } from "@/components/quiz-video-player";
 import { CrosswordPlayer } from "@/components/crossword/crossword-player";
@@ -15,6 +14,7 @@ import { QuestionBlock } from "../question-block/question-block";
 import { useQuizProgress } from "@/hooks/use-quiz-progress";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
 import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
+import { QuizScreenViewSwitcher } from "./quiz-screen/quiz-screen-view-switcher";
 
 type ViewTab = "quiz" | "theory";
 
@@ -89,43 +89,13 @@ export function QuizScreen({
   const quizMainContent = (
     <>
       {(hasTheory || totalPages > 1) && (
-        <div className="mb-6 flex items-center justify-between gap-4 border-b">
-          <div className="flex">
-            {hasTheory && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setViewTab("quiz")}
-                  className={cn(
-                    "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-                    viewTab === "quiz"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Quiz
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewTab("theory")}
-                  className={cn(
-                    "cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-                    viewTab === "theory"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Theory
-                </button>
-              </>
-            )}
-          </div>
-          {totalPages > 1 && (
-            <span className="text-sm text-muted-foreground shrink-0 mb-2">
-              Page {pageIndex + 1} of {totalPages}
-            </span>
-          )}
-        </div>
+        <QuizScreenViewSwitcher
+          hasTheory={hasTheory}
+          viewTab={viewTab}
+          setViewTab={setViewTab}
+          pageIndex={pageIndex}
+          totalPages={totalPages}
+        />
       )}
 
       {viewTab === "theory" ? (
