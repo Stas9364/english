@@ -32,7 +32,12 @@ export function GeminiModelSelectField({
         setAvailableModels([]);
         return;
       }
-      setAvailableModels(response.models);
+      
+      const geminiModels = response.models.filter((m) => {
+        const displayName = m.displayName.toLowerCase();
+        return displayName.includes("gemini") || displayName.includes("gemma");
+      });
+      setAvailableModels(geminiModels);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       setModelsError(message);
