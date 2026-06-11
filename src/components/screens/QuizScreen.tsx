@@ -58,7 +58,7 @@ export function QuizScreen({
     score,
     hasNextPage,
     hasPrevPage,
-  } = useQuizProgress(quiz);  
+  } = useQuizProgress(quiz);
 
   const hasTheory = theoryBlocks.length > 0;
   const totalQuestionsOnPage = currentPage.questions.length;
@@ -145,70 +145,70 @@ export function QuizScreen({
             </Card>
           )}
 
-          {isCrosswordPage ? (
-            currentPage.crossword ? (
-              <div className="flex flex-col gap-4">
-                {isAdmin ? (
-                  <div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/admin/quiz/${currentPage.crossword.quiz.slug}`} target="_blank" rel="noopener noreferrer">
-                        Open crossword
-                      </Link>
-                    </Button>
-                  </div>
-                ) : null}
-                <CrosswordPlayer
-                  quiz={currentPage.crossword.quiz}
-                  storageKey={`${quiz.id}:${currentPage.id}`}
-                />
-              </div>
+            {isCrosswordPage ? (
+              currentPage.crossword ? (
+                <div className="flex flex-col gap-4">
+                  {isAdmin ? (
+                    <div>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/admin/quiz/${currentPage.crossword.quiz.slug}`} target="_blank" rel="noopener noreferrer">
+                          Open crossword
+                        </Link>
+                      </Button>
+                    </div>
+                  ) : null}
+                  <CrosswordPlayer
+                    quiz={currentPage.crossword.quiz}
+                    storageKey={`${quiz.id}:${currentPage.id}`}
+                  />
+                </div>
+              ) : (
+                <Card>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Crossword is not configured for this page.</p>
+                  </CardContent>
+                </Card>
+              )
+            ) : pageType === "matching" ? (
+              <MatchingBlock
+                questions={currentPage.questions}
+                selected={selected}
+                checked={isCurrentPageChecked}
+                onMatch={(questionId, optionId) => {
+                  setSelected((prev) => {
+                    const prevHolder = Object.entries(prev).find(([, opts]) => opts[0] === optionId)?.[0];
+                    const prevInTarget = prev[questionId]?.[0];
+                    const next = { ...prev, [questionId]: [optionId] };
+                    if (prevHolder && prevHolder !== questionId) {
+                      next[prevHolder] = prevInTarget ? [prevInTarget] : [];
+                    }
+                    return next;
+                  });
+                }}
+              />
             ) : (
-              <Card>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Crossword is not configured for this page.</p>
-                </CardContent>
-              </Card>
-            )
-          ) : pageType === "matching" ? (
-            <MatchingBlock
-              questions={currentPage.questions}
-              selected={selected}
-              checked={isCurrentPageChecked}
-              onMatch={(questionId, optionId) => {
-                setSelected((prev) => {
-                  const prevHolder = Object.entries(prev).find(([, opts]) => opts[0] === optionId)?.[0];
-                  const prevInTarget = prev[questionId]?.[0];
-                  const next = { ...prev, [questionId]: [optionId] };
-                  if (prevHolder && prevHolder !== questionId) {
-                    next[prevHolder] = prevInTarget ? [prevInTarget] : [];
-                  }
-                  return next;
-                });
-              }}
-            />
-          ) : (
-            <ul className="space-y-8">
-              {currentPage.questions.map((q, index) => (
-                <QuestionBlock
-                  key={q.id}
-                  question={q}
-                  pageType={pageType}
-                  index={index + 1}
-                  totalQuestionsOnPage={totalQuestionsOnPage}
-                  selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
-                  checked={isCurrentPageChecked}
-                  textAnswers={
-                    pageType === "input"
-                      ? getTextAnswersForQuestion(q.id, q.question_title)
-                      : emptyTextAnswers
-                  }
-                  onInputChange={handleQuestionInputChange}
-                  onSelect={handleSelect}
-                  onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
-                />
-              ))}
-            </ul>
-          )}
+              <ul className="space-y-8">
+                {currentPage.questions.map((q, index) => (
+                  <QuestionBlock
+                    key={q.id}
+                    question={q}
+                    pageType={pageType}
+                    index={index + 1}
+                    totalQuestionsOnPage={totalQuestionsOnPage}
+                    selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
+                    checked={isCurrentPageChecked}
+                    textAnswers={
+                      pageType === "input"
+                        ? getTextAnswersForQuestion(q.id, q.question_title)
+                        : emptyTextAnswers
+                    }
+                    onInputChange={handleQuestionInputChange}
+                    onSelect={handleSelect}
+                    onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
+                  />
+                ))}
+              </ul>
+            )}
 
           {!isCrosswordPage && (
             <div className="mt-8 flex flex-col items-center gap-4">

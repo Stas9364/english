@@ -5,9 +5,9 @@ import type { QuestionWithOptions, Option } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const correctSurfaceClassName =
-  "animate-quiz-result-reveal border-success bg-success-soft dark:bg-success-soft/80";
+  "border-success bg-success-soft dark:bg-success-soft/80";
 const incorrectSurfaceClassName =
-  "animate-quiz-result-reveal border-error bg-error-soft dark:bg-error-soft/80";
+  "border-error bg-error-soft dark:bg-error-soft/80";
 
 function DraggableOption({
   option,

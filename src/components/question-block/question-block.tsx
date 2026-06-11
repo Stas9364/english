@@ -91,10 +91,7 @@ function QuestionBlockImpl({
             <div className="space-y-2">
               {showQuestionNumber ? <span className="text-sm text-muted-foreground">Question {index}:</span> : null}
               <div
-                className={cn(
-                  "block w-full max-w-full rounded-lg  border border-input px-3 py-2 text-lg/[45px]   transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
-                  perGapCorrectnessSelect && "animate-quiz-result-reveal"
-                )}
+                className="block w-full max-w-full rounded-lg border border-input px-3 py-2 text-lg/[45px] transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5"
               >
                 {parts.flatMap((part, i) => {
                   const nodes: ReactNode[] = [<GapTitleSegment key={`t-${i}`} part={part} />];
@@ -133,12 +130,7 @@ function QuestionBlockImpl({
             hasInlineGaps ? (
               <div className="space-y-2">
                 {showQuestionNumber ? <span className="text-sm text-muted-foreground">Question {index}:</span> : null}
-                <div
-                  className={cn(
-                    "block w-full max-w-full rounded-lg border border-input px-3 py-2 text-lg/[45px] transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5",
-                    perGapCorrectness && "animate-quiz-result-reveal"
-                  )}
-                >
+                <div className="block w-full max-w-full rounded-lg border border-input px-3 py-2 text-lg/[45px] transition-[background-color,border-color] duration-300 ease-out [&_.gap-control]:ml-1.5">
                   {parts.flatMap((part, i) => {
                     const nodes: ReactNode[] = [<GapTitleSegment key={`t-${i}`} part={part} />];
                     if (i < parts.length - 1) {
@@ -171,7 +163,6 @@ function QuestionBlockImpl({
                 <div
                   className={cn(
                     "flex items-center gap-3 rounded-lg border px-3 py-2 transition-[background-color,border-color] duration-300 ease-out",
-                    (textCorrect === true || textIncorrect) && "animate-quiz-result-reveal",
                     textCorrect === true && correctSurfaceClassName,
                     textIncorrect && incorrectSurfaceClassName
                   )}

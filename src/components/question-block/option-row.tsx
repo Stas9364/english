@@ -40,7 +40,6 @@ export function OptionRow({
 
     const wrapperClassName = cn(
         "flex items-center gap-3 rounded-lg border px-3 py-2 min-h-[2.75rem]",
-        (showCorrect || showIncorrect) && "animate-quiz-result-reveal",
         showCorrect && correctSurfaceClassName,
         showIncorrect && incorrectSurfaceClassName,
         !checked && "cursor-pointer"

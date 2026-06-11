@@ -4,7 +4,7 @@ import type { AdminChapter } from "./types";
 
 const CHAPTERS_TAG = "chapters";
 
-/** Разделы админки из БД (без хардкода в UI) */
+/** Разделы админки из БД  */
 export async function getAdminChapters(
   supabase: SupabaseClient
 ): Promise<AdminChapter[]> {
