@@ -137,78 +137,78 @@ export function QuizScreen({
                   />
                 )}
                 {currentPage.example && (
-                  <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
-                    Example: {currentPage.example}
-                  </p>
+                  <div className="flex gap-2 mt-3 whitespace-pre-line text-sm text-muted-foreground">
+                    Example: <p dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(currentPage.example) }} />
+                  </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-            {isCrosswordPage ? (
-              currentPage.crossword ? (
-                <div className="flex flex-col gap-4">
-                  {isAdmin ? (
-                    <div>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/admin/quiz/${currentPage.crossword.quiz.slug}`} target="_blank" rel="noopener noreferrer">
-                          Open crossword
-                        </Link>
-                      </Button>
-                    </div>
-                  ) : null}
-                  <CrosswordPlayer
-                    quiz={currentPage.crossword.quiz}
-                    storageKey={`${quiz.id}:${currentPage.id}`}
-                  />
-                </div>
-              ) : (
-                <Card>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">Crossword is not configured for this page.</p>
-                  </CardContent>
-                </Card>
-              )
-            ) : pageType === "matching" ? (
-              <MatchingBlock
-                questions={currentPage.questions}
-                selected={selected}
-                checked={isCurrentPageChecked}
-                onMatch={(questionId, optionId) => {
-                  setSelected((prev) => {
-                    const prevHolder = Object.entries(prev).find(([, opts]) => opts[0] === optionId)?.[0];
-                    const prevInTarget = prev[questionId]?.[0];
-                    const next = { ...prev, [questionId]: [optionId] };
-                    if (prevHolder && prevHolder !== questionId) {
-                      next[prevHolder] = prevInTarget ? [prevInTarget] : [];
-                    }
-                    return next;
-                  });
-                }}
-              />
+          {isCrosswordPage ? (
+            currentPage.crossword ? (
+              <div className="flex flex-col gap-4">
+                {isAdmin ? (
+                  <div>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/admin/quiz/${currentPage.crossword.quiz.slug}`} target="_blank" rel="noopener noreferrer">
+                        Open crossword
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
+                <CrosswordPlayer
+                  quiz={currentPage.crossword.quiz}
+                  storageKey={`${quiz.id}:${currentPage.id}`}
+                />
+              </div>
             ) : (
-              <ul className="space-y-8">
-                {currentPage.questions.map((q, index) => (
-                  <QuestionBlock
-                    key={q.id}
-                    question={q}
-                    pageType={pageType}
-                    index={index + 1}
-                    totalQuestionsOnPage={totalQuestionsOnPage}
-                    selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
-                    checked={isCurrentPageChecked}
-                    textAnswers={
-                      pageType === "input"
-                        ? getTextAnswersForQuestion(q.id, q.question_title)
-                        : emptyTextAnswers
-                    }
-                    onInputChange={handleQuestionInputChange}
-                    onSelect={handleSelect}
-                    onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
-                  />
-                ))}
-              </ul>
-            )}
+              <Card>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Crossword is not configured for this page.</p>
+                </CardContent>
+              </Card>
+            )
+          ) : pageType === "matching" ? (
+            <MatchingBlock
+              questions={currentPage.questions}
+              selected={selected}
+              checked={isCurrentPageChecked}
+              onMatch={(questionId, optionId) => {
+                setSelected((prev) => {
+                  const prevHolder = Object.entries(prev).find(([, opts]) => opts[0] === optionId)?.[0];
+                  const prevInTarget = prev[questionId]?.[0];
+                  const next = { ...prev, [questionId]: [optionId] };
+                  if (prevHolder && prevHolder !== questionId) {
+                    next[prevHolder] = prevInTarget ? [prevInTarget] : [];
+                  }
+                  return next;
+                });
+              }}
+            />
+          ) : (
+            <ul className="space-y-8">
+              {currentPage.questions.map((q, index) => (
+                <QuestionBlock
+                  key={q.id}
+                  question={q}
+                  pageType={pageType}
+                  index={index + 1}
+                  totalQuestionsOnPage={totalQuestionsOnPage}
+                  selectedOptionIds={selected[q.id] ?? emptySelectedOptionIds}
+                  checked={isCurrentPageChecked}
+                  textAnswers={
+                    pageType === "input"
+                      ? getTextAnswersForQuestion(q.id, q.question_title)
+                      : emptyTextAnswers
+                  }
+                  onInputChange={handleQuestionInputChange}
+                  onSelect={handleSelect}
+                  onSelectGap={pageType === "select_gaps" ? handleSelectGap : undefined}
+                />
+              ))}
+            </ul>
+          )}
 
           {!isCrosswordPage && (
             <div className="mt-8 flex flex-col items-center gap-4">
@@ -290,7 +290,7 @@ export function QuizScreen({
           {isAdmin && (
             <div>
               <Button asChild>
-              <Link href={`/admin/quiz/${quiz.slug}`}>Edit quiz</Link>
+                <Link href={`/admin/quiz/${quiz.slug}`}>Edit quiz</Link>
               </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link href={adminBackHref}>Back to topics</Link>

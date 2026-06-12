@@ -14,6 +14,11 @@ export function PageTitleFields({ form, pageIndex }: PageTitleFieldsProps) {
         name: `pages.${pageIndex}.title`,
     }) ?? '';
 
+    const example = useWatch({
+        control: form.control,
+        name: `pages.${pageIndex}.example`,
+    }) ?? '';
+
     return (
         <>
             <div className="space-y-2">
@@ -26,11 +31,10 @@ export function PageTitleFields({ form, pageIndex }: PageTitleFieldsProps) {
             </div>
             <div className="space-y-2">
                 <Label>Example (optional)</Label>
-                <textarea
-                    {...form.register(`pages.${pageIndex}.example`)}
-                    placeholder="e.g. I usually get up at 7 a.m."
-                    rows={4}
-                    className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none resize-y min-h-[80px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                <QuestionTitleColorEditor
+                    value={example}
+                    onChange={(html) => form.setValue(`pages.${pageIndex}.example`, html)}
+                    invalid={!!form.formState.errors.pages?.[pageIndex]?.example}
                 />
             </div>
         </>
