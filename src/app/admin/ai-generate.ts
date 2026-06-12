@@ -12,6 +12,8 @@ export type GeminiModelOption = {
   description: string;
 };
 
+export type InputMode = "gaps" | "full_answer";
+
 export type GenerateQuizPagesParams = {
   topic: string;
   level: string;
@@ -24,6 +26,7 @@ export type GenerateQuizPagesParams = {
   lexicon?: string;
   bannedTopics?: string;
   customTask?: string;
+  inputMode?: InputMode;
   model?: string;
 };
 
@@ -266,17 +269,24 @@ function buildFallbackDraftForInputCustomTask(customTask?: string): z.infer<type
   };
 }
 
+function resolveInputMode(params?: Pick<GenerateQuizPagesParams, "allowedTypes" | "inputMode">): InputMode {
+  if (!params?.allowedTypes?.includes("input")) return "gaps";
+  return params.inputMode === "full_answer" ? "full_answer" : "gaps";
+}
+
 function normalizeGeneratedDraft(
   draft: z.infer<typeof GeneratedDraftSchema>,
-  opts?: { customTask?: string; forceSingleInputQuestion?: boolean }
+  opts?: { customTask?: string; inputMode?: InputMode }
 ): {
   pages: GeneratedPageForCreate[];
   theoryBlocks?: GeneratedTheoryBlockForCreate[];
 } {
   const pages: GeneratedPageForCreate[] = [];
+  const inputMode = opts?.inputMode ?? "gaps";
   const forceSingleInputQuestion =
-    !!opts?.forceSingleInputQuestion || isLikelyConnectedTextTask(opts?.customTask);
-  const orderedLineHints = extractOrderedLineHints(opts?.customTask);
+    inputMode === "gaps" && isLikelyConnectedTextTask(opts?.customTask);
+  const orderedLineHints =
+    inputMode === "gaps" ? extractOrderedLineHints(opts?.customTask) : [];
   let inputHintCursor = 0;
 
   for (let pi = 0; pi < draft.pages.length; pi++) {
@@ -325,7 +335,7 @@ function normalizeGeneratedDraft(
       const q = qs[qi] as GeneratedQuestion;
       let question_title = (q.question_title ?? "").toString().trim();
       if (!question_title) continue;
-      if (type === "input" && !forceSingleInputQuestion && !/\([^)]*\)/.test(question_title)) {
+      if (type === "input" && inputMode === "gaps" && !forceSingleInputQuestion && !/\([^)]*\)/.test(question_title)) {
         const hint = orderedLineHints[inputHintCursor] ?? "";
         if (hint) {
           question_title = question_title.includes("[[]]")
@@ -468,11 +478,8 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
   const customTask = (params.customTask ?? "").trim();
   const singleType = params.allowedTypes.length === 1 ? params.allowedTypes[0] : null;
   const hasCustomMatchingTask = !!customTask && params.allowedTypes.includes("matching");
-
-  return [
-    `You are generating quiz pages for an English-learning app.`,
-    `Return ONLY valid JSON. No markdown. No extra text.`,
-    ``,
+  const inputMode = resolveInputMode(params);
+  const schemaLines = [
     `Output schema:`,
     `{`,
     `  "pages": [`,
@@ -489,8 +496,8 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     `    }`,
     `  ]`,
     `}`,
-    ``,
-    `Rules:`,
+  ];
+  const baseRules = [
     `- CRITICAL PAGE RULE: return EXACTLY ${params.pageCount} item(s) in "pages" array. Do not return more, do not return less.`,
     params.pageCount === 1
       ? `- For this request, "pages" must contain exactly ONE object. Even if the instruction has many exercises/items, keep them as multiple questions inside that single page.`
@@ -500,40 +507,62 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     customTask
       ? `- Do NOT create more questions than are explicitly present or requested in the instruction. If the instruction contains N questions/examples, keep exactly those (you may split or restructure them to fit the schema, but do not invent extra questions). Ignore any default questions-per-page limits if they conflict with the instruction.`
       : `- Create exactly ${params.pageCount} pages, each with exactly ${params.questionsPerPage} questions.`,
-    customTask
-      ? `- SLASH PRESERVATION RULE: if the instruction contains fragments separated by "/" (e.g. "he / look", "I / make"), treat BOTH sides as required source material. Do NOT drop, omit, or replace either side; keep both parts represented in the generated question.`
-      : null,
-    customTask
-      ? `- CONNECTED TEXT RULE: if the instruction provides one continuous/coherent text block (paragraph), keep it as ONE question in the quiz. Do NOT split it into multiple questions or break it into sentence-level items unless the instruction explicitly asks for that split.`
-      : null,
     `- question_title must be concise and must NOT contain HTML.`,
     `- GLOBAL GAP RULE: whenever you use "[[]]" in question_title (for ANY page type), brackets must stay EMPTY. Never put any word, answer, hint, translation, or placeholder text inside them. Correct: "[[]]". Incorrect: "[[goes]]", "[[answer]]", "[[...]]".`,
     `- For type "single": options length 3-5, exactly one is_correct=true.`,
     `- For type "multiple": options length 4-7, at least one is_correct=true.`,
     `- For types "single" and "multiple": if question_title contains a missing-word slot, mark it ONLY as "..." (three dots). Do NOT use "[[]]", "__", "___", "[blank]", "( )", or any other placeholder symbols.`,
+  ];
+  const customTaskRules = customTask
+    ? [
+        `- SLASH PRESERVATION RULE: if the instruction contains fragments separated by "/" (e.g. "he / look", "I / make"), treat BOTH sides as required source material. Do NOT drop, omit, or replace either side; keep both parts represented in the generated question.`,
+        `- CONNECTED TEXT RULE: if the instruction provides one continuous/coherent text block (paragraph), keep it as ONE question in the quiz. Do NOT split it into multiple questions or break it into sentence-level items unless the instruction explicitly asks for that split.`,
+      ]
+    : [];
+  const matchingRules = [
     `- For type "matching": each question is one row (left column); options are the draggable answers (right column). Each question must have exactly one option with is_correct=true (its correct pair). Give each question enough CONTEXT so the learner can tell which answer fits: use a short sentence or phrase (e.g. "He ___ at the office" or "My sister ___ the guitar") rather than a single word. The context must make the correct match obvious. CRITICAL: avoid ambiguity — each correct answer must belong to exactly one question; ensure every question has a unique correct match so the task has a single correct solution. Keep options short.`,
     hasCustomMatchingTask
       ? `- CUSTOM MATCHING RULE: the admin will provide matching items exactly as "answer - question/definition" lines. Treat each line as an already correct pair. In JSON, keep pairs correctly matched and in the SAME ORDER as the source lines: store the text BEFORE the dash as that row's single correct option.option_text and the text AFTER the dash as question_title. Do NOT shuffle, reorder, or randomize the JSON questions/options. Do NOT translate, paraphrase, rewrite, expand, shorten, or otherwise change either side of the pair. Do NOT invent extra pairs. The app UI will shuffle the learner-facing answer column separately, so correctness can be checked against the canonical question -> correct option relationship stored in JSON.`
       : null,
-    `- For type "input":`,
-    `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
-    `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
-    `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
-    `  - If a question has N gaps, you MUST provide at least one option for every gap_index from 0..N-1. Missing gap_index is invalid.`,
-    customTask
-      ? `  - For custom connected text, preserve the original text almost verbatim: only replace numbered markers like "1(...)" with "[[]] (...)" and keep the text inside round brackets exactly as provided (do NOT delete, shorten, or rewrite bracket content).`
-      : null,
+  ];
+  const inputRules =
+    inputMode === "gaps"
+      ? [
+          `- For type "input":`,
+          `  - In this request, input mode is "gaps".`,
+          `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
+          `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
+          `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
+          `  - If a question has N gaps, you MUST provide at least one option for every gap_index from 0..N-1. Missing gap_index is invalid.`,
+          customTask
+            ? `  - For custom connected text, preserve the original text almost verbatim: only replace numbered markers like "1(...)" with "[[]] (...)" and keep the text inside round brackets exactly as provided (do NOT delete, shorten, or rewrite bracket content).`
+            : null,
+        ]
+      : [
+          `- For type "input":`,
+          `  - In this request, input mode is "full_answer".`,
+          `  - question_title must stay as the learner-facing prompt/sentence and must NOT include "[[]]" gaps unless the source instruction explicitly requires visible blanks; the learner types one full answer in a single input field;`,
+          `  - options are accepted full rewritten/corrected answers for the WHOLE question, not single words or fragments; store them with gap_index = 0; is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
+          `  - Preserve the original task wording in question_title unless a tiny structural adjustment is absolutely necessary to fit the schema. Do NOT paraphrase, simplify, translate, or rewrite the learner-facing prompt.`,
+          `  - For full_answer mode, provide at least one accepted full answer for each question. Missing answer text is invalid.`,
+          `  - The correct answer in options must be the final sentence/text the learner should type exactly as an acceptable solution. Do NOT include explanations, labels, numbering, hints, or surrounding commentary inside option_text.`,
+          `  - If the source contains multiple separate prompts/sentences, keep them as separate questions unless the instruction explicitly asks for one combined answer. Do NOT merge unrelated prompts into a single answer.`,
+          `  - If the source asks to rewrite, transform, correct, or combine a sentence, keep the ORIGINAL prompt in question_title and put only the transformed/corrected final answer in options.`,
+          customTask
+            ? `  - For custom full-answer tasks, keep each original prompt/sentence essentially verbatim in question_title and put the correct rewritten sentence into options.`
+            : null,
+        ];
+  const selectGapsRules = [
     `- For type "select_gaps": question_title must include one or more "[[]]" gaps. options are choices; set gap_index (0-based). For each gap, provide 3-5 options and at least one is_correct=true.`,
     `- If there are N gaps in the title, you MUST provide at least one option for each gap_index from 0..N-1.`,
-    ``,
-    customTask
-      ? `Primary instruction (VERBATIM, highest priority): ${customTask}`
-      : null,
-    customTask
-      ? `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${singleType ? `, and all pages must have type = "${singleType}".` : "."
-      }`
-      : null,
-    ``,
+  ];
+  const instructionRules = customTask
+    ? [
+        `Primary instruction (VERBATIM, highest priority): ${customTask}`,
+        `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${singleType ? `, and all pages must have type = "${singleType}".` : "."}`
+      ]
+    : [];
+  const contentRules = [
     `Content requirements:`,
     `- Topic: ${params.topic}`,
     `- CEFR level: ${level}`,
@@ -542,6 +571,24 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     constraints ? `- Constraints: ${constraints}` : null,
     lexicon ? `- Must include lexicon: ${lexicon}` : null,
     banned ? `- Avoid topics: ${banned}` : null,
+  ];
+
+  return [
+    `You are generating quiz pages for an English-learning app.`,
+    `Return ONLY valid JSON. No markdown. No extra text.`,
+    ``,
+    ...schemaLines,
+    ``,
+    `Rules:`,
+    ...baseRules,
+    ...customTaskRules,
+    ...matchingRules,
+    ...inputRules,
+    ...selectGapsRules,
+    ``,
+    ...instructionRules,
+    ``,
+    ...contentRules,
   ]
     .filter(Boolean)
     .join("\n");
@@ -632,6 +679,7 @@ export async function generateQuizPages(
         .string()
         .optional()
         .transform(trimOrUndef),
+      inputMode: z.enum(["gaps", "full_answer"]).optional().default("gaps"),
       allowedTypes: z
         .array(z.enum(["single", "multiple", "input", "select_gaps", "matching"]))
         .min(1)
@@ -695,6 +743,7 @@ export async function generateQuizPages(
   const prompt = buildGeneratePrompt(parsedParams);
 
   try {
+    const resolvedInputMode = resolveInputMode(parsedParams);
     const modelToUse = normalizeGeminiModelName(parsedParams.model);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${encodeURIComponent(apiKey)}`;
     // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -744,6 +793,7 @@ export async function generateQuizPages(
         hasCustomTask &&
         parsedParams.allowedTypes.length === 1 &&
         parsedParams.allowedTypes[0] === "input" &&
+        resolvedInputMode === "gaps" &&
         isLikelyConnectedTextTask(parsedParams.customTask);
       if (canUseInputFallback) {
         const fallbackDraft = buildFallbackDraftForInputCustomTask(parsedParams.customTask);
@@ -819,10 +869,7 @@ export async function generateQuizPages(
     try {
       normalized = normalizeGeneratedDraft(draft, {
         customTask: parsedParams.customTask,
-        forceSingleInputQuestion:
-          hasCustomTask &&
-          parsedParams.allowedTypes.includes("input") &&
-          isLikelyConnectedTextTask(parsedParams.customTask),
+        inputMode: resolvedInputMode,
       });
     } catch (e) {
       logGenerateError(requestId, "normalize_generated_draft", {

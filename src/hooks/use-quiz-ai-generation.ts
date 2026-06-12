@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateQuizPages } from "@/app/admin/ai-generate";
+import { generateQuizPages, type InputMode } from "@/app/admin/ai-generate";
 import type { TestType } from "@/lib/supabase";
 
 export type GenerateQuizResult = Awaited<ReturnType<typeof generateQuizPages>>;
@@ -21,6 +21,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
   const [language, setLanguage] = useState<"RU" | "EN">(options.initialLanguage ?? "EN");
   const [questionsPerPage, setQuestionsPerPage] = useState<number>(options.initialQuestionsPerPage ?? 10);
   const [selectedType, setSelectedType] = useState<TestType>(options.initialType ?? "single");
+  const [inputMode, setInputMode] = useState<InputMode>("gaps");
   const [style, setStyle] = useState("");
   const [constraints, setConstraints] = useState("");
   const [lexicon, setLexicon] = useState("");
@@ -52,6 +53,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
           : 1,
         // Пока генерируем только один тип страницы за запрос.
         allowedTypes: [selectedType],
+        inputMode: selectedType === "input" ? inputMode : undefined,
         customTask: customTask.trim() || undefined,
         style: style.trim() || undefined,
         constraints: constraints.trim() || undefined,
@@ -84,6 +86,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     language,
     questionsPerPage,
     selectedType,
+    inputMode,
     customTask,
     style,
     constraints,
@@ -99,6 +102,7 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
     setLanguage,
     setQuestionsPerPage,
     setSelectedType,
+    setInputMode,
     setCustomTask,
     setStyle,
     setConstraints,

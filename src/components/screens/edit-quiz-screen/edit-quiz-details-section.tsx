@@ -110,6 +110,7 @@ export function EditQuizDetailsSection({
             language={ai.language}
             questionsPerPage={String(ai.questionsPerPage)}
             selectedType={ai.selectedType as TestType}
+            inputMode={ai.inputMode}
             customTask={ai.customTask}
             style={ai.style}
             constraints={ai.constraints}
@@ -121,6 +122,7 @@ export function EditQuizDetailsSection({
             onLanguageChange={ai.setLanguage}
             onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
             onSelectedTypeChange={ai.setSelectedType}
+            onInputModeChange={ai.setInputMode}
             onCustomTaskChange={ai.setCustomTask}
             onStyleChange={ai.setStyle}
             onConstraintsChange={ai.setConstraints}

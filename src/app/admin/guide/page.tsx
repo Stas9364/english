@@ -274,6 +274,33 @@ export default async function AdminGuidePage() {
           генерация. Это позволяет переключаться между более быстрым и более качественным режимом в зависимости от задачи.
         </p>
 
+        <h3 id="ai-generation-input-mode" className="text-lg font-semibold scroll-mt-6">Режимы Input mode для Text input</h3>
+        <p className="text-base">
+          Если в <strong>Page type to generate</strong> выбран тип <strong>input</strong>, в блоке AI generation появляется
+          дополнительное поле <strong>Input mode</strong>. Оно определяет, как именно Gemini должен собрать страницу типа
+          <strong> Text input</strong>.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            <strong>gaps</strong> — режим по умолчанию. Модель должна строить вопросы с маркерами <code>[[]]</code> внутри текста
+            и раскладывать правильные ответы по пропускам. Этот режим сохраняет прежнее поведение генератора.
+          </li>
+          <li>
+            <strong>full_answer</strong> — режим для заданий, где ученик должен ввести <strong>весь итоговый ответ целиком</strong>,
+            а не вставлять отдельные слова в пропуски. В этом режиме в <code>question_title</code> обычно остаётся исходная
+            формулировка задания, а в правильные ответы попадает уже готовое переписанное/исправленное предложение.
+          </li>
+          <li>
+            Переключатель <strong>Input mode</strong> показывается <strong>только</strong> при выборе типа страницы
+            <strong> input</strong>. Для <strong>single</strong>, <strong>multiple</strong>, <strong>select_gaps</strong> и
+            <strong> matching</strong> его нет.
+          </li>
+        </ul>
+        <p className="text-base text-muted-foreground">
+          Подсказка: если вам нужны обычные пропуски в предложении, оставляйте <strong>gaps</strong>. Если нужно задание формата
+          «rewrite / transform / correct the sentence», чаще всего нужен <strong>full_answer</strong>.
+        </p>
+
         <h3 id="ai-generation-basic" className="text-lg font-semibold scroll-mt-6">Как пользоваться базовым режимом (без custom task)</h3>
         <ol className="list-decimal space-y-1 pl-5 text-base">
           <li>
@@ -304,6 +331,11 @@ export default async function AdminGuidePage() {
               <li>
                 В <strong>Page type to generate</strong> выберите нужный тип: <em>single</em>, <em>multiple</em>, <em>input</em>,{" "}
                 <em>select_gaps</em>, <em>matching</em>.
+              </li>
+              <li>
+                Если выбран тип <strong>input</strong>, дополнительно выберите <strong>Input mode</strong>:
+                <strong> gaps</strong> для пропусков или <strong>full_answer</strong> для полного ответа. По умолчанию выбран
+                <strong> gaps</strong>.
               </li>
             </ul>
           </li>
@@ -353,6 +385,11 @@ export default async function AdminGuidePage() {
               <li>
                 <strong>Page type to generate</strong> — тот тип страницы, в который нужно превратить задание (
                 <em>single</em> / <em>multiple</em> / <em>input</em> / <em>select_gaps</em> / <em>matching</em>).
+              </li>
+              <li>
+                Если выбран <strong>input</strong>, заранее определите формат:
+                <strong> gaps</strong> — если в задании должны быть пропуски <code>[[]]</code>;
+                <strong> full_answer</strong> — если ученик должен целиком переписать, исправить или трансформировать предложение.
               </li>
               <li>Остальные поля (Level, Style и т.п.) по желанию.</li>
             </ul>
@@ -404,6 +441,10 @@ export default async function AdminGuidePage() {
             <li>
               Для <strong>input</strong>/<strong>select_gaps</strong> явно указывать, где должны быть пропуски, и какие варианты
               считаются правильными.
+            </li>
+            <li>
+              Для <strong>input</strong> в режиме <strong>full_answer</strong> лучше давать явные инструкции вроде
+              <em> rewrite</em>, <em>transform</em>, <em>correct</em>, чтобы итоговый правильный ответ был однозначным.
             </li>
           </ul>
         </div>

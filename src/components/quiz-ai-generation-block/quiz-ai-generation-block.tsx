@@ -1,6 +1,7 @@
 "use client";
 
 import { Wand2 } from "lucide-react";
+import type { InputMode } from "@/app/admin/ai-generate";
 import type { TestType } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ export interface QuizAiGenerationBlockProps {
   language: "RU" | "EN";
   questionsPerPage: number | string;
   selectedType: TestType;
+  inputMode: InputMode;
   customTask: string;
   style: string;
   constraints: string;
@@ -30,6 +32,7 @@ export interface QuizAiGenerationBlockProps {
   onLanguageChange: (value: "RU" | "EN") => void;
   onQuestionsPerPageChange: (value: number) => void;
   onSelectedTypeChange: (value: TestType) => void;
+  onInputModeChange: (value: InputMode) => void;
   onCustomTaskChange: (value: string) => void;
   onStyleChange: (value: string) => void;
   onConstraintsChange: (value: string) => void;
@@ -69,6 +72,7 @@ export function QuizAiGenerationBlock({
   language,
   questionsPerPage,
   selectedType,
+  inputMode,
   customTask,
   style,
   constraints,
@@ -80,6 +84,7 @@ export function QuizAiGenerationBlock({
   onLanguageChange,
   onQuestionsPerPageChange,
   onSelectedTypeChange,
+  onInputModeChange,
   onCustomTaskChange,
   onStyleChange,
   onConstraintsChange,
@@ -218,6 +223,17 @@ export function QuizAiGenerationBlock({
             </div>
           </div>
         </div>
+
+        {selectedType === "input" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SelectField
+              label="Input mode"
+              value={inputMode}
+              onChange={(e) => onInputModeChange(e.target.value as InputMode)}
+              options={["gaps", "full_answer"]}
+            />
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <InputField label="Style (optional)" value={styleField.local} onChange={(e) => styleField.setLocal(e.target.value)} placeholder="Short sentences, everyday topics…" wrapperClassName="space-y-2" />
