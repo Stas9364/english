@@ -532,6 +532,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
           `  - In this request, input mode is "gaps".`,
           `  - question_title must include one or more "[[]]" gaps; each gap is the place where the learner types the answer;`,
           `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
+          `  - explanation must be a SHORT non-empty note in ${lang} (usually 1 sentence) that briefly explains why the accepted form(s) are correct in this sentence. Do not use HTML. Do not repeat the whole question text.`,
           `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
           `  - If a question has N gaps, you MUST provide at least one option for every gap_index from 0..N-1. Missing gap_index is invalid.`,
           customTask
@@ -542,6 +543,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
           `- For type "input":`,
           `  - In this request, input mode is "full_answer".`,
           `  - question_title must stay as the learner-facing prompt/sentence and must NOT include "[[]]" gaps unless the source instruction explicitly requires visible blanks; the learner types one full answer in a single input field;`,
+          `  - explanation must be a SHORT non-empty note in ${lang} (usually 1 sentence) that briefly explains what transformation/correction makes the final answer correct. Do not use HTML. Do not repeat the whole prompt.`,
           `  - options are accepted full rewritten/corrected answers for the WHOLE question, not single words or fragments; store them with gap_index = 0; is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
           `  - Preserve the original task wording in question_title unless a tiny structural adjustment is absolutely necessary to fit the schema. Do NOT paraphrase, simplify, translate, or rewrite the learner-facing prompt.`,
           `  - For full_answer mode, provide at least one accepted full answer for each question. Missing answer text is invalid.`,
