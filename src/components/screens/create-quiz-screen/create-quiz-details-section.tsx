@@ -1,15 +1,11 @@
 "use client";
 
-import { useFormContext, type UseFieldArrayReturn } from "react-hook-form";
-import { QuizMetaFields } from "@/components/quiz-meta-fields";
-import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
-import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
-import { PageBlock } from "@/components/page-block/page-block";
-import { Label } from "@/components/ui/label";
+import type { UseFieldArrayReturn } from "react-hook-form";
 import type { CreateQuizFormValues } from "@/lib/quiz-page-schema";
 import type { TestType } from "@/lib/supabase";
 import type { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
 import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
+import { QuizDetailsSection } from "@/components/screens/quiz-details-section";
 
 export interface CreateQuizGenerationStatus {
   state: "idle" | "loading" | "error" | "success";
@@ -51,85 +47,35 @@ export function CreateQuizDetailsSection({
   defaultQuestion,
   crosswordOptions,
 }: CreateQuizDetailsSectionProps) {
-  const form = useFormContext<CreateQuizFormValues>();
-  const activePage = pagesArray.fields[activePageIndex];
-
   return (
-    <>
-      <QuizMetaFields
-        selectedTopicId={selectedTopicId}
-        onTopicChange={(value) => form.setValue("topic_id", value, { shouldValidate: true })}
-        topics={topics}
-        topicError={form.formState.errors.topic_id?.message}
-        titleInputProps={form.register("title")}
-        titleError={form.formState.errors.title?.message}
-        descriptionInputProps={form.register("description")}
-        isListeningChapter={isListeningChapter}
-        videoUrl={videoUrl}
-        onVideoUrlChange={onVideoUrlChange}
-      />
-
-      {!isListeningChapter && (
-        <QuizAiGenerationBlock
-          ai={ai}
-          onGenerate={onGenerate}
-          generatedSummary={genStatus.state === "success" ? genStatus.message ?? null : null}
-          errorMessage={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message ?? null : null)}
-        />
-      )}
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <Label>Pages</Label>
-          <span className="text-sm text-muted-foreground">Pages: {pagesArray.fields.length}</span>
-        </div>
-        <QuizPagesTabStrip
-          fieldIds={pagesArray.fields.map((f) => f.id)}
-          titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
-          activeIndex={activePageIndex}
-          onSelect={onActivePageIndexChange}
-          showAddPage={!isListeningChapter}
-          onAddPage={() => {
-            const next = pagesArray.fields.length;
-            pagesArray.append(defaultPage(pagesArray.fields.length));
-            onActivePageIndexChange(next);
-          }}
-        />
-        {activePage ? (
-          <PageBlock
-            key={activePage.id}
-            pageIndex={activePageIndex}
-            totalPages={pagesArray.fields.length}
-            defaultOption={defaultOption}
-            defaultQuestion={defaultQuestion}
-            quizId={undefined}
-            onRemove={() => {
-              const nextIndex = Math.max(0, Math.min(activePageIndex, pagesArray.fields.length - 2));
-              pagesArray.remove(activePageIndex);
-              onActivePageIndexChange(nextIndex);
-            }}
-            canRemove={pagesArray.fields.length > 1}
-            onMoveUp={() => {
-              pagesArray.move(activePageIndex, activePageIndex - 1);
-              onActivePageIndexChange(activePageIndex - 1);
-            }}
-            onMoveDown={() => {
-              pagesArray.move(activePageIndex, activePageIndex + 1);
-              onActivePageIndexChange(activePageIndex + 1);
-            }}
-            canMoveUp={activePageIndex > 0}
-            canMoveDown={activePageIndex < pagesArray.fields.length - 1}
-            hidePageTypeSelect={isListeningChapter}
-            hidePageTitleFields={isListeningChapter}
-            hideAddQuestionButton={isListeningChapter}
-            hideQuestionImageBlock={isListeningChapter}
-            useLyricsTerminology={isListeningChapter}
-            sanitizeTitlePasteWhenEmpty={isListeningChapter}
-            embeddedInTabs
-            crosswordOptions={crosswordOptions}
-          />
-        ) : null}
-      </div>
-    </>
+    <QuizDetailsSection<CreateQuizFormValues["pages"][number]>
+      topics={topics}
+      selectedTopicId={selectedTopicId}
+      isListeningChapter={isListeningChapter}
+      videoUrl={videoUrl}
+      onVideoUrlChange={onVideoUrlChange}
+      ai={ai}
+      onGenerate={onGenerate}
+      generatedSummary={genStatus.state === "success" ? genStatus.message ?? null : null}
+      generationError={ai.errorMessage ?? (genStatus.state === "error" ? genStatus.message ?? null : null)}
+      pagesController={{
+        fields: pagesArray.fields,
+        append: (value) => pagesArray.append(value),
+        move: pagesArray.move,
+        remove: pagesArray.remove,
+      }}
+      activePageIndex={activePageIndex}
+      onActivePageIndexChange={onActivePageIndexChange}
+      defaultPage={(pageIndex) => defaultPage(pageIndex)}
+      defaultOption={() => defaultOption()}
+      defaultQuestion={defaultQuestion}
+      crosswordOptions={crosswordOptions}
+      onDeletePage={(pageIndex) => {
+        const nextIndex = Math.max(0, Math.min(pageIndex, pagesArray.fields.length - 2));
+        pagesArray.remove(pageIndex);
+        onActivePageIndexChange(nextIndex);
+      }}
+      sanitizeTitlePasteWhenEmpty={isListeningChapter}
+    />
   );
 }
