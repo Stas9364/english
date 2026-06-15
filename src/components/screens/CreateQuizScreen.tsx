@@ -1,7 +1,7 @@
 "use client";
 
 import type { TestType } from '@/lib/supabase';
-import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { useTheoryBlocks } from '@/hooks/use-theory-blocks';
@@ -325,50 +325,51 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <CreateQuizDetailsSection
-                            form={form}
-                            topics={topics}
-                            selectedTopicId={selectedTopicId}
-                            isListeningChapter={isListeningChapter}
-                            videoUrl={videoUrl}
-                            onVideoUrlChange={setVideoUrl}
-                            ai={ai}
-                            genStatus={genStatus}
-                            onGenerate={handleGeneratePages}
-                            pagesArray={pagesArray}
-                            activePageIndex={activePageIndex}
-                            onActivePageIndexChange={setActivePageIndex}
-                            defaultPage={defaultPage}
-                            defaultOption={defaultOption}
-                            defaultQuestion={defaultQuestion}
-                            crosswordOptions={crosswordOptions}
-                        />
+                    <FormProvider {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            <CreateQuizDetailsSection
+                                topics={topics}
+                                selectedTopicId={selectedTopicId}
+                                isListeningChapter={isListeningChapter}
+                                videoUrl={videoUrl}
+                                onVideoUrlChange={setVideoUrl}
+                                ai={ai}
+                                genStatus={genStatus}
+                                onGenerate={handleGeneratePages}
+                                pagesArray={pagesArray}
+                                activePageIndex={activePageIndex}
+                                onActivePageIndexChange={setActivePageIndex}
+                                defaultPage={defaultPage}
+                                defaultOption={defaultOption}
+                                defaultQuestion={defaultQuestion}
+                                crosswordOptions={crosswordOptions}
+                            />
 
-                        <QuizTheorySection
-                            blocks={theoryBlocks}
-                            uploadingImageIndex={uploadingImageIndex}
-                            uploadError={uploadError}
-                            onAddBlock={addTheoryBlock}
-                            onRemoveBlock={removeTheoryBlock}
-                            onMoveBlock={moveTheoryBlock}
-                            onUpdateBlock={updateTheoryBlock}
-                            onUploadImage={handleTheoryImageUpload}
-                        />
+                            <QuizTheorySection
+                                blocks={theoryBlocks}
+                                uploadingImageIndex={uploadingImageIndex}
+                                uploadError={uploadError}
+                                onAddBlock={addTheoryBlock}
+                                onRemoveBlock={removeTheoryBlock}
+                                onMoveBlock={moveTheoryBlock}
+                                onUpdateBlock={updateTheoryBlock}
+                                onUploadImage={handleTheoryImageUpload}
+                            />
 
-                        {result && (
-                            <Alert variant={result.ok ? "default" : "destructive"}>
-                                <AlertDescription>
-                                    {result.ok ? "Quiz created successfully." : result.error}
-                                </AlertDescription>
-                            </Alert>
-                        )}
+                            {result && (
+                                <Alert variant={result.ok ? "default" : "destructive"}>
+                                    <AlertDescription>
+                                        {result.ok ? "Quiz created successfully." : result.error}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
-                        <LoadingSubmitButton
-                            isLoading={form.formState.isSubmitting}
-                            idleText="Create quiz"
-                        />
-                    </form>
+                            <LoadingSubmitButton
+                                isLoading={form.formState.isSubmitting}
+                                idleText="Create quiz"
+                            />
+                        </form>
+                    </FormProvider>
                 </CardContent>
             </Card>
         </>

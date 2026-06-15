@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { FormProvider, useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -486,63 +486,64 @@ export function EditQuizScreen({
           <CardDescription>{tabMeta.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-            {activeTab === "details" && (
-              <EditQuizDetailsSection
-                form={form}
-                topics={topics}
-                selectedTopicId={selectedTopicId}
-                isListeningChapter={isListeningChapter}
-                videoUrl={videoUrl}
-                onVideoUrlChange={setVideoUrl}
-                ai={ai}
-                generatedSummary={generatedSummary}
-                onGenerate={handleGenerate}
-                pagesArray={pagesArray}
-                activePageIndex={activePageIndex}
-                onActivePageIndexChange={setActivePageIndex}
-                defaultOption={() => defaultOption()}
-                defaultPage={(pageIndex) =>
-                  defaultPage(undefined, pageIndex, isListeningChapter ? "input" : undefined)
-                }
-                defaultQuestion={defaultQuestionForBlock}
-                quizId={quiz.id}
-                crosswordOptions={crosswordOptions}
-                onDeletePage={handleDeletePage}
-                onConfirmDeleteQuestion={handleConfirmDeleteQuestion}
-                onConfirmDeleteOption={handleConfirmDeleteOption}
-                onConfirmRemoveQuestionImage={handleConfirmRemoveQuestionImage}
+          <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+              {activeTab === "details" && (
+                <EditQuizDetailsSection
+                  topics={topics}
+                  selectedTopicId={selectedTopicId}
+                  isListeningChapter={isListeningChapter}
+                  videoUrl={videoUrl}
+                  onVideoUrlChange={setVideoUrl}
+                  ai={ai}
+                  generatedSummary={generatedSummary}
+                  onGenerate={handleGenerate}
+                  pagesArray={pagesArray}
+                  activePageIndex={activePageIndex}
+                  onActivePageIndexChange={setActivePageIndex}
+                  defaultOption={() => defaultOption()}
+                  defaultPage={(pageIndex) =>
+                    defaultPage(undefined, pageIndex, isListeningChapter ? "input" : undefined)
+                  }
+                  defaultQuestion={defaultQuestionForBlock}
+                  quizId={quiz.id}
+                  crosswordOptions={crosswordOptions}
+                  onDeletePage={handleDeletePage}
+                  onConfirmDeleteQuestion={handleConfirmDeleteQuestion}
+                  onConfirmDeleteOption={handleConfirmDeleteOption}
+                  onConfirmRemoveQuestionImage={handleConfirmRemoveQuestionImage}
+                />
+              )}
+
+              {activeTab === "theory" && (
+                <QuizTheorySection
+                  blocks={theoryBlocks}
+                  uploadingImageIndex={uploadingImageIndex}
+                  uploadError={uploadError}
+                  onAddBlock={handleAddTheoryBlock}
+                  onRemoveBlock={(index) => {
+                    void handleRemoveTheoryBlock(index);
+                  }}
+                  onMoveBlock={moveTheoryBlock}
+                  onUpdateBlock={updateTheoryBlock}
+                  onUploadImage={handleTheoryImageUpload}
+                />
+              )}
+
+              {result && (
+                <Alert variant={result.ok ? "default" : "destructive"}>
+                  <AlertDescription>
+                    {result.ok ? "Quiz updated successfully." : result.error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <LoadingSubmitButton
+                isLoading={form.formState.isSubmitting}
+                idleText="Save changes"
               />
-            )}
-
-            {activeTab === "theory" && (
-              <QuizTheorySection
-                blocks={theoryBlocks}
-                uploadingImageIndex={uploadingImageIndex}
-                uploadError={uploadError}
-                onAddBlock={handleAddTheoryBlock}
-                onRemoveBlock={(index) => {
-                  void handleRemoveTheoryBlock(index);
-                }}
-                onMoveBlock={moveTheoryBlock}
-                onUpdateBlock={updateTheoryBlock}
-                onUploadImage={handleTheoryImageUpload}
-              />
-            )}
-
-            {result && (
-              <Alert variant={result.ok ? "default" : "destructive"}>
-                <AlertDescription>
-                  {result.ok ? "Quiz updated successfully." : result.error}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <LoadingSubmitButton
-              isLoading={form.formState.isSubmitting}
-              idleText="Save changes"
-            />
-          </form>
+            </form>
+          </FormProvider>
         </CardContent>
       </Card>
     </PageContainer>

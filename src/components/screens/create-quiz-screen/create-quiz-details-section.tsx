@@ -1,11 +1,10 @@
 "use client";
 
-import type { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
+import { useFormContext, type UseFieldArrayReturn } from "react-hook-form";
 import { QuizMetaFields } from "@/components/quiz-meta-fields";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
 import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
 import { PageBlock } from "@/components/page-block/page-block";
-import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import { Label } from "@/components/ui/label";
 import type { CreateQuizFormValues } from "@/lib/quiz-page-schema";
 import type { TestType } from "@/lib/supabase";
@@ -18,7 +17,6 @@ export interface CreateQuizGenerationStatus {
 }
 
 interface CreateQuizDetailsSectionProps {
-  form: UseFormReturn<CreateQuizFormValues>;
   topics: { id: string; name: string }[];
   selectedTopicId: string;
   isListeningChapter: boolean;
@@ -37,7 +35,6 @@ interface CreateQuizDetailsSectionProps {
 }
 
 export function CreateQuizDetailsSection({
-  form,
   topics,
   selectedTopicId,
   isListeningChapter,
@@ -54,6 +51,7 @@ export function CreateQuizDetailsSection({
   defaultQuestion,
   crosswordOptions,
 }: CreateQuizDetailsSectionProps) {
+  const form = useFormContext<CreateQuizFormValues>();
   const activePage = pagesArray.fields[activePageIndex];
 
   return (
@@ -124,7 +122,6 @@ export function CreateQuizDetailsSection({
         {activePage ? (
           <PageBlock
             key={activePage.id}
-            form={form as unknown as UseFormReturn<PageBlockFormValues>}
             pageIndex={activePageIndex}
             totalPages={pagesArray.fields.length}
             defaultOption={defaultOption}

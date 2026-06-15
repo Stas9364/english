@@ -11,7 +11,7 @@ import { usePageQuestions } from "@/hooks/use-page-questions";
 import type { TestType } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useWatch, type UseFormReturn } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { PageTitleFields } from './page-title-fields';
 import { PageTypeSelect } from './page-type-select';
 import { QuestionItemCard } from './question-item-card';
@@ -41,7 +41,6 @@ export type PageBlockFormValues = {
 };
 
 export interface PageBlockProps {
-  form: UseFormReturn<PageBlockFormValues>;
   pageIndex: number;
   totalPages?: number;
   defaultOption: () => { option_text: string; is_correct: boolean };
@@ -71,7 +70,6 @@ export interface PageBlockProps {
 }
 
 export function PageBlock({
-  form,
   pageIndex,
   totalPages,
   defaultOption,
@@ -95,6 +93,7 @@ export function PageBlock({
   embeddedInTabs = false,
   crosswordOptions = [],
 }: PageBlockProps) {
+  const form = useFormContext<PageBlockFormValues>();
   const [isExpanded, setIsExpanded] = useState(true);
   const [pendingFocusQuestionIndex, setPendingFocusQuestionIndex] = useState<number | null>(null);
   const { uploadingTarget: uploadingQuestionTarget, uploadError, uploadForTarget } = useImageUpload<string>({
@@ -231,7 +230,6 @@ export function PageBlock({
               {questionsArray.fields.map((qField, qIndex) => (
                 <QuestionItemCard
                   key={qField.id}
-                  form={form}
                   pageIndex={pageIndex}
                   qIndex={qIndex}
                   pageType={pageType}

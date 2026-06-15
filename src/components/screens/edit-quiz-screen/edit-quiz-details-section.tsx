@@ -1,10 +1,9 @@
 "use client";
 
-import type { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
+import { useFormContext, type UseFieldArrayReturn } from "react-hook-form";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
 import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
 import { PageBlock } from "@/components/page-block/page-block";
-import type { PageBlockFormValues } from "@/components/page-block/page-block";
 import { Label } from "@/components/ui/label";
 import type { EditQuizFormValues } from "@/lib/quiz-page-schema";
 import type { TestType } from "@/lib/supabase";
@@ -13,7 +12,6 @@ import type { CrosswordSelectOption } from "@/components/page-block/crossword-pa
 import { QuizMetaFields } from "@/components/quiz-meta-fields";
 
 interface EditQuizDetailsTabProps {
-  form: UseFormReturn<EditQuizFormValues>;
   topics: { id: string; name: string }[];
   selectedTopicId: string;
   isListeningChapter: boolean;
@@ -59,7 +57,6 @@ interface EditQuizDetailsTabProps {
 }
 
 export function EditQuizDetailsSection({
-  form,
   topics,
   selectedTopicId,
   isListeningChapter,
@@ -81,6 +78,7 @@ export function EditQuizDetailsSection({
   onConfirmDeleteQuestion,
   onConfirmRemoveQuestionImage,
 }: EditQuizDetailsTabProps) {
+  const form = useFormContext<EditQuizFormValues>();
   const activePage = pagesArray.fields[activePageIndex];
 
   return (
@@ -154,7 +152,6 @@ export function EditQuizDetailsSection({
         {activePage ? (
           <PageBlock
             key={activePage.id}
-            form={form as unknown as UseFormReturn<PageBlockFormValues>}
             pageIndex={activePageIndex}
             totalPages={pagesArray.fields.length}
             defaultOption={defaultOption}

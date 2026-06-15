@@ -1,7 +1,7 @@
 import type { TestType } from '@/lib/supabase';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
-import { UseFormReturn, useWatch } from 'react-hook-form';
+import { UseFormReturn, useFormContext, useWatch } from 'react-hook-form';
 import { QuestionTitleColorEditor } from '../question-title-color-editor';
 import { QuizQuestionChoiceOptions, type QuizQuestionFormValues, QuizQuestionInputGapsOptions, QuizQuestionSelectGapsOptions, QuizQuestionMatchingOption } from '../quiz-question-options-editor';
 import { TheoryImage } from '../theory-image';
@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
 
 interface QuestionItemCardProps {
-    form: UseFormReturn<PageBlockFormValues>;
     pageIndex: number;
     qIndex: number;
     pageType: TestType;
@@ -35,7 +34,6 @@ interface QuestionItemCardProps {
 }
 
 function QuestionItemCardInner({
-    form,
     pageIndex,
     qIndex,
     pageType,
@@ -55,6 +53,7 @@ function QuestionItemCardInner({
     onTitleAutoFocusDone,
     sanitizeTitlePasteWhenEmpty = false,
 }: QuestionItemCardProps) {
+    const form = useFormContext<PageBlockFormValues>();
     const questionImage = useWatch({
         control: form.control,
         name: `pages.${pageIndex}.questions.${qIndex}.question_image_url`,
