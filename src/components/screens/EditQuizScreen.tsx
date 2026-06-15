@@ -38,6 +38,7 @@ import {
 } from "@/lib/quiz-local-snapshot";
 import { EditQuizHeader } from "@/components/screens/edit-quiz-screen/edit-quiz-header";
 import { EditQuizDetailsSection } from "@/components/screens/edit-quiz-screen/edit-quiz-details-section";
+import { EditQuizEditorProvider } from "@/components/screens/edit-quiz-screen/edit-quiz-editor-context";
 import {
   EditQuizTabs,
   type EditQuizTabId,
@@ -489,18 +490,11 @@ export function EditQuizScreen({
           <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
               {activeTab === "details" && (
-                <EditQuizDetailsSection
-                  topics={topics}
-                  selectedTopicId={selectedTopicId}
+                <EditQuizEditorProvider
                   isListeningChapter={isListeningChapter}
-                  videoUrl={videoUrl}
-                  onVideoUrlChange={setVideoUrl}
-                  ai={ai}
-                  generatedSummary={generatedSummary}
-                  onGenerate={handleGenerate}
                   pagesArray={pagesArray}
                   activePageIndex={activePageIndex}
-                  onActivePageIndexChange={setActivePageIndex}
+                  setActivePageIndex={setActivePageIndex}
                   defaultOption={() => defaultOption()}
                   defaultPage={(pageIndex) =>
                     defaultPage(undefined, pageIndex, isListeningChapter ? "input" : undefined)
@@ -512,7 +506,17 @@ export function EditQuizScreen({
                   onConfirmDeleteQuestion={handleConfirmDeleteQuestion}
                   onConfirmDeleteOption={handleConfirmDeleteOption}
                   onConfirmRemoveQuestionImage={handleConfirmRemoveQuestionImage}
-                />
+                >
+                  <EditQuizDetailsSection
+                    topics={topics}
+                    selectedTopicId={selectedTopicId}
+                    videoUrl={videoUrl}
+                    onVideoUrlChange={setVideoUrl}
+                    ai={ai}
+                    generatedSummary={generatedSummary}
+                    onGenerate={handleGenerate}
+                  />
+                </EditQuizEditorProvider>
               )}
 
               {activeTab === "theory" && (

@@ -1,84 +1,50 @@
 "use client";
 
-import { useFormContext, type UseFieldArrayReturn } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { QuizAiGenerationBlock } from "@/components/quiz-ai-generation-block/quiz-ai-generation-block";
 import { QuizPagesTabStrip } from "@/components/page-block/quiz-pages-tab-strip";
 import { PageBlock } from "@/components/page-block/page-block";
 import { Label } from "@/components/ui/label";
 import type { EditQuizFormValues } from "@/lib/quiz-page-schema";
-import type { TestType } from "@/lib/supabase";
 import type { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
-import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
 import { QuizMetaFields } from "@/components/quiz-meta-fields";
+import { useEditQuizEditor } from "@/components/screens/edit-quiz-screen/edit-quiz-editor-context";
 
 interface EditQuizDetailsTabProps {
   topics: { id: string; name: string }[];
   selectedTopicId: string;
-  isListeningChapter: boolean;
   videoUrl: string;
   onVideoUrlChange: (url: string) => void;
   ai: ReturnType<typeof useQuizAiGeneration>;
   generatedSummary: string | null;
   onGenerate: (topicOverride: string) => Promise<void>;
-  pagesArray: UseFieldArrayReturn<EditQuizFormValues, "pages", "id">;
-  activePageIndex: number;
-  onActivePageIndexChange: (index: number) => void;
-  defaultOption: () => { id?: string; option_text: string; is_correct: boolean; gap_index: number };
-  defaultPage: (pageIndex?: number) => {
-    id?: string;
-    type: TestType;
-    title: string;
-    example: string;
-    order_index: number;
-    crossword_quiz_id: string | null;
-    questions: {
-      id?: string;
-      question_title: string;
-      question_image_url: string;
-      explanation: string;
-      order_index: number;
-      options: { id?: string; option_text: string; is_correct: boolean; gap_index: number }[];
-    }[];
-  };
-  defaultQuestion: (orderIndex: number) => {
-    id?: string;
-    question_title: string;
-    question_image_url: string;
-    explanation: string;
-    order_index: number;
-    options: { id?: string; option_text: string; is_correct: boolean; gap_index: number }[];
-  };
-  quizId: string;
-  crosswordOptions: CrosswordSelectOption[];
-  onDeletePage: (pageIndex: number) => Promise<void>;
-  onConfirmDeleteQuestion: (pageIndex: number, questionIndex: number) => Promise<boolean>;
-  onConfirmDeleteOption: (pageIndex: number, questionIndex: number, optionIndex: number) => Promise<boolean>;
-  onConfirmRemoveQuestionImage: (pageIndex: number, questionIndex: number) => Promise<boolean>;
 }
 
 export function EditQuizDetailsSection({
   topics,
   selectedTopicId,
-  isListeningChapter,
   videoUrl,
   onVideoUrlChange,
   ai,
   generatedSummary,
   onGenerate,
-  pagesArray,
-  activePageIndex,
-  onActivePageIndexChange,
-  defaultOption,
-  defaultPage,
-  defaultQuestion,
-  quizId,
-  crosswordOptions,
-  onDeletePage,
-  onConfirmDeleteOption,
-  onConfirmDeleteQuestion,
-  onConfirmRemoveQuestionImage,
 }: EditQuizDetailsTabProps) {
   const form = useFormContext<EditQuizFormValues>();
+  const {
+    isListeningChapter,
+    pagesArray,
+    activePageIndex,
+    setActivePageIndex,
+    defaultOption,
+    defaultPage,
+    defaultQuestion,
+    quizId,
+    crosswordOptions,
+    onDeletePage,
+    onConfirmDeleteOption,
+    onConfirmDeleteQuestion,
+    onConfirmRemoveQuestionImage,
+  } = useEditQuizEditor();
   const activePage = pagesArray.fields[activePageIndex];
 
   return (
@@ -113,7 +79,7 @@ export function EditQuizDetailsSection({
           fieldIds={pagesArray.fields.map((f) => f.id)}
           titles={pagesArray.fields.map((f) => (typeof f.title === "string" ? f.title : ""))}
           activeIndex={activePageIndex}
-          onSelect={onActivePageIndexChange}
+          onSelect={setActivePageIndex}
           showAddPage={!isListeningChapter}
           onAddPage={() => {
             const next = pagesArray.fields.length;
@@ -122,7 +88,7 @@ export function EditQuizDetailsSection({
                 ...defaultPage(pagesArray.fields.length),
               }
             );
-            onActivePageIndexChange(next);
+            setActivePageIndex(next);
           }}
         />
         {activePage ? (
@@ -139,11 +105,11 @@ export function EditQuizDetailsSection({
             canRemove={pagesArray.fields.length > 1}
             onMoveUp={() => {
               pagesArray.move(activePageIndex, activePageIndex - 1);
-              onActivePageIndexChange(activePageIndex - 1);
+              setActivePageIndex(activePageIndex - 1);
             }}
             onMoveDown={() => {
               pagesArray.move(activePageIndex, activePageIndex + 1);
-              onActivePageIndexChange(activePageIndex + 1);
+              setActivePageIndex(activePageIndex + 1);
             }}
             canMoveUp={activePageIndex > 0}
             canMoveDown={activePageIndex < pagesArray.fields.length - 1}
