@@ -8,17 +8,19 @@ type LoadingSubmitButtonProps = Omit<React.ComponentProps<typeof Button>, "child
   isLoading: boolean;
   idleText: string;
   loadingText?: string;
+  buttonType?: React.ComponentProps<typeof Button>["type"];
 };
 
 export function LoadingSubmitButton({
   isLoading,
   idleText,
   loadingText = "Saving...",
+  buttonType = "submit",
   disabled,
   ...props
 }: LoadingSubmitButtonProps) {
   return (
-    <Button type="submit" disabled={disabled || isLoading} {...props}>
+    <Button type={buttonType} disabled={disabled || isLoading} {...props}>
       {isLoading ? (
         <span className="inline-flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />

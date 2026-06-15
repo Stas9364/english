@@ -4,11 +4,11 @@ import { Wand2 } from "lucide-react";
 import type { InputMode } from "@/app/admin/ai-generate";
 import type { TestType } from "@/lib/supabase";
 import type { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import { useState, useEffect, useRef } from "react";
 import { InputField } from './input-field';
 import { SelectField } from './select-field';
@@ -203,14 +203,15 @@ export function QuizAiGenerationBlock({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
+            <LoadingSubmitButton
+              buttonType="button"
+              isLoading={ai.isGenerating}
+              idleText={generateLabel}
+              loadingText="Generating..."
               onClick={handleGenerateClick}
-              disabled={ai.isGenerating || !topicField.local.trim() || !ai.selectedType}
+              disabled={!topicField.local.trim() || !ai.selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
-            >
-              {ai.isGenerating ? "Generating…" : generateLabel}
-            </Button>
+            />
           </div>
         </div>
 
