@@ -1,11 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { generateQuizPages, type InputMode } from "@/app/admin/ai-generate";
-import type { TestType } from "@/lib/supabase";
+import { useRef, useState } from "react";
+import type { GenerateQuizPagesParams, InputMode } from "@/app/admin/ai-generate";
+import type { TestType, TheoryBlockType } from "@/lib/supabase";
 
-export type GenerateQuizResult = Awaited<ReturnType<typeof generateQuizPages>>;
-export type GenerateQuizSuccess = Extract<GenerateQuizResult, { ok: true }>;
+export type GenerateQuizCancelled = { ok: false; cancelled: true };
+export type GenerateQuizSuccess = {
+  ok: true;
+  pages: Array<{
+    type: TestType;
+    title?: string | null;
+    order_index: number;
+    questions: Array<{
+      question_title: string;
+      explanation?: string | null;
+      order_index: number;
+      options: { option_text: string; is_correct: boolean; gap_index?: number }[];
+    }>;
+  }>;
+  theoryBlocks?: Array<{
+    type: TheoryBlockType;
+    content: string;
+    order_index: number;
+  }>;
+};
+export type GenerateQuizError = { ok: false; error: string };
+export type GenerateQuizResult = GenerateQuizSuccess | GenerateQuizError | GenerateQuizCancelled;
+
+export function isGenerateCancelled(result: GenerateQuizResult): result is GenerateQuizCancelled {
+  return !result.ok && "cancelled" in result && result.cancelled === true;
+}
 
 interface UseQuizAiGenerationOptions {
   initialTopic?: string;
@@ -31,6 +55,11 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  function cancelGeneration() {
+    abortControllerRef.current?.abort();
+  }
 
   async function generate(nextTopic?: string): Promise<GenerateQuizResult> {
     const topicToUse = typeof nextTopic === "string" ? nextTopic : topic;
@@ -40,10 +69,14 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
       return { ok: false, error: "Topic is required for generation." };
     }
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setErrorMessage(null);
     try {
-      const res = await generateQuizPages({
+      const payload: GenerateQuizPagesParams = {
         topic: topicTrimmed,
         level: level.trim(),
         language,
@@ -51,7 +84,6 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
         questionsPerPage: Number.isFinite(questionsPerPage)
           ? Math.max(1, Math.trunc(questionsPerPage))
           : 1,
-        // Пока генерируем только один тип страницы за запрос.
         allowedTypes: [selectedType],
         inputMode: selectedType === "input" ? inputMode : undefined,
         customTask: customTask.trim() || undefined,
@@ -60,10 +92,30 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
         lexicon: lexicon.trim() || undefined,
         bannedTopics: bannedTopics.trim() || undefined,
         model: selectedModel.trim() || undefined,
+      };
+
+      const response = await fetch("/admin/quiz-ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      if (!response.ok) {
+        const errBody = (await response.json().catch(() => null)) as { error?: string } | null;
+        const message = errBody?.error ?? `Request failed (${response.status})`;
+        setErrorMessage(message);
+        return { ok: false, error: message };
+      }
+
+      const res = (await response.json()) as GenerateQuizResult;
 
       if (process.env.NODE_ENV === "development") {
         console.log("[Quiz AI] generateQuizPages response:", res);
+      }
+
+      if (isGenerateCancelled(res)) {
+        return res;
       }
 
       if (!res.ok) {
@@ -71,10 +123,16 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
       }
       return res;
     } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        return { ok: false, cancelled: true };
+      }
       const msg = e instanceof Error ? e.message : "Unknown error";
       setErrorMessage(msg);
       return { ok: false, error: msg };
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsGenerating(false);
     }
   }
@@ -113,6 +171,6 @@ export function useQuizAiGeneration(options: UseQuizAiGenerationOptions = {}) {
 
     // actions
     generate,
+    cancelGeneration,
   };
 }
-

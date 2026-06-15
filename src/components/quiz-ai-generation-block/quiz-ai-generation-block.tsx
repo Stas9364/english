@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import { useState, useEffect, useRef } from "react";
 import { InputField } from './input-field';
@@ -212,6 +213,16 @@ export function QuizAiGenerationBlock({
               disabled={!topicField.local.trim() || !ai.selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
             />
+            {ai.isGenerating && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={ai.cancelGeneration}
+                title="Остановить текущую генерацию"
+              >
+                Reject
+              </Button>
+            )}
           </div>
         </div>
 

@@ -3,7 +3,11 @@
 import { useCallback, useState } from "react";
 import type { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
 import type { CreateQuizGenerationStatus } from "@/components/screens/create-quiz-screen/create-quiz-details-section";
-import type { GenerateQuizSuccess, useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
+import {
+  isGenerateCancelled,
+  type GenerateQuizSuccess,
+  type useQuizAiGeneration,
+} from "@/hooks/use-quiz-ai-generation";
 import type { CreateQuizFormValues } from "@/lib/quiz-page-schema";
 
 function isDefaultEmptyPage(page: CreateQuizFormValues["pages"][number] | undefined): boolean {
@@ -62,6 +66,10 @@ export function useCreateQuizGenerate({
     setGenStatus({ state: "loading" });
     try {
       const res = await ai.generate(topicOverride);
+      if (isGenerateCancelled(res)) {
+        setGenStatus({ state: "idle" });
+        return;
+      }
       if (!res.ok) {
         setGenStatus({ state: "error", message: res.error });
         return;

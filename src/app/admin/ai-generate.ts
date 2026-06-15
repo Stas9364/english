@@ -59,6 +59,9 @@ type GenerateOk = {
 };
 
 type GenerateErr = { ok: false; error: string };
+type GenerateCancelled = { ok: false; cancelled: true };
+
+export type GenerateQuizPagesResult = GenerateOk | GenerateErr | GenerateCancelled;
 
 type GenerateLogMeta = Record<string, unknown>;
 
@@ -650,9 +653,25 @@ export async function listGeminiModels(): Promise<{ ok: true; models: GeminiMode
   }
 }
 
+function resolveFetchSignal(clientSignal?: AbortSignal): AbortSignal | undefined {
+  const timeoutSignal =
+    typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (AbortSignal as any).timeout(45_000)
+      : undefined;
+
+  if (!clientSignal && !timeoutSignal) return undefined;
+  if (clientSignal && timeoutSignal && typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (AbortSignal as any).any([clientSignal, timeoutSignal]);
+  }
+  return clientSignal ?? timeoutSignal;
+}
+
 export async function generateQuizPages(
-  params: GenerateQuizPagesParams
-): Promise<GenerateOk | GenerateErr> {
+  params: GenerateQuizPagesParams,
+  options?: { signal?: AbortSignal }
+): Promise<GenerateQuizPagesResult> {
   const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
   const MAX_PAGES = 20;
   const MAX_QUESTIONS_PER_PAGE = 20;
@@ -749,11 +768,7 @@ export async function generateQuizPages(
     const modelToUse = normalizeGeminiModelName(parsedParams.model);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${encodeURIComponent(apiKey)}`;
     // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const signal =
-      typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (AbortSignal as any).timeout(45_000)
-        : undefined;
+    const signal = resolveFetchSignal(options?.signal);
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -899,6 +914,9 @@ export async function generateQuizPages(
     });
     if (e instanceof z.ZodError) {
       return { ok: false, error: "Model returned JSON in an unexpected format" };
+    }
+    if (options?.signal?.aborted) {
+      return { ok: false, cancelled: true };
     }
     const message = e instanceof Error ? e.message : "Unknown error";
     if (/abort/i.test(message) || /timeout/i.test(message)) {

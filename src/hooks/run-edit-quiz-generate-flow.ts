@@ -1,6 +1,10 @@
 import type { TheoryBlockInput } from "@/app/admin/actions";
 import { defaultPage } from "@/hooks/edit-quiz-page-defaults";
-import type { GenerateQuizResult, GenerateQuizSuccess } from "@/hooks/use-quiz-ai-generation";
+import {
+  isGenerateCancelled,
+  type GenerateQuizResult,
+  type GenerateQuizSuccess,
+} from "@/hooks/use-quiz-ai-generation";
 import type { EditQuizFormValues } from "@/lib/quiz-page-schema";
 
 type GenerateOk = GenerateQuizSuccess;
@@ -33,6 +37,7 @@ export async function runEditQuizGenerateFlow({
   ai.setTopic(topicOverride);
   setGeneratedDraft(null);
   const res = await ai.generate(topicOverride);
+  if (isGenerateCancelled(res)) return;
   if (!res.ok) return;
 
   if (res.pages?.length) {
