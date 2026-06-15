@@ -58,12 +58,7 @@ export interface PageBlockProps {
   onConfirmDeleteQuestion?: (pageIndex: number, qIndex: number) => Promise<boolean>;
   onConfirmDeleteOption?: (pageIndex: number, qIndex: number, oIndex: number) => Promise<boolean>;
   onConfirmRemoveQuestionImage?: (pageIndex: number, qIndex: number) => Promise<boolean>;
-  hidePageTypeSelect?: boolean;
-  hidePageTitleFields?: boolean;
-  hideAddQuestionButton?: boolean;
-  hideQuestionImageBlock?: boolean;
-  useLyricsTerminology?: boolean;
-  sanitizeTitlePasteWhenEmpty?: boolean;
+  isListeningChapter?: boolean;
   /** Табы снаружи: без аккордеона и дубля заголовка страницы */
   embeddedInTabs?: boolean;
   crosswordOptions?: CrosswordSelectOption[];
@@ -84,12 +79,7 @@ export function PageBlock({
   onConfirmDeleteQuestion,
   onConfirmDeleteOption,
   onConfirmRemoveQuestionImage,
-  hidePageTypeSelect = false,
-  hidePageTitleFields = false,
-  hideAddQuestionButton = false,
-  hideQuestionImageBlock = false,
-  useLyricsTerminology = false,
-  sanitizeTitlePasteWhenEmpty = false,
+  isListeningChapter = false,
   embeddedInTabs = false,
   crosswordOptions = [],
 }: PageBlockProps) {
@@ -143,6 +133,12 @@ export function PageBlock({
 
   const showExpanded = embeddedInTabs || isExpanded;
   const pagesCount = totalPages ?? form.getValues("pages")?.length ?? pageIndex + 1;
+  const hidePageTypeSelect = isListeningChapter;
+  const hidePageTitleFields = isListeningChapter;
+  const hideAddQuestionButton = isListeningChapter;
+  const hideQuestionImageBlock = isListeningChapter;
+  const useLyricsTerminology = isListeningChapter;
+  const sanitizeTitlePasteWhenEmpty = isListeningChapter;
 
   return (
     <Card>

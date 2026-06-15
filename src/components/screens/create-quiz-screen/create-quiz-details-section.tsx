@@ -75,7 +75,6 @@ export function CreateQuizDetailsSection({
         pagesArray.remove(pageIndex);
         onActivePageIndexChange(nextIndex);
       }}
-      sanitizeTitlePasteWhenEmpty={isListeningChapter}
     />
   );
 }

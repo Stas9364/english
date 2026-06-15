@@ -47,7 +47,6 @@ interface QuizDetailsSectionProps<TPage> {
   onConfirmDeleteQuestion?: (pageIndex: number, questionIndex: number) => Promise<boolean>;
   onConfirmDeleteOption?: (pageIndex: number, questionIndex: number, optionIndex: number) => Promise<boolean>;
   onConfirmRemoveQuestionImage?: (pageIndex: number, questionIndex: number) => Promise<boolean>;
-  sanitizeTitlePasteWhenEmpty?: boolean;
 }
 
 export function QuizDetailsSection<TPage>({
@@ -72,7 +71,6 @@ export function QuizDetailsSection<TPage>({
   onConfirmDeleteQuestion,
   onConfirmDeleteOption,
   onConfirmRemoveQuestionImage,
-  sanitizeTitlePasteWhenEmpty = false,
 }: QuizDetailsSectionProps<TPage>) {
   const form = useFormContext<QuizDetailsFormValues>();
   const activePage = pagesController.fields[activePageIndex];
@@ -140,12 +138,7 @@ export function QuizDetailsSection<TPage>({
             }}
             canMoveUp={activePageIndex > 0}
             canMoveDown={activePageIndex < pagesController.fields.length - 1}
-            hidePageTypeSelect={isListeningChapter}
-            hidePageTitleFields={isListeningChapter}
-            hideAddQuestionButton={isListeningChapter}
-            hideQuestionImageBlock={isListeningChapter}
-            useLyricsTerminology={isListeningChapter}
-            sanitizeTitlePasteWhenEmpty={sanitizeTitlePasteWhenEmpty}
+            isListeningChapter={isListeningChapter}
             embeddedInTabs
             crosswordOptions={crosswordOptions}
             onConfirmDeleteQuestion={onConfirmDeleteQuestion}
