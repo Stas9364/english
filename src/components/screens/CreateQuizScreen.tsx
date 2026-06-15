@@ -28,7 +28,7 @@ import {
     type CreateQuizGenerationStatus,
 } from "@/components/screens/create-quiz-screen/create-quiz-details-section";
 import { CreateQuizHeader } from "@/components/screens/create-quiz-screen/create-quiz-header";
-import { QuizTheorySection } from "@/components/quiz-theory-section";
+import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 
 function slugify(title: string): string {
     const s = title
@@ -345,7 +345,7 @@ export function CreateQuizScreen({ chapter, topics, crosswordOptions = [], initi
                                 crosswordOptions={crosswordOptions}
                             />
 
-                            <QuizTheorySection
+                            <QuizTheoryBlocksEditor
                                 blocks={theoryBlocks}
                                 uploadingImageIndex={uploadingImageIndex}
                                 uploadError={uploadError}

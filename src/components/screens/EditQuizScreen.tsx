@@ -44,7 +44,7 @@ import {
   type EditQuizTabId,
   getEditQuizTabMeta,
 } from "@/components/screens/edit-quiz-screen/edit-quiz-tabs";
-import { QuizTheorySection } from "@/components/quiz-theory-section";
+import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 
 type GenerateOk = GenerateQuizSuccess;
 type EditQuizPageValue = EditQuizFormValues["pages"][number];
@@ -520,7 +520,7 @@ export function EditQuizScreen({
               )}
 
               {activeTab === "theory" && (
-                <QuizTheorySection
+                <QuizTheoryBlocksEditor
                   blocks={theoryBlocks}
                   uploadingImageIndex={uploadingImageIndex}
                   uploadError={uploadError}
