@@ -103,31 +103,7 @@ export function EditQuizDetailsSection({
         </div>
         {!isListeningChapter && (
           <QuizAiGenerationBlock
-            topic={ai.topic}
-            level={ai.level}
-            language={ai.language}
-            questionsPerPage={String(ai.questionsPerPage)}
-            selectedType={ai.selectedType as TestType}
-            inputMode={ai.inputMode}
-            customTask={ai.customTask}
-            style={ai.style}
-            constraints={ai.constraints}
-            lexicon={ai.lexicon}
-            bannedTopics={ai.bannedTopics}
-            selectedModel={ai.selectedModel}
-            onTopicChange={ai.setTopic}
-            onLevelChange={ai.setLevel}
-            onLanguageChange={ai.setLanguage}
-            onQuestionsPerPageChange={(value) => ai.setQuestionsPerPage(Number.isFinite(value) ? value : 1)}
-            onSelectedTypeChange={ai.setSelectedType}
-            onInputModeChange={ai.setInputMode}
-            onCustomTaskChange={ai.setCustomTask}
-            onStyleChange={ai.setStyle}
-            onConstraintsChange={ai.setConstraints}
-            onLexiconChange={ai.setLexicon}
-            onBannedTopicsChange={ai.setBannedTopics}
-            onSelectedModelChange={ai.setSelectedModel}
-            isGenerating={ai.isGenerating}
+            ai={ai}
             onGenerate={onGenerate}
             generatedSummary={generatedSummary}
             errorMessage={ai.errorMessage}

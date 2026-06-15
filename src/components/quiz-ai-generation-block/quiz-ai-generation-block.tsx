@@ -3,6 +3,7 @@
 import { Wand2 } from "lucide-react";
 import type { InputMode } from "@/app/admin/ai-generate";
 import type { TestType } from "@/lib/supabase";
+import type { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,36 +15,11 @@ import { SelectField } from './select-field';
 import { GeminiModelSelectField } from "./gemini-model-select-field";
 
 export interface QuizAiGenerationBlockProps {
-  topic: string;
-  level: string;
-  language: "RU" | "EN";
-  questionsPerPage: number | string;
-  selectedType: TestType;
-  inputMode: InputMode;
-  customTask: string;
-  style: string;
-  constraints: string;
-  lexicon: string;
-  bannedTopics: string;
-  selectedModel: string;
-
-  onTopicChange: (value: string) => void;
-  onLevelChange: (value: string) => void;
-  onLanguageChange: (value: "RU" | "EN") => void;
-  onQuestionsPerPageChange: (value: number) => void;
-  onSelectedTypeChange: (value: TestType) => void;
-  onInputModeChange: (value: InputMode) => void;
-  onCustomTaskChange: (value: string) => void;
-  onStyleChange: (value: string) => void;
-  onConstraintsChange: (value: string) => void;
-  onLexiconChange: (value: string) => void;
-  onBannedTopicsChange: (value: string) => void;
-  onSelectedModelChange: (value: string) => void;
+  ai: ReturnType<typeof useQuizAiGeneration>;
 
   generateLabel?: string;
   helperText?: string;
 
-  isGenerating: boolean;
   onGenerate: (topicValue: string) => void;
 
   generatedSummary?: string | null;
@@ -67,58 +43,34 @@ function useLocalTextField(external: string) {
 }
 
 export function QuizAiGenerationBlock({
-  topic,
-  level,
-  language,
-  questionsPerPage,
-  selectedType,
-  inputMode,
-  customTask,
-  style,
-  constraints,
-  lexicon,
-  bannedTopics,
-  selectedModel,
-  onTopicChange,
-  onLevelChange,
-  onLanguageChange,
-  onQuestionsPerPageChange,
-  onSelectedTypeChange,
-  onInputModeChange,
-  onCustomTaskChange,
-  onStyleChange,
-  onConstraintsChange,
-  onLexiconChange,
-  onBannedTopicsChange,
-  onSelectedModelChange,
+  ai,
   generateLabel = "Generate page",
   helperText = "The first successful generation replaces the current pages; all subsequent generations append new pages to the end.",
-  isGenerating,
   onGenerate,
   generatedSummary,
   errorMessage,
 }: QuizAiGenerationBlockProps) {
   const customTaskTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const questionsValue = typeof questionsPerPage === "number" ? String(questionsPerPage) : questionsPerPage;
+  const questionsValue = String(ai.questionsPerPage);
   const MAX_CUSTOM_TASK_CHARS = 350000;
 
-  const topicField = useLocalTextField(topic);
-  const styleField = useLocalTextField(style);
-  const constraintsField = useLocalTextField(constraints);
-  const lexiconField = useLocalTextField(lexicon);
-  const bannedTopicsField = useLocalTextField(bannedTopics);
-  const customTaskField = useLocalTextField(customTask);
+  const topicField = useLocalTextField(ai.topic);
+  const styleField = useLocalTextField(ai.style);
+  const constraintsField = useLocalTextField(ai.constraints);
+  const lexiconField = useLocalTextField(ai.lexicon);
+  const bannedTopicsField = useLocalTextField(ai.bannedTopics);
+  const customTaskField = useLocalTextField(ai.customTask);
   const questionsField = useLocalTextField(questionsValue);
 
   const commitQuestionsPerPage = () => {
     const n = questionsField.local === "" ? 0 : Number(questionsField.local);
     if (n !== Number(questionsValue)) {
-      onQuestionsPerPageChange(n);
+      ai.setQuestionsPerPage(n);
     }
   };
 
   const handleCustomTaskBlur = () => {
-    customTaskField.syncIfChanged(onCustomTaskChange);
+    customTaskField.syncIfChanged(ai.setCustomTask);
   };
 
   const resizeCustomTaskTextarea = () => {
@@ -133,12 +85,12 @@ export function QuizAiGenerationBlock({
   }, [customTaskField.local]);
 
   const handleGenerateClick = () => {
-    topicField.syncIfChanged(onTopicChange);
-    styleField.syncIfChanged(onStyleChange);
-    constraintsField.syncIfChanged(onConstraintsChange);
-    lexiconField.syncIfChanged(onLexiconChange);
-    bannedTopicsField.syncIfChanged(onBannedTopicsChange);
-    customTaskField.syncIfChanged(onCustomTaskChange);
+    topicField.syncIfChanged(ai.setTopic);
+    styleField.syncIfChanged(ai.setStyle);
+    constraintsField.syncIfChanged(ai.setConstraints);
+    lexiconField.syncIfChanged(ai.setLexicon);
+    bannedTopicsField.syncIfChanged(ai.setBannedTopics);
+    customTaskField.syncIfChanged(ai.setCustomTask);
     commitQuestionsPerPage();
     onGenerate(topicField.local);
   };
@@ -156,17 +108,17 @@ export function QuizAiGenerationBlock({
         </CardDescription>
 
         <GeminiModelSelectField
-          selectedModel={selectedModel}
-          onSelectedModelChange={onSelectedModelChange}
-          isGenerating={isGenerating}
+          selectedModel={ai.selectedModel}
+          onSelectedModelChange={ai.setSelectedModel}
+          isGenerating={ai.isGenerating}
         />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <InputField label="Topic (required)" value={topicField.local} onChange={(e) => topicField.setLocal(e.target.value)} placeholder="e.g. Present Simple (routine)" wrapperClassName="sm:col-span-2" />
 
-          <SelectField label="Level" value={level} onChange={(e) => onLevelChange(e.target.value)} options={["A1", "A2", "B1", "B2", "C1", "C2"]} />
-          <SelectField label="Explanation language" value={language} onChange={(e) => onLanguageChange(e.target.value as "RU" | "EN")} options={["RU", "EN"]} />
+          <SelectField label="Level" value={ai.level} onChange={(e) => ai.setLevel(e.target.value)} options={["A1", "A2", "B1", "B2", "C1", "C2"]} />
+          <SelectField label="Explanation language" value={ai.language} onChange={(e) => ai.setLanguage(e.target.value as "RU" | "EN")} options={["RU", "EN"]} />
         </div>
 
         <div className="space-y-1.5">
@@ -214,8 +166,8 @@ export function QuizAiGenerationBlock({
                   <input
                     type="radio"
                     className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
-                    checked={selectedType === t}
-                    onChange={() => onSelectedTypeChange(t)}
+                    checked={ai.selectedType === t}
+                    onChange={() => ai.setSelectedType(t)}
                   />
                   <span>{t}</span>
                 </label>
@@ -224,12 +176,12 @@ export function QuizAiGenerationBlock({
           </div>
         </div>
 
-        {selectedType === "input" && (
+        {ai.selectedType === "input" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField
               label="Input mode"
-              value={inputMode}
-              onChange={(e) => onInputModeChange(e.target.value as InputMode)}
+              value={ai.inputMode}
+              onChange={(e) => ai.setInputMode(e.target.value as InputMode)}
               options={["gaps", "full_answer"]}
             />
           </div>
@@ -254,10 +206,10 @@ export function QuizAiGenerationBlock({
             <Button
               type="button"
               onClick={handleGenerateClick}
-              disabled={isGenerating || !topicField.local.trim() || !selectedType}
+              disabled={ai.isGenerating || !topicField.local.trim() || !ai.selectedType}
               title="Сгенерировать одну страницу и применить по выбранному режиму"
             >
-              {isGenerating ? "Generating…" : generateLabel}
+              {ai.isGenerating ? "Generating…" : generateLabel}
             </Button>
           </div>
         </div>
