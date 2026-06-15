@@ -362,6 +362,13 @@ export default async function AdminGuidePage() {
             <ul className="mt-1 list-disc space-y-1 pl-5">
               <li>если форма ещё пустая (одна дефолтная страница) — она будет заменена;</li>
               <li>если страница уже есть или это не первая генерация — новая страница добавится в конец.</li>
+              <li>
+                если генерация затянулась или параметры выбраны неверно — можно нажать <strong>Отменить</strong> (см. раздел{" "}
+                <a href="#ai-generation-cancel" className="text-primary underline-offset-4 hover:underline">
+                  «Как отменить генерацию»
+                </a>
+                ).
+              </li>
             </ul>
           </li>
           <li>
@@ -430,6 +437,41 @@ export default async function AdminGuidePage() {
             </ul>
           </li>
         </ol>
+
+        <h3 id="ai-generation-cancel" className="text-lg font-semibold scroll-mt-6">Как отменить генерацию</h3>
+        <p className="text-base">
+          Пока идёт запрос к Gemini, кнопка <strong>Generate page</strong> показывает состояние <strong>Generating...</strong> и
+          становится недоступной. Рядом с ней появляется кнопка <strong>Отменить</strong>.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-base">
+          <li>
+            Нажатие <strong>Отменить</strong> полностью прерывает текущую генерацию: запрос к модели останавливается на сервере, а не
+            только скрывается индикатор загрузки в браузере.
+          </li>
+          <li>
+            После отмены сгенерированная страница <strong>не добавляется</strong> в форму и существующие страницы квиза не
+            изменяются.
+          </li>
+          <li>
+            Сообщение об ошибке при отмене <strong>не показывается</strong> — это штатное действие, а не сбой.
+          </li>
+          <li>
+            Если нажать <strong>Generate page</strong> повторно, пока предыдущий запрос ещё выполняется, предыдущая генерация
+            автоматически отменяется и запускается новая.
+          </li>
+          <li>
+            Во время генерации поле <strong>Gemini model</strong> временно недоступно для смены модели.
+          </li>
+          <li>
+            Если генерация не отменена вручную, но модель не отвечает слишком долго, запрос автоматически прерывается по
+            серверному таймауту (около <strong>45 секунд</strong>). В этом случае появится сообщение об ошибке — можно попробовать
+            снова или выбрать другую модель.
+          </li>
+        </ul>
+        <p className="text-base text-muted-foreground">
+          Кнопка <strong>Отменить</strong> доступна в блоке <strong>AI generation (Gemini)</strong> при создании и редактировании
+          обычного квиза. В режиме <code>listening</code> блок AI generation скрыт.
+        </p>
 
         <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
           <p className="font-medium">Рекомендуется:</p>

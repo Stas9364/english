@@ -40,6 +40,7 @@ const sections = [
       { id: "ai-generation-input-mode", label: "Input mode" },
       { id: "ai-generation-basic", label: "Базовый режим" },
       { id: "ai-generation-custom", label: "Custom task" },
+      { id: "ai-generation-cancel", label: "Отмена генерации" },
     ],
   },
   {
