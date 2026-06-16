@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import type { QuizWithPages, QuizPageWithDetails, QuestionWithOptions } from "@/lib/supabase";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
 import { normalizeInputAnswerForCompare } from '@/lib/text-answer-normalize';
@@ -15,11 +15,54 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
+function resetCheckedPageAnswers(
+  page: QuizPageWithDetails,
+  setCheckedPages: Dispatch<SetStateAction<Record<string, boolean>>>,
+  setSelected: Dispatch<SetStateAction<Record<string, string[]>>>,
+  setTextAnswers: Dispatch<SetStateAction<Record<string, string[]>>>
+) {
+  if (!page.id) return;
+
+  const questionIds = new Set(page.questions.map((question) => question.id));
+
+  setCheckedPages((prev) => {
+    if (!prev[page.id]) return prev;
+    const next = { ...prev };
+    delete next[page.id];
+    return next;
+  });
+
+  setSelected((prev) => {
+    let changed = false;
+    const next = { ...prev };
+    for (const id of questionIds) {
+      if (id in next) {
+        delete next[id];
+        changed = true;
+      }
+    }
+    return changed ? next : prev;
+  });
+
+  setTextAnswers((prev) => {
+    let changed = false;
+    const next = { ...prev };
+    for (const id of questionIds) {
+      if (id in next) {
+        delete next[id];
+        changed = true;
+      }
+    }
+    return changed ? next : prev;
+  });
+}
+
 export function useQuizProgress(quiz: QuizWithPages) {
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [textAnswers, setTextAnswers] = useState<Record<string, string[]>>({});
   const [checkedPages, setCheckedPages] = useState<Record<string, boolean>>({});
   const [pageIndex, setPageIndex] = useState(0);
+  const prevPageIndexRef = useRef(pageIndex);
 
   const pages = useMemo<QuizPageWithDetails[]>(() => quiz.pages ?? [], [quiz.pages]);
   const totalPages = pages.length || 1;
@@ -75,6 +118,17 @@ export function useQuizProgress(quiz: QuizWithPages) {
       setCheckedPages((prev) => ({ ...prev, [currentPage.id]: true }));
     }
   }, [currentPage.id]);
+
+  useEffect(() => {
+    const prevIndex = prevPageIndexRef.current;
+    prevPageIndexRef.current = pageIndex;
+    if (prevIndex === pageIndex) return;
+
+    const leavingPage = pages[prevIndex];
+    if (!leavingPage?.id || !checkedPages[leavingPage.id]) return;
+
+    resetCheckedPageAnswers(leavingPage, setCheckedPages, setSelected, setTextAnswers);
+  }, [pageIndex, pages, checkedPages]);
 
   useEffect(() => {
     if (pageType !== "matching") return;

@@ -12,6 +12,7 @@ import { QuizVideoPlayer } from "@/components/quiz-video-player";
 import { CrosswordPlayer } from "@/components/crossword/crossword-player";
 import { QuestionBlock } from "../question-block/question-block";
 import { useQuizProgress } from "@/hooks/use-quiz-progress";
+import { useQuizPageAnswerPersistence } from "@/hooks/use-quiz-page-answer-persistence";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
 import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import { QuizScreenViewSwitcher } from "./quiz-screen/quiz-screen-view-switcher";
@@ -60,6 +61,35 @@ export function QuizScreen({
     hasPrevPage,
   } = useQuizProgress(quiz);
 
+  const isCrosswordPage = pageType === "crossword";
+  const pageQuestionIds = useMemo(
+    () => currentPage.questions.map((q) => q.id),
+    [currentPage.questions]
+  );
+  const persistablePages = useMemo(
+    () =>
+      pages
+        .filter((page) => page.id && page.type !== "matching" && page.type !== "crossword")
+        .map((page) => ({
+          pageId: page.id,
+          questionIds: page.questions.map((question) => question.id),
+        })),
+    [pages]
+  );
+
+  const { handleCheckWithPersistence } = useQuizPageAnswerPersistence({
+    quizId: quiz.id,
+    pageId: currentPage.id,
+    questionIds: pageQuestionIds,
+    persistablePages,
+    selected,
+    textAnswers,
+    setSelected,
+    setTextAnswers,
+    onCheck: handleCheck,
+    enabled: !isAdmin,
+  });
+
   const hasTheory = theoryBlocks.length > 0;
   const totalQuestionsOnPage = currentPage.questions.length;
 
@@ -84,7 +114,6 @@ export function QuizScreen({
 
   const hasVideo = Boolean(quiz.video?.url?.trim());
   const safePageTitleHtml = sanitizeQuestionTitleHtml(currentPage.title ?? "");
-  const isCrosswordPage = pageType === "crossword";
 
   const quizMainContent = (
     <>
@@ -215,7 +244,7 @@ export function QuizScreen({
               {!isCurrentPageChecked ? (
                 <Button
                   size="lg"
-                  onClick={handleCheck}
+                  onClick={handleCheckWithPersistence}
                   disabled={currentPage.questions.length === 0 || !allChoiceAnswered || !allTextAnswered || !allSelectGapsAnswered || !allMatchingAnswered}
                 >
                   Check results
