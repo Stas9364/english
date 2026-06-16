@@ -1,18 +1,25 @@
 import { AdminRedisStats } from "@/components/admin-redis-stats";
 import { AdminSupabaseDiskStats } from "@/components/admin-supabase-disk-stats";
+import { AdminVisitorStats } from "@/components/admin-visitor-stats";
 import { PageContainer } from "@/components/page-container";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { SupabaseDiskStats } from "@/lib/supabase-disk-stats";
 import type { UpstashRedisStats } from "@/lib/upstash-redis-stats";
+import type {
+  VisitorStatsPeriod,
+  VisitorStatsPeriodData,
+} from "@/lib/visitor-stats-types";
 
 interface AdminDashboardScreenProps {
   redisStats: UpstashRedisStats | null;
   diskStats: SupabaseDiskStats | null;
+  visitorStatsByPeriod: Record<VisitorStatsPeriod, VisitorStatsPeriodData>;
 }
 
 export function AdminDashboardScreen({
   redisStats,
   diskStats,
+  visitorStatsByPeriod,
 }: AdminDashboardScreenProps) {
   return (
     <PageContainer>
@@ -20,9 +27,16 @@ export function AdminDashboardScreen({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Infrastructure usage for Upstash Redis and Supabase.
+            Infrastructure usage and quiz visitor analytics.
           </p>
         </div>
+
+        <section className="space-y-4">
+          <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+            Quiz visitors
+          </h2>
+          <AdminVisitorStats dataByPeriod={visitorStatsByPeriod} />
+        </section>
 
         <section className="space-y-4">
           <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
