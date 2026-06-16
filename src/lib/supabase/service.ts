@@ -14,6 +14,48 @@ function isJwtServiceKey(key: string): boolean {
   return key.startsWith("eyJ");
 }
 
+function getServiceKeyKind(key: string): string {
+  if (key.startsWith("eyJ")) {
+    try {
+      const payloadSegment = key.split(".")[1];
+      if (!payloadSegment) {
+        return "jwt:malformed";
+      }
+      const payload = JSON.parse(
+        Buffer.from(payloadSegment, "base64url").toString("utf8")
+      ) as { role?: string };
+      return `jwt:${payload.role ?? "unknown-role"}`;
+    } catch {
+      return "jwt:unparsed";
+    }
+  }
+
+  if (key.startsWith("sb_secret_")) {
+    return "sb_secret";
+  }
+
+  if (key.startsWith("sb_publishable_")) {
+    return "sb_publishable";
+  }
+
+  return "unknown-format";
+}
+
+function shouldLogServiceRpc(): boolean {
+  return (
+    process.env.NODE_ENV === "development" ||
+    process.env.VISITOR_STATS_DEBUG === "1"
+  );
+}
+
+function getSupabaseUrlHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "invalid-url";
+  }
+}
+
 function validateServiceKey(key: string): string | null {
   if (key.startsWith("sb_publishable_")) {
     return "SUPABASE_SERVICE_ROLE_KEY must be a secret key (sb_secret_...) or legacy service_role JWT, not a publishable key";
@@ -81,6 +123,21 @@ export async function invokeServiceRpc(
     return { error: { message: keyError } };
   }
 
+  const normalizedUrl = url.replace(/\/+$/, "");
+  const authMode = isJwtServiceKey(key) ? "apikey+bearer" : "apikey-only";
+  const rpcUrl = `${normalizedUrl}/rest/v1/rpc/${functionName}`;
+
+  if (shouldLogServiceRpc()) {
+    console.info("[supabase-rpc] invoke start", {
+      functionName,
+      host: getSupabaseUrlHost(normalizedUrl),
+      keyKind: getServiceKeyKind(key),
+      keyLength: key.length,
+      authMode,
+      argKeys: Object.keys(args),
+    });
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     apikey: key,
@@ -92,13 +149,22 @@ export async function invokeServiceRpc(
   }
 
   try {
-    const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+    const response = await fetch(rpcUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(args),
     });
 
     if (response.ok) {
+      if (shouldLogServiceRpc()) {
+        console.info("[supabase-rpc] invoke ok", {
+          functionName,
+          status: response.status,
+          host: getSupabaseUrlHost(normalizedUrl),
+          keyKind: getServiceKeyKind(key),
+          authMode,
+        });
+      }
       return { error: null };
     }
 
@@ -112,6 +178,20 @@ export async function invokeServiceRpc(
       if (payload.message) {
         message = payload.message;
       }
+
+      if (shouldLogServiceRpc()) {
+        console.error("[supabase-rpc] invoke failed", {
+          functionName,
+          status: response.status,
+          host: getSupabaseUrlHost(normalizedUrl),
+          keyKind: getServiceKeyKind(key),
+          authMode,
+          code: payload.code,
+          message: payload.message,
+          hint: payload.hint,
+        });
+      }
+
       return {
         error: {
           code: payload.code,
@@ -119,12 +199,28 @@ export async function invokeServiceRpc(
         },
       };
     } catch {
+      if (shouldLogServiceRpc()) {
+        console.error("[supabase-rpc] invoke failed", {
+          functionName,
+          status: response.status,
+          host: getSupabaseUrlHost(normalizedUrl),
+          message,
+        });
+      }
       return { error: { message } };
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : "RPC request failed";
+    if (shouldLogServiceRpc()) {
+      console.error("[supabase-rpc] invoke error", {
+        functionName,
+        host: getSupabaseUrlHost(normalizedUrl),
+        message,
+      });
+    }
     return {
       error: {
-        message: error instanceof Error ? error.message : "RPC request failed",
+        message,
       },
     };
   }
