@@ -119,7 +119,7 @@ export function QuizScreen({
         <>
           {score !== null && (
             <Card className="mb-6 border-primary/30 bg-primary/5">
-              <CardContent className="pt-6">
+              <CardContent>
                 <p className="text-center text-lg font-medium">
                   Your result for this page: {score.correct} of {score.total}
                 </p>
@@ -187,7 +187,7 @@ export function QuizScreen({
               }}
             />
           ) : (
-            <ul className="space-y-8">
+            <ul className="space-y-4">
               {currentPage.questions.map((q, index) => (
                 <QuestionBlock
                   key={q.id}
