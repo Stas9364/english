@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const sections = [
   { id: "how-quiz-works", label: "Как устроен квиз", items: [] },
@@ -91,6 +96,7 @@ const sections = [
 
 export function GuideToc() {
   const [activeId, setActiveId] = useState<string>("");
+  const [openSectionId, setOpenSectionId] = useState<string>("");
 
   useEffect(() => {
     const observedIds: string[] = [];
@@ -133,8 +139,9 @@ export function GuideToc() {
             Содержание
           </p>
           {sections.map(({ id, label, items }) => (
-            <div key={id} className="space-y-0.5">
+            items.length === 0 ? (
               <a
+                key={id}
                 href={`#${id}`}
                 className={cn(
                   "block w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors",
@@ -145,21 +152,49 @@ export function GuideToc() {
               >
                 {label}
               </a>
-              {items.map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
+            ) : (
+              <Collapsible
+                key={id}
+                open={openSectionId === id || isSectionActive(id, items)}
+                onOpenChange={(open) => {
+                  if (open) {
+                    setOpenSectionId(id);
+                    return;
+                  }
+                  if (openSectionId === id) {
+                    setOpenSectionId("");
+                  }
+                }}
+                className="space-y-0.5"
+              >
+                <CollapsibleTrigger
                   className={cn(
-                    "block w-full rounded-md py-1 pl-6 pr-2 text-left text-xs transition-colors",
-                    activeId === item.id
+                    "block w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                    isSectionActive(id, items)
                       ? "bg-primary/10 font-medium text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  {item.label}
-                </a>
-              ))}
-            </div>
+                  {label}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5">
+                  {items.map((item) => (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      className={cn(
+                        "block w-full rounded-md py-1 pl-6 pr-2 text-left text-xs transition-colors",
+                        activeId === item.id
+                          ? "bg-primary/10 font-medium text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )
           ))}
         </nav>
       </aside>
