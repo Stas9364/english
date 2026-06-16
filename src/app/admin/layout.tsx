@@ -47,12 +47,15 @@ export default async function AdminLayout({
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <h1 className="font-semibold">Admin</h1>
-          <div>
+          <div className="flex items-center gap-2">
 {/*     
             <Button variant="ghost" size="sm" asChild>
               <Link href="/">Back to topics</Link>
             </Button> */}
 
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/dashboard">Dashboard</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/guide">Guide</Link>
             </Button>
