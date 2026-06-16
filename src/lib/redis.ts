@@ -10,6 +10,12 @@ let redisClient: Redis | null | undefined;
 function getRedisClient(): Redis | null {
   if (redisClient !== undefined) return redisClient;
 
+  if (process.env.NODE_ENV === "development") {
+    redisClient = null;
+    console.info("[redis] development mode, cache disabled");
+    return redisClient;
+  }
+
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) {
