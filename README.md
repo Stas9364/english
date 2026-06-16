@@ -39,6 +39,8 @@ Create `.env.local` in the project root (see `.env.example` if present):
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # or: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-publishable-key
+UPSTASH_REDIS_REST_URL=https://your-upstash-endpoint.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-upstash-token
 ```
 
 Get the URL and key from [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Settings** → **API**.

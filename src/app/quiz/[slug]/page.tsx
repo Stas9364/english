@@ -1,15 +1,11 @@
 import { notFound } from "next/navigation";
 import {
-  createServerClient,
-  getCrosswordQuizBySlug,
-  getQuizWithPagesBySlug,
-  getTheoryBlocks,
   getIsAdmin,
-  getTopicMetaById,
 } from "@/lib/supabase";
 import { CrosswordScreen } from "@/components/screens/CrosswordScreen";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 import type { Metadata } from 'next';
+import { getQuizPageDataBySlug } from "@/lib/quiz-page-cache";
 
 interface QuizPageProps {
   params: Promise<{ slug: string }>;
@@ -30,18 +26,12 @@ export default async function QuizPage({ params }: QuizPageProps) {
   const slugDecoded = decodeURIComponent(slug).trim();
   if (!slugDecoded) notFound();
 
-  const supabase = await createServerClient();
-  const [quiz, isAdmin] = await Promise.all([
-    getQuizWithPagesBySlug(supabase, slugDecoded),
+  const [{ quiz, theoryBlocks, topicRow, crosswordQuiz }, isAdmin] = await Promise.all([
+    getQuizPageDataBySlug(slugDecoded),
     getIsAdmin(),
   ]);
 
   if (!quiz) notFound();
-
-  const [theoryBlocks, topicRow] = await Promise.all([
-    getTheoryBlocks(supabase, quiz.id),
-    getTopicMetaById(supabase, quiz.topic_id),
-  ]);
 
   const adminBackHref =
     topicRow
@@ -49,7 +39,6 @@ export default async function QuizPage({ params }: QuizPageProps) {
       : "/admin";
 
   if (topicRow?.chapter.trim().toLowerCase() === "crossword") {
-    const crosswordQuiz = await getCrosswordQuizBySlug(supabase, slugDecoded);
     if (!crosswordQuiz) notFound();
     return (
       <CrosswordScreen

@@ -7,6 +7,7 @@ import {
   revalidateQuizzes,
   revalidateQuizzesByTopicSlugAndChapter,
 } from "@/lib/supabase/quizzes-queries";
+import { invalidateQuizCacheBySlug } from "@/lib/redis";
 import { revalidateTheoryBlocksByQuizId } from "@/lib/supabase/theory-queries";
 import {
   deleteQuizListeningMetaByQuizId,
@@ -102,7 +103,10 @@ async function revalidatePublicQuizCacheByQuizId(
   quizId: string
 ) {
   const { data } = await supabase.from("quizzes").select("slug").eq("id", quizId).maybeSingle();
-  if (data?.slug) revalidateQuizBySlug(data.slug);
+  if (data?.slug) {
+    revalidateQuizBySlug(data.slug);
+    await invalidateQuizCacheBySlug(data.slug);
+  }
 }
 
 async function getTopicChapterKeyByTopicId(
@@ -334,6 +338,7 @@ export async function createQuiz(data: CreateQuizInput) {
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(quiz.id);
   revalidateQuizBySlug(slug);
+  await invalidateQuizCacheBySlug(slug);
   await revalidateTopicQuizListCaches(supabase, [data.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
   return { ok: true };
@@ -655,8 +660,12 @@ export async function updateQuiz(data: UpdateQuizInput) {
   }
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(data.quizId);
-  if (beforeQuiz?.slug) revalidateQuizBySlug(beforeQuiz.slug);
+  if (beforeQuiz?.slug) {
+    revalidateQuizBySlug(beforeQuiz.slug);
+    await invalidateQuizCacheBySlug(beforeQuiz.slug);
+  }
   revalidateQuizBySlug(newSlug);
+  await invalidateQuizCacheBySlug(newSlug);
   await revalidateTopicQuizListCaches(supabase, [beforeQuiz?.topic_id, data.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, beforeQuiz?.topic_id);
   await revalidateAdminPathsForTopicId(supabase, data.topic_id);
@@ -683,7 +692,10 @@ export async function deleteQuiz(
   revalidatePath("/");
   revalidateQuizzes();
   revalidateTheoryBlocksByQuizId(quizId);
-  if (quizRow?.slug) revalidateQuizBySlug(quizRow.slug);
+  if (quizRow?.slug) {
+    revalidateQuizBySlug(quizRow.slug);
+    await invalidateQuizCacheBySlug(quizRow.slug);
+  }
   await revalidateTopicQuizListCaches(supabase, [quizRow?.topic_id]);
   await revalidateAdminPathsForTopicId(supabase, quizRow?.topic_id);
   return { ok: true };
