@@ -55,8 +55,8 @@ export function MatchingBlock({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-2">
           <Label className="text-muted-foreground text-xs uppercase tracking-wide">Question</Label>
           <ul className="flex flex-col gap-2">
             {questions.map((q) => (
@@ -69,7 +69,7 @@ export function MatchingBlock({
             ))}
           </ul>
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label className="text-muted-foreground text-xs uppercase tracking-wide">Answers — drag to reorder</Label>
           <ul className="flex flex-col gap-2">
             {questions.map((q) => (

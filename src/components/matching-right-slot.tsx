@@ -43,7 +43,7 @@ function DraggableOption({
         !disabled && "cursor-grab active:cursor-grabbing"
       )}
     >
-      <span className="wrap-break-word block truncate">{option.option_text}</span>
+      <span className="block wrap-break-word whitespace-normal">{option.option_text}</span>
     </Tag>
   );
 }
