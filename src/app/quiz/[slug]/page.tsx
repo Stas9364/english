@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { headers } from "next/headers";
 import {
   getIsAdmin,
 } from "@/lib/supabase";
@@ -6,6 +8,8 @@ import { CrosswordScreen } from "@/components/screens/CrosswordScreen";
 import { QuizScreen } from "@/components/screens/QuizScreen";
 import type { Metadata } from 'next';
 import { getQuizPageDataBySlug } from "@/lib/quiz-page-cache";
+import { getClientIp } from "@/lib/client-ip";
+import { recordQuizVisit } from "@/lib/visitor-stats-record";
 
 interface QuizPageProps {
   params: Promise<{ slug: string }>;
@@ -32,6 +36,12 @@ export default async function QuizPage({ params }: QuizPageProps) {
   ]);
 
   if (!quiz) notFound();
+
+  after(async () => {
+    const headerStore = await headers();
+    const ip = getClientIp(headerStore);
+    await recordQuizVisit(ip, slugDecoded);
+  });
 
   const adminBackHref =
     topicRow
