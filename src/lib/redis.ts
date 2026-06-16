@@ -2,7 +2,7 @@ import { Redis } from "@upstash/redis";
 
 const QUIZ_CACHE_VERSION = "v1";
 const QUIZ_CACHE_PREFIX = "quiz:public:slug";
-const DEFAULT_QUIZ_CACHE_TTL_SECONDS = 900;
+export const QUIZ_CACHE_TTL_SECONDS = 60 * 60 * 24 * 15;
 const MAX_CACHE_PAYLOAD_BYTES = 900_000;
 
 let redisClient: Redis | null | undefined;
@@ -49,7 +49,7 @@ export async function getCachedJson<T>(key: string): Promise<T | null> {
 export async function setCachedJson(
   key: string,
   payload: unknown,
-  ttlSeconds = DEFAULT_QUIZ_CACHE_TTL_SECONDS
+  ttlSeconds = QUIZ_CACHE_TTL_SECONDS
 ): Promise<void> {
   const redis = getRedisClient();
   if (!redis) return;

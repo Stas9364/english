@@ -6,9 +6,12 @@ import {
   getTopicMetaById,
 } from "@/lib/supabase";
 import type { CrosswordQuiz, QuizWithPages, TheoryBlock } from "@/lib/supabase/types";
-import { getCachedJson, getQuizCacheKey, setCachedJson } from "@/lib/redis";
-
-const QUIZ_PAGE_CACHE_TTL_SECONDS = 900;
+import {
+  getCachedJson,
+  getQuizCacheKey,
+  QUIZ_CACHE_TTL_SECONDS,
+  setCachedJson,
+} from "@/lib/redis";
 
 type TopicMeta = { slug: string; chapter: string };
 
@@ -58,6 +61,6 @@ export async function getQuizPageDataBySlug(slug: string): Promise<QuizPagePaylo
     crosswordQuiz,
   };
 
-  await setCachedJson(cacheKey, payload, QUIZ_PAGE_CACHE_TTL_SECONDS);
+  await setCachedJson(cacheKey, payload, QUIZ_CACHE_TTL_SECONDS);
   return payload;
 }
