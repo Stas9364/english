@@ -56,9 +56,9 @@ export default async function AdminLayout({
               </span>
             ) : null}
 
-            <Button asChild variant="destructive" size="sm">
+            {/* <Button asChild variant="destructive" size="sm">
               <Link href="/auth/logout">Log out</Link>
-            </Button>
+            </Button> */}
           </div>
           <div className="flex items-center gap-2">
             {/*     
