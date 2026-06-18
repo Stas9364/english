@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export function LoginScreen() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error") === "auth";
-  const next = searchParams.get("next") ?? "/";
+  const next = searchParams.get("next") ?? "/admin";
 
   const handleSignInWithGoogle = async () => {
     const supabase = createClient();

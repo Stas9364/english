@@ -8,9 +8,9 @@ function getBaseUrl(request: Request): string {
 }
 
 function normalizeNext(next: string | null): string {
-  if (!next) return "/";
+  if (!next) return "/admin";
   // only allow internal redirects
-  return next.startsWith("/") ? next : "/";
+  return next.startsWith("/") ? next : "/admin";
 }
 
 export async function GET(request: NextRequest) {
