@@ -528,6 +528,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
       ? `- CUSTOM MATCHING RULE: the admin will provide matching items exactly as "answer - question/definition" lines. Treat each line as an already correct pair. In JSON, keep pairs correctly matched and in the SAME ORDER as the source lines: store the text BEFORE the dash as that row's single correct option.option_text and the text AFTER the dash as question_title. Do NOT shuffle, reorder, or randomize the JSON questions/options. Do NOT translate, paraphrase, rewrite, expand, shorten, or otherwise change either side of the pair. Do NOT invent extra pairs. The app UI will shuffle the learner-facing answer column separately, so correctness can be checked against the canonical question -> correct option relationship stored in JSON.`
       : null,
   ];
+  const inputContractionRule = `  - CONTRACTION RULE: whenever an accepted correct option contains a contraction (e.g. "doesn't", "didn't", "I'm", "I'll", "we're", "can't"), also add a separate option with the equivalent full form (e.g. "does not", "did not", "I am", "I will", "we are", "cannot"), and vice versa. Both variants must have is_correct=true. Example: accept both "I'll do it" and "I will do it". Apply this to every contraction in the option text.`;
   const inputRules =
     inputMode === "gaps"
       ? [
@@ -537,6 +538,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
           `  - EACH gap must correspond to a VERB in INFINITIVE form shown in round brackets inside the sentence, e.g. "Next week the sports centre [[]] (close) for three days.";`,
           `  - explanation must be a SHORT non-empty note in ${lang} (usually 1 sentence) that briefly explains why the accepted form(s) are correct in this sentence. Do not use HTML. Do not repeat the whole question text.`,
           `  - options are accepted correct forms of that verb in context; set gap_index (0-based); is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
+          inputContractionRule,
           `  - If a question has N gaps, you MUST provide at least one option for every gap_index from 0..N-1. Missing gap_index is invalid.`,
           customTask
             ? `  - For custom connected text, preserve the original text almost verbatim: only replace numbered markers like "1(...)" with "[[]] (...)" and keep the text inside round brackets exactly as provided (do NOT delete, shorten, or rewrite bracket content).`
@@ -548,6 +550,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
           `  - question_title must stay as the learner-facing prompt/sentence and must NOT include "[[]]" gaps unless the source instruction explicitly requires visible blanks; the learner types one full answer in a single input field;`,
           `  - explanation must be a SHORT non-empty note in ${lang} (usually 1 sentence) that briefly explains what transformation/correction makes the final answer correct. Do not use HTML. Do not repeat the whole prompt.`,
           `  - options are accepted full rewritten/corrected answers for the WHOLE question, not single words or fragments; store them with gap_index = 0; is_correct must be true for all options; NEVER return distractors/incorrect options for input tasks.`,
+          inputContractionRule,
           `  - Preserve the original task wording in question_title unless a tiny structural adjustment is absolutely necessary to fit the schema. Do NOT paraphrase, simplify, translate, or rewrite the learner-facing prompt.`,
           `  - For full_answer mode, provide at least one accepted full answer for each question. Missing answer text is invalid.`,
           `  - The correct answer in options must be the final sentence/text the learner should type exactly as an acceptable solution. Do NOT include explanations, labels, numbering, hints, or surrounding commentary inside option_text.`,
