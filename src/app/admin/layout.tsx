@@ -4,6 +4,7 @@ import { getAdminRole, getCurrentUser, getIsAdmin } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { AdminChatWidget } from "@/components/admin-chat-widget";
+import { AdminLogoutButton } from "@/components/admin-logout-button";
 
 /** Avoid cached layout so auth is read on every request (fixes "login works on second try" in prod). */
 export const dynamic = "force-dynamic";
@@ -34,9 +35,7 @@ export default async function AdminLayout({
             <Button asChild>
               <Link href="/">Back to topics</Link>
             </Button>
-            {/* <Button asChild variant="outline">
-                <Link href="/auth/logout">Log out</Link>
-              </Button> */}
+            <AdminLogoutButton variant="outline" />
           </CardContent>
         </Card>
       </div>
@@ -56,9 +55,7 @@ export default async function AdminLayout({
               </span>
             ) : null}
 
-            {/* <Button asChild variant="destructive" size="sm">
-              <Link href="/auth/logout">Log out</Link>
-            </Button> */}
+            <AdminLogoutButton />
           </div>
           <div className="flex items-center gap-2">
             {/*     
