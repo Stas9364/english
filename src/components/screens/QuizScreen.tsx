@@ -15,7 +15,7 @@ import { useQuizProgress } from "@/hooks/use-quiz-progress";
 import { useQuizPageAnswerPersistence } from "@/hooks/use-quiz-page-answer-persistence";
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
 import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
-import { QuizScreenViewSwitcher } from "./quiz-screen/quiz-screen-view-switcher";
+import { QuizScreenViewSwitcher } from "../quiz-screen/quiz-screen-view-switcher";
 
 type ViewTab = "quiz" | "theory";
 

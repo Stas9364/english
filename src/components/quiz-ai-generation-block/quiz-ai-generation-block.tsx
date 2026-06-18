@@ -53,7 +53,6 @@ export function QuizAiGenerationBlock({
 }: QuizAiGenerationBlockProps) {
   const customTaskTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const questionsValue = String(ai.questionsPerPage);
-  const MAX_CUSTOM_TASK_CHARS = 350000;
 
   const topicField = useLocalTextField(ai.topic);
   const styleField = useLocalTextField(ai.style);
@@ -123,21 +122,15 @@ export function QuizAiGenerationBlock({
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <Label>Custom task (optional)</Label>
-            <span className="text-[11px] text-muted-foreground">
-              {customTaskField.local.length.toLocaleString("en-US")} / {MAX_CUSTOM_TASK_CHARS.toLocaleString("en-US")}
-            </span>
-          </div>
+          <Label>Custom task (optional)</Label>
           <textarea
             ref={customTaskTextareaRef}
             value={customTaskField.local}
             onChange={(e) => customTaskField.setLocal(e.target.value)}
             onInput={resizeCustomTaskTextarea}
             onBlur={handleCustomTaskBlur}
-            placeholder="Paste your own exercise description or instructions here. Gemini will convert it into a quiz page according to the settings above."
+            placeholder="Paste the exercise text here (sentences, numbered items, matching pairs, etc.). Gemini will convert it into a quiz page."
             rows={4}
-            maxLength={MAX_CUSTOM_TASK_CHARS}
             className="placeholder:text-muted-foreground border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none resize-none overflow-hidden min-h-[80px] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
           />
         </div>

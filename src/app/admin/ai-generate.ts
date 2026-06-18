@@ -520,6 +520,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
     ? [
         `- SLASH PRESERVATION RULE: if the instruction contains fragments separated by "/" (e.g. "he / look", "I / make"), treat BOTH sides as required source material. Do NOT drop, omit, or replace either side; keep both parts represented in the generated question.`,
         `- CONNECTED TEXT RULE: if the instruction provides one continuous/coherent text block (paragraph), keep it as ONE question in the quiz. Do NOT split it into multiple questions or break it into sentence-level items unless the instruction explicitly asks for that split.`,
+        `- MULTIPLE CORRECT ANSWERS RULE: if the instruction states that two or more answer variants are acceptable for the same question (e.g. "X / Y", "X or Y", "both answers are correct", "two variants possible"), you MUST add EACH acceptable variant as a separate option with is_correct=true. Do NOT pick only one variant. For type "input", store every variant as its own option with the same gap_index when they fill the same gap. For type "multiple", mark every valid variant is_correct=true. Example: if both "doesn't live" and "does not live" are valid, options must include both strings with is_correct=true.`,
       ]
     : [];
   const matchingRules = [
@@ -567,7 +568,7 @@ function buildGeneratePrompt(params: GenerateQuizPagesParams): string {
   const instructionRules = customTask
     ? [
         `Primary instruction (VERBATIM, highest priority): ${customTask}`,
-        `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${singleType ? `, and all pages must have type = "${singleType}".` : "."}`
+        `You MUST convert this exact instruction into quiz pages that follow the JSON schema and rules above. Treat the text of the exercise as CANONICAL: do NOT paraphrase, rewrite, or change wording unless absolutely necessary to fit the schema (e.g. splitting into question_title and options). DO NOT invent new content that is not implied by the instruction. If there is any conflict between the instruction and other requirements (topic, CEFR level, etc.), prefer the instruction for CONTENT, but ALWAYS obey the STRUCTURE: pageCount = ${params.pageCount}, questionsPerPage = ${params.questionsPerPage}${singleType ? `, and all pages must have type = "${singleType}".` : "."}`,
       ]
     : [];
   const contentRules = [

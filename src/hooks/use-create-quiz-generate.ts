@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
-import type { CreateQuizGenerationStatus } from "@/components/screens/create-quiz-screen/create-quiz-details-section";
+import type { CreateQuizGenerationStatus } from "@/components/create-quiz-screen/create-quiz-details-section";
 import {
   isGenerateCancelled,
   type GenerateQuizSuccess,

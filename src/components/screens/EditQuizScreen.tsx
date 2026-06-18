@@ -20,14 +20,14 @@ import { QuizLocalSnapshotRestoreDialog } from "@/components/quiz-local-snapshot
 import { useEditQuizInvalidFocus } from "@/hooks/use-edit-quiz-invalid-focus";
 import { LoadingSubmitButton } from "@/components/ui/loading-submit-button";
 import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
-import { EditQuizHeader } from "@/components/screens/edit-quiz-screen/edit-quiz-header";
-import { EditQuizDetailsSection } from "@/components/screens/edit-quiz-screen/edit-quiz-details-section";
-import { EditQuizEditorProvider } from "@/components/screens/edit-quiz-screen/edit-quiz-editor-context";
+import { EditQuizHeader } from "@/components/edit-quiz-screen/edit-quiz-header";
+import { EditQuizDetailsSection } from "@/components/edit-quiz-screen/edit-quiz-details-section";
+import { EditQuizEditorProvider } from "@/components/edit-quiz-screen/edit-quiz-editor-context";
 import {
   EditQuizTabs,
   type EditQuizTabId,
   getEditQuizTabMeta,
-} from "@/components/screens/edit-quiz-screen/edit-quiz-tabs";
+} from "@/components/edit-quiz-screen/edit-quiz-tabs";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useEditQuizDeleteHandlers } from "@/hooks/use-edit-quiz-delete-handlers";
 import { useEditQuizSubmit } from "@/hooks/use-edit-quiz-submit";

@@ -15,8 +15,8 @@ import { QuizLocalSnapshotIndicator } from "@/components/quiz-local-snapshot-ind
 import type { CrosswordSelectOption } from "@/components/page-block/crossword-page-select";
 import {
     CreateQuizDetailsSection,
-} from "@/components/screens/create-quiz-screen/create-quiz-details-section";
-import { CreateQuizHeader } from "@/components/screens/create-quiz-screen/create-quiz-header";
+} from "@/components/create-quiz-screen/create-quiz-details-section";
+import { CreateQuizHeader } from "@/components/create-quiz-screen/create-quiz-header";
 import { QuizTheoryBlocksEditor } from "@/components/quiz-theory-blocks-editor";
 import { useCreateQuizSnapshot } from "@/hooks/use-create-quiz-snapshot";
 import { useCreateQuizSubmit } from "@/hooks/use-create-quiz-submit";

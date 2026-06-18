@@ -2,7 +2,7 @@
 
 import type { useQuizAiGeneration } from "@/hooks/use-quiz-ai-generation";
 import type { EditQuizFormValues } from "@/lib/quiz-page-schema";
-import { useEditQuizEditor } from "@/components/screens/edit-quiz-screen/edit-quiz-editor-context";
+import { useEditQuizEditor } from "@/components/edit-quiz-screen/edit-quiz-editor-context";
 import { QuizDetailsSection } from "@/components/screens/quiz-details-section";
 
 interface EditQuizDetailsTabProps {
