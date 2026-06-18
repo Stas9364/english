@@ -152,7 +152,7 @@ export function AdminVisitorStats({ dataByPeriod }: AdminVisitorStatsProps) {
           {quizzes.length === 0 ? (
             <p className="text-muted-foreground text-sm">No quiz visits in this period.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="h-[600px] overflow-y-auto overflow-x-auto pr-4">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
