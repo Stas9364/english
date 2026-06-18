@@ -1,11 +1,23 @@
 export { createClient } from "./client";
 export { createServerClient } from "./server";
-export { getCurrentUser, getIsAdmin } from "./auth";
+export {
+  getCurrentUser,
+  getIsAdmin,
+  getIsSuperAdmin,
+  getAdminRole,
+  getAdminRoleFromUser,
+  getAdminTopicsScope,
+  ADMIN_ROLES,
+  isSuperAdminRole,
+} from "./auth";
+export type { AdminRole, AdminTopicsScope } from "./auth";
 export {
   getAdminChapters,
   getAdminChapterByKey,
   getTopics,
   getTopicsByChapter,
+  getAdminTopicsByChapter,
+  canAdminAccessTopic,
   getTopicBySlugAndChapter,
   getTopicMetaById,
   getQuizzes,

@@ -3,11 +3,13 @@ import { CreateQuizScreen } from "@/components/screens/CreateQuizScreen";
 import { CreateCrosswordScreen } from "@/components/screens/CreateCrosswordScreen";
 import { PageContainer } from "@/components/page-container";
 import {
+  canAdminAccessTopic,
   createServerClient,
   getAdminChapterByKey,
+  getAdminTopicsByChapter,
+  getAdminTopicsScope,
   getCrosswordOptions,
   getTopicBySlugAndChapter,
-  getTopicsByChapter,
 } from "@/lib/supabase";
 
 interface AdminCreateQuizInTopicPageProps {
@@ -20,16 +22,19 @@ export default async function AdminCreateQuizInTopicPage({ params }: AdminCreate
   const topicSlug = decodeURIComponent(topicSlugParam).trim();
   if (!chapter || !topicSlug) notFound();
 
+  const scope = await getAdminTopicsScope();
+  if (!scope) notFound();
+
   const supabase = await createServerClient();
 
   const chapterMeta = await getAdminChapterByKey(supabase, chapter);
   if (!chapterMeta) notFound();
 
   const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
-  if (!topic) notFound();
+  if (!topic || !canAdminAccessTopic(topic, scope)) notFound();
 
   const [topics, crosswordOptions] = await Promise.all([
-    getTopicsByChapter(supabase, chapter),
+    getAdminTopicsByChapter(supabase, chapter, scope),
     getCrosswordOptions(supabase),
   ]);
 

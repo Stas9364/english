@@ -2,10 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache, updateTag } from "next/cache";
 import { cache } from "react";
 import type { Chapter } from "@/lib/chapters";
+import type { AdminTopicsScope } from "./auth";
 import type { Topic } from "./types";
 
 const TOPIC_SELECT =
-  "id, name, slug, description, order_index, chapter, created_at";
+  "id, name, slug, description, order_index, chapter, owner_user_id, created_at";
+
+export type { AdminTopicsScope };
+
+export function canAdminAccessTopic(
+  topic: Pick<Topic, "owner_user_id">,
+  scope: AdminTopicsScope
+): boolean {
+  if (scope.isSuperAdmin) return true;
+  return topic.owner_user_id === scope.userId;
+}
 const getTopicMetaTag = (topicId: string) => `topics:meta:id:${topicId}`;
 
 /** Список тем для админки и фильтрации */
@@ -22,7 +33,7 @@ export async function getTopics(
   return (data ?? []) as Topic[];
 }
 
-/** Темы одного раздела админки (для `/admin/[chapter]`) */
+/** Темы одного раздела (публичный каталог и общие запросы). */
 export async function getTopicsByChapter(
   supabase: SupabaseClient,
   chapter: Chapter
@@ -34,6 +45,28 @@ export async function getTopicsByChapter(
     .order("order_index", { ascending: true })
     .order("name", { ascending: true });
 
+  if (error) throw error;
+  return (data ?? []) as Topic[];
+}
+
+/** Темы раздела для админки: только свои; super_admin видит всё. */
+export async function getAdminTopicsByChapter(
+  supabase: SupabaseClient,
+  chapter: Chapter,
+  scope: AdminTopicsScope
+): Promise<Topic[]> {
+  let query = supabase
+    .from("topics")
+    .select(TOPIC_SELECT)
+    .eq("chapter", chapter)
+    .order("order_index", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("owner_user_id", scope.userId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Topic[];
 }

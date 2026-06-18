@@ -1,5 +1,14 @@
+import {
+  getAdminRoleFromUser,
+  isAdminRoleValue,
+  isSuperAdminRole,
+  type AdminRole,
+} from "@/lib/admin-roles";
 import { createServerClient } from "./server";
 import type { User } from "@supabase/supabase-js";
+
+export type { AdminRole };
+export { ADMIN_ROLES, getAdminRoleFromUser, isSuperAdminRole } from "@/lib/admin-roles";
 
 /**
  * Returns the current authenticated user from cookies (server-side).
@@ -30,20 +39,62 @@ async function isEmailInAdminList(
   return (data?.length ?? 0) > 0;
 }
 
-/**
- * Returns true if the current user's email is in admin_emails.
- */
-export async function getIsAdmin(currentUser?: User | null): Promise<boolean> {
-  const supabase = await createServerClient();
-  const email = currentUser?.email ?? null;
-  if (email) {
-    return isEmailInAdminList(supabase, email);
-  }
+async function resolveCurrentUser(currentUser?: User | null): Promise<User | null> {
+  if (currentUser !== undefined) return currentUser;
 
+  const supabase = await createServerClient();
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError) return false;
-  return isEmailInAdminList(supabase, user?.email);
+  if (userError) return null;
+  return user;
+}
+
+/**
+ * Effective admin role: app_metadata.role, or `admin` if email is in admin_emails.
+ */
+export async function getAdminRole(currentUser?: User | null): Promise<AdminRole | null> {
+  const user = await resolveCurrentUser(currentUser);
+  const metadataRole = getAdminRoleFromUser(user);
+  if (isAdminRoleValue(metadataRole)) return metadataRole;
+
+  if (!user?.email) return null;
+
+  const supabase = await createServerClient();
+  const inAdminList = await isEmailInAdminList(supabase, user.email);
+  return inAdminList ? "admin" : null;
+}
+
+/**
+ * Returns true when the user is admin or super_admin.
+ */
+export async function getIsAdmin(currentUser?: User | null): Promise<boolean> {
+  const role = await getAdminRole(currentUser);
+  return isAdminRoleValue(role);
+}
+
+/**
+ * Returns true only for app_metadata.role = super_admin.
+ * Users from admin_emails alone are not super admins.
+ */
+export async function getIsSuperAdmin(currentUser?: User | null): Promise<boolean> {
+  const user = await resolveCurrentUser(currentUser);
+  return isSuperAdminRole(getAdminRoleFromUser(user));
+}
+
+export type AdminTopicsScope = {
+  userId: string;
+  isSuperAdmin: boolean;
+};
+
+/** Scope for admin topic lists and ownership checks. */
+export async function getAdminTopicsScope(
+  currentUser?: User | null
+): Promise<AdminTopicsScope | null> {
+  const user = await resolveCurrentUser(currentUser);
+  if (!user) return null;
+
+  const isSuperAdmin = isSuperAdminRole(getAdminRoleFromUser(user));
+  return { userId: user.id, isSuperAdmin };
 }

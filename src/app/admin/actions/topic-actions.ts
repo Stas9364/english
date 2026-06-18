@@ -1,7 +1,7 @@
 "use server";
 
 import type { Chapter } from "@/lib/chapters";
-import { getIsAdmin } from "@/lib/supabase";
+import { getCurrentUser, getIsAdmin, getIsSuperAdmin } from "@/lib/supabase";
 import { createServerClient } from "@/lib/supabase/server";
 import { revalidateTopicMetaById } from "@/lib/supabase/topics-queries";
 import { revalidatePath } from "next/cache";
@@ -38,8 +38,9 @@ export async function createTopic(payload: {
   name: string;
   description?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const isAdmin = await getIsAdmin();
-  if (!isAdmin) return { ok: false, error: "Unauthorized" };
+  const user = await getCurrentUser();
+  const isAdmin = await getIsAdmin(user);
+  if (!isAdmin || !user) return { ok: false, error: "Unauthorized" };
 
   const name = payload.name.trim();
   if (!name) return { ok: false, error: "Topic name is required" };
@@ -71,6 +72,7 @@ export async function createTopic(payload: {
         // Legacy compatibility: keep text chapter in sync with chapter_id.
         chapter: payload.chapter,
         chapter_id: chapterRow.id,
+        owner_user_id: user.id,
       })
       .select("id")
       .single();

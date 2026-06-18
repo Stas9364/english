@@ -11,6 +11,7 @@ export interface Topic {
   description: string | null;
   order_index: number;
   chapter: Chapter;
+  owner_user_id: string;
   created_at: string;
 }
 

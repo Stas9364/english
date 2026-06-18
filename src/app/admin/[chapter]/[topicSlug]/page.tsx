@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import {
+  canAdminAccessTopic,
   getAdminChapterByKey,
   createServerClient,
+  getAdminTopicsScope,
   getQuizzesByTopicSlugAndChapter,
   getTopicBySlugAndChapter,
 } from "@/lib/supabase";
@@ -17,13 +19,16 @@ export default async function AdminTopicPage({ params }: AdminTopicPageProps) {
   const topicSlug = decodeURIComponent(topicSlugParam).trim();
   if (!chapter || !topicSlug) notFound();
 
+  const scope = await getAdminTopicsScope();
+  if (!scope) notFound();
+
   const supabase = await createServerClient();
 
   const chapterMeta = await getAdminChapterByKey(supabase, chapter);
   if (!chapterMeta) notFound();
 
   const topic = await getTopicBySlugAndChapter(supabase, topicSlug, chapter);
-  if (!topic) notFound();
+  if (!topic || !canAdminAccessTopic(topic, scope)) notFound();
 
   const quizzes = await getQuizzesByTopicSlugAndChapter(supabase, topicSlug, chapter);
   return <AdminTopicQuizzesScreen topic={topic} quizzes={quizzes} />;

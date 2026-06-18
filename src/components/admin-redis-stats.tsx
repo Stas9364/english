@@ -121,11 +121,11 @@ export function AdminRedisStats({ stats }: AdminRedisStatsProps) {
               <div className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-2">
                   <span className="size-2 rounded-full bg-emerald-500" />
-                  Writes: {stats.total_monthly_write_requests} / per day
+                  Writes: {stats.total_monthly_write_requests}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="size-2 rounded-full bg-sky-500" />
-                  Reads: {stats.total_monthly_read_requests} / per day
+                  Reads: {stats.total_monthly_read_requests}
                 </span>
               </div>
             </div>
