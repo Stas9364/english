@@ -55,6 +55,7 @@ export function MatchingRightSlot({
   checked,
   disabled,
   rowClass,
+  as: Tag = "div",
 }: {
   question: QuestionWithOptions;
   selectedOptionId?: string;
@@ -62,13 +63,14 @@ export function MatchingRightSlot({
   checked: boolean;
   disabled: boolean;
   rowClass: string;
+  as?: "li" | "div";
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: question.id });
   const selectedOpt = selectedOptionId ? optionById.get(selectedOptionId) : null;
   const isCorrect = selectedOpt ? (question.options ?? []).find((o) => o.id === selectedOptionId)?.is_correct === true : null;
 
   return (
-    <li
+    <Tag
       ref={setNodeRef}
       className={cn(
         rowClass,
@@ -91,6 +93,6 @@ export function MatchingRightSlot({
       ) : (
         <span className="text-muted-foreground">Drag answer here</span>
       )}
-    </li>
+    </Tag>
   );
 }

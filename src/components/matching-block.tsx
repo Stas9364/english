@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { MatchingRightSlot } from "@/components/matching-right-slot";
 
 export function MatchingBlock({
@@ -50,42 +51,80 @@ export function MatchingBlock({
     }
   }
 
-  const rowClass =
+  const cellClass =
     "flex min-h-11 min-w-0 items-center rounded-lg border border-input bg-card px-3 py-2.5 text-sm shadow-xs";
+
+  const questionContentClassName =
+    "wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit";
+
+  const isSmUp = useMediaQuery("(min-width: 640px)");
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {isSmUp ? (
         <div className="min-w-0 space-y-2">
-          <Label className="text-muted-foreground text-xs uppercase tracking-wide">Question</Label>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Question</Label>
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Answers — drag to reorder</Label>
+          </div>
           <ul className="flex flex-col gap-2">
             {questions.map((q) => (
-              <li key={q.id} className={cn(rowClass, "font-medium")}>
-                <span
-                  className="wrap-break-word [&_a]:text-primary [&_a]:underline [&_p]:m-0 [&_p]:inline [&_h1]:m-0 [&_h1]:inline [&_h1]:text-inherit [&_h2]:m-0 [&_h2]:inline [&_h2]:text-inherit"
-                  dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(q.question_title ?? "") }}
+              <li
+                key={q.id}
+                className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+              >
+                <div className={cn(cellClass, "font-medium")}>
+                  <span
+                    className={questionContentClassName}
+                    dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(q.question_title ?? "") }}
+                  />
+                </div>
+                <MatchingRightSlot
+                  question={q}
+                  selectedOptionId={selected[q.id]?.[0]}
+                  optionById={optionById}
+                  checked={checked}
+                  disabled={checked}
+                  rowClass={cellClass}
                 />
               </li>
             ))}
           </ul>
         </div>
-        <div className="min-w-0 space-y-2">
-          <Label className="text-muted-foreground text-xs uppercase tracking-wide">Answers — drag to reorder</Label>
-          <ul className="flex flex-col gap-2">
-            {questions.map((q) => (
-              <MatchingRightSlot
-                key={q.id}
-                question={q}
-                selectedOptionId={selected[q.id]?.[0]}
-                optionById={optionById}
-                checked={checked}
-                disabled={checked}
-                rowClass={rowClass}
-              />
-            ))}
-          </ul>
+      ) : (
+        <div className="grid gap-4">
+          <div className="min-w-0 space-y-2">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Question</Label>
+            <ul className="flex flex-col gap-2">
+              {questions.map((q) => (
+                <li key={q.id} className={cn(cellClass, "font-medium")}>
+                  <span
+                    className={questionContentClassName}
+                    dangerouslySetInnerHTML={{ __html: sanitizeQuestionTitleHtml(q.question_title ?? "") }}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="min-w-0 space-y-2">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Answers — drag to reorder</Label>
+            <ul className="flex flex-col gap-2">
+              {questions.map((q) => (
+                <MatchingRightSlot
+                  key={q.id}
+                  as="li"
+                  question={q}
+                  selectedOptionId={selected[q.id]?.[0]}
+                  optionById={optionById}
+                  checked={checked}
+                  disabled={checked}
+                  rowClass={cellClass}
+                />
+              ))}
+            </ul>
+          </div>
         </div>
-      </div>
+      )}
       {checked && questionsWithCorrectAnswers.length > 0 && (
         <div className="mt-6 rounded-lg border bg-muted/30 p-4 text-sm">
           <h3 className="font-medium">Correct answers</h3>
