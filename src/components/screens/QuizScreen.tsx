@@ -16,6 +16,7 @@ import { useQuizPageAnswerPersistence } from "@/hooks/use-quiz-page-answer-persi
 import { getEffectiveGapCount } from '@/lib/question-block-utils';
 import { sanitizeQuestionTitleHtml } from "@/lib/sanitize-question-title-html";
 import { QuizScreenViewSwitcher } from "../quiz-screen/quiz-screen-view-switcher";
+import { QuizPagination } from '../quiz-pagination';
 
 type ViewTab = "quiz" | "theory";
 
@@ -270,39 +271,13 @@ export function QuizScreen({
           )}
 
           {totalPages > 1 && (
-            <nav className="mt-6 flex flex-wrap items-center justify-center gap-2" aria-label="Quiz pages">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPageIndex((i) => i - 1)}
-                disabled={!hasPrevPage}
-              >
-                Previous page
-              </Button>
-              <span className="flex items-center gap-1 px-2">
-                {pages.map((page, i) => (
-                  <Button
-                    key={page.id}
-                    variant={pageIndex === i ? "default" : "outline"}
-                    size="sm"
-                    className="min-w-9"
-                    onClick={() => setPageIndex(i)}
-                    aria-label={`Page ${i + 1}`}
-                    aria-current={pageIndex === i ? "true" : undefined}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPageIndex((i) => i + 1)}
-                disabled={!hasNextPage}
-              >
-                Next page
-              </Button>
-            </nav>
+            <QuizPagination
+              hasPrevPage={hasPrevPage}
+              hasNextPage={hasNextPage}
+              pages={pages}
+              pageIndex={pageIndex}
+              setPageIndex={setPageIndex}
+            />
           )}
         </>
       )}
