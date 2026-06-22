@@ -2,6 +2,7 @@
 
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { QuestionWithOptions, Option } from "@/lib/supabase";
+import { matchingMarkedRowClassName } from "@/hooks/use-matching-row-marks";
 import { cn } from "@/lib/utils";
 
 const correctSurfaceClassName =
@@ -56,6 +57,7 @@ export function MatchingRightSlot({
   disabled,
   rowClass,
   as: Tag = "div",
+  highlighted = false,
 }: {
   question: QuestionWithOptions;
   selectedOptionId?: string;
@@ -64,6 +66,7 @@ export function MatchingRightSlot({
   disabled: boolean;
   rowClass: string;
   as?: "li" | "div";
+  highlighted?: boolean;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: question.id });
   const selectedOpt = selectedOptionId ? optionById.get(selectedOptionId) : null;
@@ -75,6 +78,7 @@ export function MatchingRightSlot({
       className={cn(
         rowClass,
         "transition-[background-color,border-color] duration-300",
+        highlighted && matchingMarkedRowClassName,
         isOver && "border-primary bg-primary/10",
         checked && isCorrect === true && correctSurfaceClassName,
         checked && isCorrect === false && incorrectSurfaceClassName,
